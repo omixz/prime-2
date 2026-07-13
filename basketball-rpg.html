@@ -1,0 +1,1387 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hoop Legends: Career RPG</title>
+<style>
+  :root{ --pix: pixelated; }
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; padding:0; height:100%; background:#0a0a14; color:#eee;
+    font-family: 'Courier New', monospace; overflow:hidden;
+    -webkit-user-select:none; user-select:none;
+  }
+  #app{
+    position:relative; width:100vw; height:100vh;
+    display:flex; align-items:center; justify-content:center;
+    background: radial-gradient(circle at 50% 30%, #1a1a2e 0%, #05050a 100%);
+  }
+  #gameCanvas{
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    border:4px solid #444;
+    box-shadow: 0 0 40px rgba(255,140,0,0.25), 0 0 4px #000 inset;
+    background:#111;
+    max-width:100vw; max-height:100vh;
+  }
+  .screen{
+    position:absolute; inset:0; display:none; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center;
+    padding:20px; overflow:auto;
+  }
+  .screen.active{ display:flex; }
+  .panel{
+    background: linear-gradient(#1c1c2b,#111119);
+    border:4px solid #ff8c00; border-radius:6px; padding:24px 32px;
+    box-shadow:0 0 24px rgba(255,140,0,.35), inset 0 0 12px #000;
+    max-width:640px; width:92%;
+  }
+  h1{
+    font-size:28px; letter-spacing:2px; color:#ffd166; text-shadow:3px 3px 0 #7a3e00;
+    margin:0 0 12px;
+  }
+  h2{ color:#ffd166; margin:0 0 14px; letter-spacing:1px; font-size:18px; }
+  p, label{ font-size:13px; line-height:1.6; color:#ddd; }
+  input[type=text]{
+    font-family:inherit; font-size:15px; padding:8px; width:100%;
+    background:#000; color:#0f0; border:2px solid #ff8c00; border-radius:3px;
+    text-align:center; margin-bottom:12px;
+  }
+  .row{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:10px 0; }
+  button{
+    font-family:inherit; cursor:pointer; background:#ff8c00; color:#000; border:none;
+    padding:10px 16px; font-size:13px; font-weight:bold; border-radius:4px;
+    box-shadow:0 3px 0 #a35700; letter-spacing:.5px; transition:transform .05s;
+  }
+  button:hover{ background:#ffa733; }
+  button:active{ transform:translateY(3px); box-shadow:none; }
+  button.sel{ background:#4ade80; box-shadow:0 3px 0 #1c7a3d; }
+  button:disabled{ background:#555; color:#999; box-shadow:0 3px 0 #222; cursor:not-allowed; }
+  button.small{ padding:6px 10px; font-size:11px; }
+  .posCard{
+    border:2px solid #555; border-radius:4px; padding:10px; width:150px; background:#161622;
+  }
+  .posCard.sel{ border-color:#4ade80; background:#173322; }
+  .attrRow{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin:4px 0; font-size:12px; }
+  .bar{ width:120px; height:10px; background:#333; border:1px solid #666; position:relative; }
+  .bar>div{ height:100%; background:linear-gradient(90deg,#ff8c00,#ffd166); }
+  .teamCard{
+    border:2px solid #555; border-radius:4px; padding:10px; width:130px; background:#161622; cursor:pointer;
+  }
+  .teamCard.sel{ border-color:#4ade80; }
+  .jersey{ width:36px; height:36px; margin:0 auto 6px; border-radius:4px; border:2px solid #000; }
+  #hudTop{
+    position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between;
+    padding:4px 10px; font-size:11px; color:#fff; text-shadow:1px 1px 0 #000; pointer-events:none;
+  }
+  .hidden{ display:none !important; }
+  .badgeChip{
+    display:inline-block; background:#222; border:2px solid #ffd166; border-radius:4px;
+    padding:4px 8px; margin:3px; font-size:11px; color:#ffd166;
+  }
+  select{ font-family:inherit; padding:6px; background:#000; color:#0f0; border:2px solid #ff8c00; }
+  .small-txt{ font-size:11px; color:#aaa; }
+  .flashMsg{ color:#4ade80; font-weight:bold; min-height:18px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ CHARACTER CREATION ============ -->
+  <div id="screen-create" class="screen active">
+    <div class="panel">
+      <h1>HOOP LEGENDS</h1>
+      <p class="small-txt">Create your baller. Choose wisely, rookie.</p>
+      <input type="text" id="playerName" maxlength="14" placeholder="Enter Player Name" value="Rookie" />
+
+      <h2>Choose Position</h2>
+      <div class="row" id="posRow">
+        <div class="posCard" data-pos="Guard">
+          <b>GUARD</b>
+          <p class="small-txt">High Speed &amp; Passing</p>
+        </div>
+        <div class="posCard" data-pos="Forward">
+          <b>FORWARD</b>
+          <p class="small-txt">Balanced Stats</p>
+        </div>
+        <div class="posCard" data-pos="Center">
+          <b>CENTER</b>
+          <p class="small-txt">Blocking &amp; Rebounding</p>
+        </div>
+      </div>
+
+      <h2>Distribute Attribute Points <span id="ptsLeft" style="color:#4ade80">(10 left)</span></h2>
+      <div id="attrEditor"></div>
+
+      <h2>Draft Interview</h2>
+      <div id="interviewBox"></div>
+
+      <div class="row">
+        <button id="btnStartCareer">Enter The Draft</button>
+      </div>
+      <div class="flashMsg" id="createMsg"></div>
+    </div>
+  </div>
+
+  <!-- ============ TEAM DRAFT RESULT ============ -->
+  <div id="screen-teamResult" class="screen">
+    <div class="panel">
+      <h1 id="draftHeadline">DRAFTED!</h1>
+      <div id="draftTeamCard"></div>
+      <p id="draftBlurb" class="small-txt"></p>
+      <div class="row"><button id="btnToHub">Enter Career Hub</button></div>
+    </div>
+  </div>
+
+  <!-- ============ CAREER HUB ============ -->
+  <div id="screen-hub" class="screen">
+    <div class="panel" style="max-width:720px;">
+      <h1 id="hubTeamName">CAREER HUB</h1>
+      <div class="row" style="justify-content:space-between; text-align:left;">
+        <div>
+          <p><b>Player:</b> <span id="hubPlayerName"></span> (<span id="hubPos"></span>)</p>
+          <p><b>Level:</b> <span id="hubLevel"></span> &nbsp; <b>XP:</b> <span id="hubXP"></span></p>
+          <p><b>Season Record:</b> <span id="hubRecord"></span></p>
+          <p><b>Round:</b> <span id="hubRound"></span></p>
+          <p><b>Skill Points:</b> <span id="hubSP" style="color:#4ade80"></span></p>
+        </div>
+        <div id="hubBadges"><b>Badges:</b><br/><div id="hubBadgeList"></div></div>
+      </div>
+
+      <div id="sponsorBox" class="panel" style="background:#141420; margin:12px 0;"></div>
+
+      <h2>Upgrade Center</h2>
+      <div id="upgradeGrid"></div>
+
+      <div class="row">
+        <button id="btnPlayGame">Tip Off Next Game ▶</button>
+      </div>
+      <div class="flashMsg" id="hubMsg"></div>
+    </div>
+  </div>
+
+  <!-- ============ GAMEPLAY ============ -->
+  <div id="screen-game" class="screen">
+    <canvas id="gameCanvas" width="960" height="540"></canvas>
+  </div>
+
+  <!-- ============ TROPHY / MVP SCREEN ============ -->
+  <div id="screen-trophy" class="screen">
+    <div class="panel">
+      <h1 style="color:#ffd166;">🏆 NBA FINALS MVP 🏆</h1>
+      <canvas id="trophyCanvas" width="300" height="260" style="image-rendering:pixelated; border:2px solid #ff8c00; background:#000;"></canvas>
+      <p id="mvpText"></p>
+      <div class="row"><button id="btnPostChamp">Continue Career</button></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* =========================================================================
+   AUDIO ENGINE (Web Audio API - synthesized 8-bit SFX)
+========================================================================= */
+const Audio8 = (function(){
+  let ctx=null;
+  function ac(){ if(!ctx){ ctx = new (window.AudioContext||window.webkitAudioContext)(); } return ctx; }
+  function beep(freq, dur, type, vol, slideTo){
+    try{
+      const c = ac();
+      const o = c.createOscillator();
+      const g = c.createGain();
+      o.type = type||'square';
+      o.frequency.setValueAtTime(freq, c.currentTime);
+      if(slideTo) o.frequency.linearRampToValueAtTime(slideTo, c.currentTime+dur);
+      g.gain.setValueAtTime(vol||0.15, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime+dur);
+      o.connect(g); g.connect(c.destination);
+      o.start(); o.stop(c.currentTime+dur);
+    }catch(e){}
+  }
+  function noise(dur, vol, filterFreq){
+    try{
+      const c = ac();
+      const bufferSize = c.sampleRate*dur;
+      const buffer = c.createBuffer(1, bufferSize, c.sampleRate);
+      const data = buffer.getChannelData(0);
+      for(let i=0;i<bufferSize;i++) data[i] = (Math.random()*2-1) * (1 - i/bufferSize);
+      const src = c.createBufferSource();
+      src.buffer = buffer;
+      const filt = c.createBiquadFilter();
+      filt.type='bandpass'; filt.frequency.value = filterFreq||3000;
+      const g = c.createGain();
+      g.gain.setValueAtTime(vol||0.2, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime+dur);
+      src.connect(filt); filt.connect(g); g.connect(c.destination);
+      src.start(); src.stop(c.currentTime+dur);
+    }catch(e){}
+  }
+  return {
+    dribble(){ beep(90,0.07,'sine',0.12); },
+    shotRelease(){ beep(440,0.08,'square',0.1,880); },
+    swish(){ noise(0.3,0.22,4500); beep(1200,0.15,'sine',0.08); },
+    rimMiss(){ beep(180,0.12,'sawtooth',0.12,90); },
+    squeak(){ beep(1800,0.05,'triangle',0.05,2200); },
+    buzzer(){ beep(220,0.6,'sawtooth',0.2,120); },
+    steal(){ beep(700,0.1,'square',0.12,1400); },
+    block(){ beep(150,0.15,'square',0.18,60); noise(0.1,0.15,1200); },
+    score2(){ beep(660,0.12,'square',0.1,990); },
+    levelup(){ beep(523,0.1,'square',0.15,1046); setTimeout(()=>beep(659,0.15,'square',0.15,1318),100); },
+    badge(){ beep(400,0.1,'sawtooth',0.12,1200); setTimeout(()=>beep(800,0.2,'sine',0.15,1600),120); },
+    click(){ beep(300,0.04,'square',0.08); },
+    ensureRunning(){ try{ ac().resume(); }catch(e){} }
+  };
+})();
+
+/* =========================================================================
+   GLOBAL STATE
+========================================================================= */
+const POSITIONS = {
+  Guard:   { base:{shooting:5, passing:7, speed:8, defense:4}, desc:"High speed & passing" },
+  Forward: { base:{shooting:6, passing:5, speed:6, defense:6}, desc:"Balanced" },
+  Center:  { base:{shooting:4, passing:3, speed:4, defense:9}, desc:"High blocking & rebounding" }
+};
+
+const TEAMS = [
+  { name:"Los Angeles Lakes", primary:"#552583", secondary:"#FDB927" },
+  { name:"Chicago Bulls",     primary:"#CE1141", secondary:"#000000" },
+  { name:"Boston Greens",     primary:"#007A33", secondary:"#BA9653" },
+  { name:"Miami Heats",       primary:"#98002E", secondary:"#F9A01B" }
+];
+
+const INTERVIEW_QUESTIONS = [
+  {
+    q:"A teammate is wide open but you have a contested shot. What do you do?",
+    opts:[
+      {t:"Take the shot, I trust my hands.", team:1},
+      {t:"Pass it, trust the team.", team:2},
+      {t:"Drive and dish depending on the defense.", team:0},
+      {t:"Call a timeout to reset.", team:3}
+    ]
+  },
+  {
+    q:"Describe your ideal defensive philosophy.",
+    opts:[
+      {t:"Lockdown one-on-one denial.", team:0},
+      {t:"Aggressive trapping and steals.", team:1},
+      {t:"Disciplined team rotations.", team:2},
+      {t:"Physical post defense.", team:3}
+    ]
+  },
+  {
+    q:"What's your mentality down the stretch of a close game?",
+    opts:[
+      {t:"Give me the ball, I want the moment.", team:1},
+      {t:"Stay calm, execute the system.", team:2},
+      {t:"Find the hot hand.", team:0},
+      {t:"Bully ball in the paint.", team:3}
+    ]
+  }
+];
+
+function freshState(){
+  return {
+    player: {
+      name:"Rookie", position:"Guard",
+      attrs:{ shooting:5, passing:5, speed:5, defense:5 },
+      level:1, xp:0, xpToNext:100, sp:0,
+      badges:[]
+    },
+    team: null,
+    interviewTally:[0,0,0,0],
+    season:{ wins:0, losses:0, round:0 }, // round 0=quarterfinal,1=semi,2=final,3=champ done
+    sponsor:null,
+    lastGameStats:null,
+    spMultiplierNextGame:1
+  };
+}
+let S = freshState();
+
+const ROUND_NAMES = ["Quarterfinals","Semifinals","Championship","Champion"];
+
+/* =========================================================================
+   SCREEN MANAGEMENT
+========================================================================= */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(el=>el.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+/* =========================================================================
+   CHARACTER CREATION UI
+========================================================================= */
+let attrPoints = 10;
+const attrKeys = ['shooting','passing','speed','defense'];
+let chosenPos = null;
+let interviewAnswers = [null,null,null];
+
+function renderAttrEditor(){
+  const box = document.getElementById('attrEditor');
+  box.innerHTML='';
+  attrKeys.forEach(k=>{
+    const val = S.player.attrs[k];
+    const row = document.createElement('div');
+    row.className='attrRow';
+    row.innerHTML = `
+      <span style="width:80px;text-align:left;text-transform:capitalize">${k}</span>
+      <div class="bar"><div style="width:${val*10}%"></div></div>
+      <span style="width:20px">${val}</span>
+      <button class="small" data-k="${k}" data-d="-1">-</button>
+      <button class="small" data-k="${k}" data-d="1">+</button>
+    `;
+    box.appendChild(row);
+  });
+  box.querySelectorAll('button').forEach(b=>{
+    b.onclick = ()=>{
+      Audio8.click();
+      const k = b.dataset.k, d = parseInt(b.dataset.d);
+      if(d>0 && attrPoints>0 && S.player.attrs[k]<10){ S.player.attrs[k]++; attrPoints--; }
+      else if(d<0 && S.player.attrs[k] > (POSITIONS[chosenPos||'Guard'].base[k]) ){ S.player.attrs[k]--; attrPoints++; }
+      document.getElementById('ptsLeft').textContent = `(${attrPoints} left)`;
+      renderAttrEditor();
+    };
+  });
+}
+
+function renderInterview(){
+  const box = document.getElementById('interviewBox');
+  box.innerHTML='';
+  INTERVIEW_QUESTIONS.forEach((item,qi)=>{
+    const wrap = document.createElement('div');
+    wrap.style.marginBottom='10px';
+    wrap.style.textAlign='left';
+    wrap.innerHTML = `<p style="color:#ffd166">${qi+1}. ${item.q}</p>`;
+    const row = document.createElement('div');
+    row.className='row';
+    row.style.justifyContent='flex-start';
+    item.opts.forEach((o,oi)=>{
+      const btn = document.createElement('button');
+      btn.className='small';
+      btn.textContent = o.t;
+      btn.style.maxWidth='260px';
+      btn.onclick = ()=>{
+        Audio8.click();
+        interviewAnswers[qi]=oi;
+        row.querySelectorAll('button').forEach(bb=>bb.classList.remove('sel'));
+        btn.classList.add('sel');
+      };
+      row.appendChild(btn);
+    });
+    wrap.appendChild(row);
+    box.appendChild(wrap);
+  });
+}
+
+document.getElementById('posRow').addEventListener('click', (e)=>{
+  const card = e.target.closest('.posCard');
+  if(!card) return;
+  Audio8.click();
+  document.querySelectorAll('.posCard').forEach(c=>c.classList.remove('sel'));
+  card.classList.add('sel');
+  chosenPos = card.dataset.pos;
+  S.player.position = chosenPos;
+  S.player.attrs = Object.assign({}, POSITIONS[chosenPos].base);
+  attrPoints = 10; // extra points to distribute on top of base
+  document.getElementById('ptsLeft').textContent = `(${attrPoints} left)`;
+  renderAttrEditor();
+});
+
+document.getElementById('btnStartCareer').addEventListener('click', ()=>{
+  Audio8.ensureRunning();
+  Audio8.click();
+  const nm = document.getElementById('playerName').value.trim();
+  const msg = document.getElementById('createMsg');
+  if(!nm){ msg.textContent = "Enter a player name!"; return; }
+  if(!chosenPos){ msg.textContent = "Select a position!"; return; }
+  if(interviewAnswers.includes(null)){ msg.textContent = "Answer all interview questions!"; return; }
+  if(attrPoints>0){ msg.textContent = `Distribute all attribute points! (${attrPoints} left)`; return; }
+  S.player.name = nm;
+  // tally interview -> team
+  const tally=[0,0,0,0];
+  interviewAnswers.forEach((oi,qi)=> tally[INTERVIEW_QUESTIONS[qi].opts[oi].team]++ );
+  let best=0;
+  for(let i=1;i<4;i++) if(tally[i]>tally[best]) best=i;
+  S.team = TEAMS[best];
+  showDraftResult();
+});
+
+function showDraftResult(){
+  document.getElementById('draftHeadline').textContent = `Welcome to the ${S.team.name}!`;
+  const card = document.getElementById('draftTeamCard');
+  card.innerHTML = `
+    <div class="jersey" style="background:${S.team.primary}; border-color:${S.team.secondary}"></div>
+    <p><b>${S.team.name}</b></p>
+    <p class="small-txt">Jersey: <span style="color:${S.team.primary}">■</span> primary / <span style="color:${S.team.secondary}">■</span> secondary</p>
+  `;
+  document.getElementById('draftBlurb').textContent =
+    `${S.player.name} the ${S.player.position} has been drafted based on your interview responses. Time to prove yourself, rookie!`;
+  showScreen('screen-teamResult');
+}
+
+document.getElementById('btnToHub').addEventListener('click', ()=>{
+  Audio8.click();
+  renderHub();
+  showScreen('screen-hub');
+});
+
+/* =========================================================================
+   CAREER HUB
+========================================================================= */
+const BADGE_INFO = {
+  shooting:{name:"Limitless Range", desc:"Boosts shot % from deep"},
+  passing:{name:"Floor General", desc:"Boosts teammates when you pass"},
+  speed:{name:"Ankle Breaker", desc:"Stuns defenders on direction change"},
+  defense:{name:"Eraser", desc:"Bigger blocks & steal radius"}
+};
+
+function renderHub(){
+  document.getElementById('hubTeamName').textContent = S.team.name.toUpperCase() + " — CAREER HUB";
+  document.getElementById('hubPlayerName').textContent = S.player.name;
+  document.getElementById('hubPos').textContent = S.player.position;
+  document.getElementById('hubLevel').textContent = S.player.level;
+  document.getElementById('hubXP').textContent = `${S.player.xp} / ${S.player.xpToNext}`;
+  document.getElementById('hubRecord').textContent = `${S.season.wins}W - ${S.season.losses}L`;
+  document.getElementById('hubRound').textContent = ROUND_NAMES[S.season.round];
+  document.getElementById('hubSP').textContent = S.player.sp;
+
+  const badgeList = document.getElementById('hubBadgeList');
+  badgeList.innerHTML = S.player.badges.length ? '' : '<span class="small-txt">None yet</span>';
+  S.player.badges.forEach(b=>{
+    const chip = document.createElement('span');
+    chip.className='badgeChip';
+    chip.textContent = BADGE_INFO[b].name;
+    badgeList.appendChild(chip);
+  });
+
+  // sponsor box
+  const sBox = document.getElementById('sponsorBox');
+  if(!S.sponsor){
+    S.sponsor = generateSponsorOffer();
+  }
+  sBox.innerHTML = `<b>📣 Sponsor Deal:</b> ${S.sponsor.text}<br/><span class="small-txt">${S.sponsor.done ? '✅ Completed! Bonus applied next game.' : 'Pending — complete it during your next game.'}</span>`;
+
+  // upgrade grid
+  const grid = document.getElementById('upgradeGrid');
+  grid.innerHTML='';
+  attrKeys.forEach(k=>{
+    const val = S.player.attrs[k];
+    const div = document.createElement('div');
+    div.className='attrRow';
+    div.style.justifyContent='flex-start';
+    div.style.gap='10px';
+    div.innerHTML = `
+      <span style="width:80px;text-align:left;text-transform:capitalize">${k}</span>
+      <div class="bar"><div style="width:${val*10}%"></div></div>
+      <span style="width:24px">${val}${val>=10?' ★':''}</span>
+      <button class="small" data-k="${k}" ${ (S.player.sp<=0 || val>=10) ? 'disabled':'' }>+1 (1 SP)</button>
+    `;
+    grid.appendChild(div);
+  });
+  grid.querySelectorAll('button').forEach(b=>{
+    b.onclick = ()=>{
+      const k = b.dataset.k;
+      if(S.player.sp<=0 || S.player.attrs[k]>=10) return;
+      Audio8.click();
+      S.player.attrs[k]++;
+      S.player.sp--;
+      if(S.player.attrs[k]===10 && !S.player.badges.includes(k)){
+        S.player.badges.push(k);
+        Audio8.badge();
+        document.getElementById('hubMsg').textContent = `🏅 Badge Unlocked: ${BADGE_INFO[k].name}!`;
+      }
+      renderHub();
+    };
+  });
+}
+
+function generateSponsorOffer(){
+  const options = [
+    { text:"Score 10+ points this game for a 1.5x SP Multiplier next game.", check:(st)=> st.points>=10, mult:1.5 },
+    { text:"Grab 5+ rebounds this game for a 1.5x SP Multiplier next game.", check:(st)=> st.rebounds>=5, mult:1.5 },
+    { text:"Dish 5+ assists this game for a 1.75x SP Multiplier next game.", check:(st)=> st.assists>=5, mult:1.75 },
+    { text:"Record 3+ steals or blocks this game for a 2x SP Multiplier next game.", check:(st)=> (st.steals+st.blocks)>=3, mult:2 }
+  ];
+  const o = options[Math.floor(Math.random()*options.length)];
+  return { text:o.text, check:o.check, mult:o.mult, done:false };
+}
+
+document.getElementById('btnPlayGame').addEventListener('click', ()=>{
+  Audio8.ensureRunning();
+  Audio8.click();
+  startGame();
+});
+
+document.getElementById('btnPostChamp').addEventListener('click', ()=>{
+  Audio8.click();
+  // reset season but keep player progress
+  S.season = { wins:0, losses:0, round:0 };
+  renderHub();
+  showScreen('screen-hub');
+});
+
+/* =========================================================================
+   GAMEPLAY: SIDE-SCROLLING 5v5 BASKETBALL
+========================================================================= */
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+const COURT = {
+  width: 2400, height: 460,
+  groundY: 460, // baseline for feet
+  hoopLeftX: 90, hoopRightX: 2310,
+  hoopY: 150
+};
+
+const KEYS = {};
+window.addEventListener('keydown', e=>{
+  KEYS[e.code]=true;
+  if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
+});
+window.addEventListener('keyup', e=>{ KEYS[e.code]=false; });
+
+let Game = null; // active game object
+
+function makePlayerEntity(opts){
+  return Object.assign({
+    x:0, y:0, z:0, // z = depth (foreground/background offset)
+    w:22, h:34,
+    vx:0, vy:0,
+    speed: 140,
+    facing:1,
+    hasBall:false,
+    team:'home', // 'home' or 'away'
+    role:'', // 'PG','SG','SF','PF','C' etc for flavor
+    isUser:false,
+    color:'#fff', accent:'#000',
+    jumpZ:0, jumping:false,
+    stunTimer:0,
+    lastDir:1,
+    aiState:'move',
+    aiTimer:0,
+    animT:0
+  }, opts);
+}
+
+function startGame(){
+  Audio8.ensureRunning();
+  const round = S.season.round;
+  const oppTeams = TEAMS.filter(t=>t.name!==S.team.name);
+  const opponent = oppTeams[Math.floor(Math.random()*oppTeams.length)];
+
+  // difficulty scales with round
+  const diff = 1 + round*0.18;
+
+  const userTeamColor = S.team;
+  const aiTeamColor = opponent;
+
+  // Build 5 home (user side) + 5 away
+  const home = [];
+  const away = [];
+
+  // user player
+  const userEnt = makePlayerEntity({
+    isUser:true, team:'home', role: S.player.position,
+    color:userTeamColor.primary, accent:userTeamColor.secondary,
+    x: COURT.width*0.3, y:0, z: 40
+  });
+  home.push(userEnt);
+
+  const roles = ['PG','SG','SF','PF','C'];
+  for(let i=0;i<4;i++){
+    home.push(makePlayerEntity({
+      team:'home', role: roles[i], color:userTeamColor.primary, accent:userTeamColor.secondary,
+      x: COURT.width*(0.15+i*0.12), z: 20+i*15
+    }));
+  }
+  for(let i=0;i<5;i++){
+    away.push(makePlayerEntity({
+      team:'away', role: roles[i], color:aiTeamColor.primary, accent:aiTeamColor.secondary,
+      x: COURT.width*(0.65+i*0.06), z: 20+i*15
+    }));
+  }
+
+  const allPlayers = home.concat(away);
+  allPlayers.forEach(p=>{ p.y = COURT.groundY - (p.z*0.0); });
+
+  Game = {
+    home, away, allPlayers,
+    opponent,
+    ball: { x: userEnt.x, y: COURT.groundY-20, z: userEnt.z, vx:0, vy:0, vz:0, holder: userEnt, inAir:false, arcT:0, shooter:null, targetHoop:null },
+    camX: 0,
+    quarter:1, quarterTime: 60, // seconds per quarter (compressed)
+    scoreHome:0, scoreAway:0,
+    diff,
+    stats:{ points:0, rebounds:0, assists:0, steals:0, blocks:0 },
+    shotMeter:{ active:false, t:0, holding:false },
+    floatTexts:[],
+    possessionTeam:'home',
+    lastFrame: performance.now(),
+    paused:false,
+    over:false,
+    userDir:{x:0,y:0},
+    lastUserMoveDir: 1,
+    dirChangeTimer:0,
+    ankleStunApplied:false,
+    result:null
+  };
+  attachBallTo(userEnt);
+  showScreen('screen-game');
+  requestAnimationFrame(gameLoop);
+}
+
+function attachBallTo(p){
+  Game.ball.holder = p;
+  Game.ball.inAir = false;
+  Game.allPlayers.forEach(pl=>pl.hasBall=false);
+  p.hasBall = true;
+  Game.possessionTeam = p.team;
+}
+
+/* ---------------- Physics helpers ---------------- */
+function dist2(a,b){ const dx=a.x-b.x, dz=(a.z||0)-(b.z||0); return dx*dx+dz*dz; }
+
+function clampCourt(p){
+  p.x = Math.max(20, Math.min(COURT.width-20, p.x));
+  p.z = Math.max(0, Math.min(90, p.z));
+}
+
+/* ---------------- Game Loop ---------------- */
+function gameLoop(now){
+  if(!Game || Game.over) return;
+  let dt = (now - Game.lastFrame)/1000;
+  dt = Math.min(dt, 0.05);
+  Game.lastFrame = now;
+
+  update(dt);
+  render();
+
+  requestAnimationFrame(gameLoop);
+}
+
+function update(dt){
+  updateInput(dt);
+  updateAI(dt);
+  updateBall(dt);
+  updateCamera();
+  updateFloatTexts(dt);
+  updateClock(dt);
+}
+
+function updateClock(dt){
+  Game.quarterTime -= dt;
+  if(Game.quarterTime<=0){
+    if(Game.quarter<4){
+      Game.quarter++;
+      Game.quarterTime = 60;
+      Audio8.buzzer();
+      addFloatText(COURT.width/2, 60, `END OF Q${Game.quarter-1}`, '#ffd166', 40);
+    } else {
+      endGame();
+    }
+  }
+}
+
+/* -------- user input -------- */
+function updateInput(dt){
+  const user = Game.home[0];
+  if(user.stunTimer>0){ user.stunTimer-=dt; return; }
+
+  let dx=0, dz=0;
+  if(KEYS['ArrowLeft']||KEYS['KeyA']) dx-=1;
+  if(KEYS['ArrowRight']||KEYS['KeyD']) dx+=1;
+  if(KEYS['ArrowUp']||KEYS['KeyW']) dz-=1; // into background
+  if(KEYS['ArrowDown']||KEYS['KeyS']) dz+=1; // into foreground
+
+  const speed = attrSpeedPx(S.player.attrs.speed);
+  if(dx!==0||dz!==0){
+    const len = Math.hypot(dx,dz);
+    user.x += (dx/len)*speed*dt;
+    user.z += (dz/len)*speed*dt;
+    user.facing = dx!==0 ? (dx>0?1:-1) : user.facing;
+    user.animT += dt*8;
+
+    // Ankle Breaker badge: detect sudden direction reversal
+    if(dx!==0){
+      if(Math.sign(dx)!== Math.sign(user.lastUserMoveDir||dx) ){
+        Game.dirChangeTimer = 0.25;
+      }
+      user.lastUserMoveDir = dx;
+    }
+  }
+  clampCourt(user);
+
+  if(Game.dirChangeTimer>0){
+    Game.dirChangeTimer-=dt;
+    if(S.player.badges.includes('speed')){
+      // stun nearby defenders once per reversal
+      if(!Game.ankleStunApplied){
+        Game.away.forEach(def=>{
+          if(dist2(def,user) < 70*70){ def.stunTimer = 0.8; addFloatText(def.x, -20, "ANKLE BROKEN!", '#ff5577', 30, def); }
+        });
+        Game.ankleStunApplied = true;
+      }
+    }
+  } else {
+    Game.ankleStunApplied = false;
+  }
+
+  if(user.x < Game.ball.holderTargetX) {} // no-op placeholder
+
+  // dribble sound occasionally while holding+moving
+  if(user.hasBall && (dx!==0||dz!==0)){
+    user.dribbleTimer = (user.dribbleTimer||0) - dt;
+    if(user.dribbleTimer<=0){ Audio8.dribble(); user.dribbleTimer = 0.28; }
+  }
+
+  // shooting (spacebar hold/release) only if has ball
+  if(user.hasBall){
+    if(KEYS['Space'] && !Game.shotMeter.active && !Game.shotMeter.consumed){
+      Game.shotMeter.active = true; Game.shotMeter.t = 0; Game.shotMeter.holding = true;
+      Audio8.shotRelease();
+    }
+    if(Game.shotMeter.active && Game.shotMeter.holding){
+      Game.shotMeter.t += dt*1.6;
+      if(Game.shotMeter.t>1) Game.shotMeter.t = 1 - (Game.shotMeter.t-1); // bounce back down
+      if(!KEYS['Space']){
+        Game.shotMeter.holding = false;
+        releaseShot(user, Game.shotMeter.t);
+        Game.shotMeter.active = false;
+      }
+    }
+  } else {
+    // defense: spacebar = jump for block/rebound
+    if(KEYS['Space'] && !user.jumping){
+      user.jumping = true; user.jumpZVel = 220; Audio8.squeak();
+    }
+  }
+
+  if(user.jumping){
+    user.jumpZVel -= 700*dt;
+    user.jumpZ = (user.jumpZ||0) + user.jumpZVel*dt;
+    if(user.jumpZ<=0){ user.jumpZ=0; user.jumping=false; }
+  }
+
+  // X key: pass or steal (edge-triggered)
+  if(KEYS['KeyX'] && !Game.xPressed){
+    Game.xPressed = true;
+    if(user.hasBall){ doPass(user); }
+    else { attemptSteal(user); }
+  }
+  if(!KEYS['KeyX']) Game.xPressed=false;
+}
+
+function attrSpeedPx(spd){ return 90 + spd*14; }
+
+/* -------- shooting -------- */
+function releaseShot(shooter, meterT){
+  // meterT in [0,1], peak accuracy near 0.5..0.6 due to bounce timing (peak of sine)
+  const peak = 1 - Math.abs(meterT-0.55)*2.2;
+  const timingScore = Math.max(0, Math.min(1, peak));
+  const shootAttr = shooter.isUser ? S.player.attrs.shooting : (5+Game.diff*2);
+  let baseChance = 0.25 + shootAttr*0.055 + timingScore*0.45;
+
+  // distance factor
+  const hoop = nearestHoop(shooter);
+  const d = Math.hypot(shooter.x-hoop.x, (shooter.z||0));
+  const isThree = d > 260;
+  if(isThree){
+    baseChance -= 0.18;
+    if(shooter.isUser && S.player.badges.includes('shooting')) baseChance += 0.22;
+  }
+  baseChance = Math.max(0.03, Math.min(0.97, baseChance));
+
+  const made = Math.random() < baseChance;
+  Game.ball.inAir = true;
+  Game.ball.holder = null;
+  shooter.hasBall = false;
+  Game.ball.shooter = shooter;
+  Game.ball.targetHoop = hoop;
+  Game.ball.made = made;
+  Game.ball.isThree = isThree;
+  Game.ball.x = shooter.x; Game.ball.z = shooter.z; Game.ball.y = COURT.groundY-40;
+  Game.ball.arcT = 0;
+  Game.ball.arcDur = 0.9;
+  Game.ball.startX = shooter.x; Game.ball.startZ = shooter.z;
+
+  addFloatText(shooter.x, -50, `${Math.round(baseChance*100)}% Chance!`, '#4ade80', 45, shooter);
+  Audio8.shotRelease();
+}
+
+function nearestHoop(p){
+  const dL = Math.abs(p.x - COURT.hoopLeftX);
+  const dR = Math.abs(p.x - COURT.hoopRightX);
+  return dL<dR ? {x:COURT.hoopLeftX, y:COURT.hoopY, side:'left'} : {x:COURT.hoopRightX, y:COURT.hoopY, side:'right'};
+}
+
+function updateBall(dt){
+  const ball = Game.ball;
+  if(ball.holder){
+    ball.x = ball.holder.x + ball.holder.facing*14;
+    ball.z = ball.holder.z;
+    ball.y = COURT.groundY - 20 - (ball.holder.jumpZ||0);
+    return;
+  }
+  if(ball.inAir){
+    ball.arcT += dt/ball.arcDur;
+    const t = Math.min(1, ball.arcT);
+    ball.x = ball.startX + (ball.targetHoop.x-ball.startX)*t;
+    ball.z = ball.startZ + (0-ball.startZ)*t*0.3;
+    const height = Math.sin(Math.PI*t) * (120+ (ball.isThree?30:0));
+    ball.y = (COURT.groundY-40) - height;
+    if(t>=1){
+      ball.inAir=false;
+      resolveShotOutcome();
+    }
+    return;
+  }
+  // loose ball (rebound/steal bounce) simple gravity
+  if(ball.loose){
+    ball.vy += 500*dt;
+    ball.x += ball.vx*dt;
+    ball.y += ball.vy*dt;
+    if(ball.y > COURT.groundY-10){
+      ball.y = COURT.groundY-10;
+      ball.vy *= -0.4;
+      ball.vx *= 0.7;
+      if(Math.abs(ball.vy)<40) { ball.loose=false; assignLooseBallToNearest(); }
+    }
+  }
+}
+
+function resolveShotOutcome(){
+  const ball = Game.ball;
+  const shooter = ball.shooter;
+  if(ball.made){
+    Audio8.swish();
+    const pts = ball.isThree ? 3 : 2;
+    if(shooter.team==='home'){ Game.scoreHome += pts; } else { Game.scoreAway += pts; }
+    if(shooter.isUser){
+      Game.stats.points += pts;
+      gainXP(pts*8);
+      checkSponsor();
+    }
+    addFloatText(ball.targetHoop.x, -20, `+${pts}`, '#ffd166', 35);
+    // check for assist credit (simplified): if user passed within last 2s
+    resetPossessionAfterScore(shooter.team);
+  } else {
+    Audio8.rimMiss();
+    // ball becomes loose near hoop for rebound
+    ball.loose = true;
+    ball.x = ball.targetHoop.x + (Math.random()*40-20);
+    ball.z = 20+Math.random()*40;
+    ball.y = COURT.groundY-80;
+    ball.vx = (Math.random()*60-30);
+    ball.vy = -80;
+  }
+}
+
+function resetPossessionAfterScore(scoringTeam){
+  const otherTeam = scoringTeam==='home' ? Game.away : Game.home;
+  const inbounder = otherTeam[0];
+  const hoop = nearestHoop(Game.home[0]);
+  inbounder.x = scoringTeam==='home' ? COURT.hoopLeftX+80 : COURT.hoopRightX-80;
+  attachBallTo(inbounder);
+}
+
+function assignLooseBallToNearest(){
+  let best=null, bestD=Infinity;
+  Game.allPlayers.forEach(p=>{
+    const d = dist2(p, Game.ball);
+    if(d<bestD){ bestD=d; best=p; }
+  });
+  if(best && bestD < 120*120){
+    attachBallTo(best);
+    if(best.isUser){ Game.stats.rebounds++; gainXP(5); }
+  } else {
+    // ball stays loose but slow-drift; simple fallback: give to closest anyway after settle
+    if(best) attachBallTo(best);
+  }
+}
+
+/* -------- passing / stealing -------- */
+function doPass(passer){
+  const teammates = (passer.team==='home'?Game.home:Game.away).filter(p=>p!==passer);
+  // closest open teammate
+  let best=null, bestD=Infinity;
+  teammates.forEach(t=>{
+    const d = dist2(t,passer);
+    if(d<bestD){ bestD=d; best=t; }
+  });
+  if(!best) return;
+  const passAttr = passer.isUser ? S.player.attrs.passing : (5+Game.diff);
+  let successChance = 0.55 + passAttr*0.045;
+  if(passer.isUser && S.player.badges.includes('passing')) successChance += 0.15;
+  const success = Math.random() < successChance;
+  Audio8.dribble();
+  if(success){
+    attachBallTo(best);
+    if(passer.isUser){
+      gainXP(2);
+      Game.stats.assists += 0; // assist counted if next action scores; simplified tracking
+      passer.assistPending = true;
+      if(S.player.badges.includes('passing')){
+        best.buffTimer = 5; best.buffed = true; // Floor General boosts teammate briefly
+      }
+    }
+    // credit assist stat if user passed and target scores soon
+    if(passer.isUser){ Game.pendingAssist = { to:best, t: 3 }; }
+  } else {
+    // intercepted-ish: ball becomes loose
+    Game.ball.holder = null;
+    passer.hasBall = false;
+    Game.ball.loose = true;
+    Game.ball.x = (passer.x+best.x)/2;
+    Game.ball.z = (passer.z+best.z)/2;
+    Game.ball.y = COURT.groundY-30;
+    Game.ball.vx = (best.x-passer.x)*0.3;
+    Game.ball.vy = -60;
+    addFloatText(passer.x, -30, "Bad Pass!", '#ff5577', 30, passer);
+  }
+}
+
+function attemptSteal(user){
+  const ballHolder = Game.ball.holder;
+  if(!ballHolder || ballHolder.team===user.team) return;
+  const d = Math.sqrt(dist2(user, ballHolder));
+  let radius = 45;
+  if(S.player.badges.includes('defense')) radius = 75;
+  if(d>radius) return;
+  const defAttr = S.player.attrs.defense;
+  let chance = 0.15 + defAttr*0.05;
+  if(S.player.badges.includes('defense')) chance += 0.2;
+  Audio8.squeak();
+  if(Math.random()<chance){
+    Audio8.steal();
+    Game.stats.steals++;
+    gainXP(10);
+    ballHolder.hasBall=false;
+    attachBallTo(user);
+    addFloatText(user.x, -30, "STEAL!", '#4ade80', 35, user);
+  }
+}
+
+/* -------- XP / sponsor -------- */
+function gainXP(amount){
+  S.player.xp += amount;
+  while(S.player.xp >= S.player.xpToNext){
+    S.player.xp -= S.player.xpToNext;
+    S.player.level++;
+    S.player.xpToNext = Math.round(S.player.xpToNext*1.18);
+    const spGain = Math.round(3*S.spMultiplierNextGame);
+    S.player.sp += spGain;
+    Audio8.levelup();
+    addFloatText(Game.home[0].x, -80, `LEVEL UP! +${spGain} SP`, '#ffd166', 60, Game.home[0]);
+  }
+}
+
+function checkSponsor(){
+  if(S.sponsor && !S.sponsor.done && S.sponsor.check(Game.stats)){
+    S.sponsor.done = true;
+    addFloatText(Game.home[0].x, -100, "SPONSOR GOAL MET!", '#4ade80', 55, Game.home[0]);
+  }
+}
+
+/* -------- AI (teammates + defenders) -------- */
+function updateAI(dt){
+  Game.allPlayers.forEach(p=>{
+    if(p.isUser) return;
+    if(p.stunTimer>0){ p.stunTimer-=dt; return; }
+    p.aiTimer -= dt;
+
+    const ball = Game.ball;
+    const onBallTeam = ball.holder ? ball.holder.team : null;
+    const isOffense = p.team===onBallTeam;
+    const hoop = p.team==='home' ? {x:COURT.hoopRightX} : {x:COURT.hoopLeftX}; // attacking hoop is opposite side (simplify: home attacks right)
+
+    let targetX = p.x, targetZ = p.z;
+
+    if(p.hasBall){
+      // AI ball handler: move toward hoop, shoot when close, occasionally pass
+      const dHoop = Math.abs(p.x-hoop.x);
+      targetX = p.x + (hoop.x>p.x?1:-1)*30;
+      targetZ = 45 + Math.sin(performance.now()/500+p.x)*20;
+      if(dHoop < 160 && p.aiTimer<=0){
+        p.aiTimer = 1.2 + Math.random();
+        aiShoot(p);
+      } else if(p.aiTimer<=0 && Math.random()<0.3){
+        p.aiTimer = 1.5;
+        aiPass(p);
+      }
+    } else if(isOffense){
+      // move to open space relative to hoop, spread out
+      const spread = (p.role==='PG'? -80 : p.role==='SG'?-40: p.role==='SF'?0: p.role==='PF'?40:80);
+      targetX = hoop.x + (hoop.x>COURT.width/2? -220:220) + spread*0.6;
+      targetZ = 20 + (spread+80)*0.4;
+    } else {
+      // defense: guard nearest offensive player
+      const offTeam = p.team==='home'?Game.away:Game.home;
+      let mark = offTeam[0], bestD=Infinity;
+      offTeam.forEach(o=>{ const d=dist2(o,p); if(d<bestD){bestD=d; mark=o;} });
+      targetX = mark.x + (p.team==='home'? 18:-18);
+      targetZ = mark.z;
+      // steal attempt occasionally if close to ball handler
+      if(mark.hasBall && bestD < 50*50 && p.aiTimer<=0){
+        p.aiTimer = 0.8;
+        const chance = 0.1 + Game.diff*0.05;
+        if(Math.random()<chance){
+          Audio8.steal();
+          mark.hasBall=false;
+          attachBallTo(p);
+          addFloatText(p.x,-25,"STEAL!","#ff8c00",30,p);
+        }
+      }
+      // block attempt if user shooting nearby
+      if(Game.ball.inAir && Game.ball.shooter && Game.ball.shooter.team!==p.team){
+        const dShooter = dist2(p, {x:Game.ball.shooter.x, z:Game.ball.shooter.z});
+        if(dShooter < 60*60 && Math.random()<0.01){
+          Game.ball.made=false;
+          Audio8.block();
+          Game.stats.blocks += p.isUser?1:0;
+          addFloatText(p.x,-25,"BLOCKED!","#ff5577",35,p);
+        }
+      }
+    }
+
+    const dx = targetX-p.x, dz=targetZ-p.z;
+    const len = Math.hypot(dx,dz)||1;
+    const spd = (60+Game.diff*20)*dt;
+    if(len>4){
+      p.x += (dx/len)*Math.min(spd,len);
+      p.z += (dz/len)*Math.min(spd,len);
+      p.facing = dx>0?1:-1;
+      p.animT += dt*8;
+    }
+    clampCourt(p);
+  });
+
+  // pending assist resolution timer
+  if(Game.pendingAssist){
+    Game.pendingAssist.t -= dt;
+    if(Game.pendingAssist.t<=0) Game.pendingAssist=null;
+  }
+}
+
+function aiShoot(p){
+  const timingScore = 0.5+Math.random()*0.4;
+  releaseShotAI(p, timingScore);
+}
+function releaseShotAI(shooter, timingScore){
+  const shootAttr = 5+Game.diff*2;
+  let baseChance = 0.25+shootAttr*0.05+timingScore*0.4;
+  const hoop = nearestHoop({x:shooter.x, team: shooter.team, isUser:false});
+  const targetHoop = shooter.team==='home' ? {x:COURT.hoopRightX,y:COURT.hoopY} : {x:COURT.hoopLeftX,y:COURT.hoopY};
+  const d = Math.hypot(shooter.x-targetHoop.x, shooter.z);
+  const isThree = d>260;
+  if(isThree) baseChance-=0.2;
+  baseChance = Math.max(0.05,Math.min(0.85,baseChance));
+  const made = Math.random()<baseChance;
+  Game.ball.inAir=true; Game.ball.holder=null; shooter.hasBall=false;
+  Game.ball.shooter=shooter; Game.ball.targetHoop=targetHoop; Game.ball.made=made; Game.ball.isThree=isThree;
+  Game.ball.x=shooter.x; Game.ball.z=shooter.z; Game.ball.y=COURT.groundY-40;
+  Game.ball.arcT=0; Game.ball.arcDur=0.9; Game.ball.startX=shooter.x; Game.ball.startZ=shooter.z;
+}
+function aiPass(p){
+  const teammates = (p.team==='home'?Game.home:Game.away).filter(t=>t!==p);
+  let best=null,bestD=Infinity;
+  teammates.forEach(t=>{ const d=dist2(t,p); if(d<bestD){bestD=d;best=t;} });
+  if(best){ attachBallTo(best); Audio8.dribble(); }
+}
+
+/* -------- float text -------- */
+function addFloatText(x,yOff,text,color,size,anchor){
+  Game.floatTexts.push({x, y:-yOff, text, color, size:size||30, t:0, anchor: anchor||null});
+}
+function updateFloatTexts(dt){
+  Game.floatTexts.forEach(f=>{ f.t+=dt; });
+  Game.floatTexts = Game.floatTexts.filter(f=>f.t<1.4);
+}
+
+/* -------- camera -------- */
+function updateCamera(){
+  const focusX = Game.ball.x;
+  const targetCam = Math.max(0, Math.min(COURT.width-canvas.width, focusX - canvas.width/2));
+  Game.camX += (targetCam-Game.camX)*0.08;
+}
+
+/* =========================================================================
+   RENDERING
+========================================================================= */
+function render(){
+  ctx.fillStyle = '#0a0a12';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.save();
+  ctx.translate(-Game.camX, 0);
+  drawCourt();
+  drawHoop(COURT.hoopLeftX);
+  drawHoop(COURT.hoopRightX);
+
+  // sort players by z (depth) for draw order, then y
+  const drawList = Game.allPlayers.slice().sort((a,b)=> (a.z)-(b.z));
+  drawList.forEach(drawPlayer);
+  drawBall();
+
+  drawFloatTexts();
+  ctx.restore();
+
+  drawHUD();
+  if(Game.shotMeter.active) drawShotMeter();
+}
+
+function drawCourt(){
+  ctx.fillStyle = '#a9713f';
+  ctx.fillRect(0, 60, COURT.width, 400);
+  // wood planks
+  ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+  for(let x=0;x<COURT.width;x+=24){
+    ctx.beginPath(); ctx.moveTo(x,60); ctx.lineTo(x,460); ctx.stroke();
+  }
+  // center line
+  ctx.strokeStyle='#f2e6d0'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(COURT.width/2,60); ctx.lineTo(COURT.width/2,460); ctx.stroke();
+  ctx.beginPath(); ctx.arc(COURT.width/2, 260, 50, 0, Math.PI*2); ctx.stroke();
+
+  // paint areas
+  ctx.fillStyle='rgba(200,60,60,0.25)';
+  ctx.fillRect(20,140,160,240);
+  ctx.fillRect(COURT.width-180,140,160,240);
+  ctx.strokeStyle='#f2e6d0';
+  ctx.strokeRect(20,140,160,240);
+  ctx.strokeRect(COURT.width-180,140,160,240);
+
+  // three point arcs (simplified as vertical lines + arc)
+  ctx.beginPath(); ctx.arc(COURT.hoopLeftX, 260, 260, -1.15, 1.15); ctx.stroke();
+  ctx.beginPath(); ctx.arc(COURT.hoopRightX, 260, 260, Math.PI-1.15, Math.PI+1.15); ctx.stroke();
+
+  // baselines / sidelines
+  ctx.strokeStyle='#f2e6d0'; ctx.lineWidth=4;
+  ctx.strokeRect(4,60,COURT.width-8,400);
+}
+
+function drawHoop(x){
+  ctx.fillStyle='#ccc';
+  ctx.fillRect(x-4, 60, 6, 100); // pole
+  ctx.fillStyle='#eee';
+  ctx.fillRect(x-22, 150, 44, 26); // backboard
+  ctx.strokeStyle='#ff6600'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.ellipse(x, 176, 16, 5, 0, 0, Math.PI*2); ctx.stroke();
+  ctx.strokeStyle='rgba(255,255,255,0.6)'; ctx.lineWidth=1;
+  for(let i=-1;i<=1;i++){
+    ctx.beginPath(); ctx.moveTo(x+i*10,178); ctx.lineTo(x+i*7,200); ctx.stroke();
+  }
+}
+
+function drawPlayer(p){
+  const screenY = COURT.groundY - (p.z*0.9) - (p.jumpZ||0);
+  const scale = 1 - p.z*0.0025;
+  const w = p.w*scale, h = p.h*scale;
+  const bob = p.hasBall||true ? Math.sin(p.animT)*2*scale : 0;
+
+  ctx.save();
+  ctx.translate(p.x, screenY+bob);
+
+  // shadow
+  ctx.fillStyle='rgba(0,0,0,0.35)';
+  ctx.beginPath(); ctx.ellipse(0, 4, w*0.6, 5, 0,0,Math.PI*2); ctx.fill();
+
+  // stun stars
+  if(p.stunTimer>0){
+    ctx.fillStyle='#ffd166';
+    ctx.font='10px monospace';
+    ctx.fillText('★', -10, -h-10);
+    ctx.fillText('★', 4, -h-14);
+  }
+
+  // body (jersey)
+  ctx.fillStyle = p.color;
+  ctx.fillRect(-w/2, -h, w, h*0.62);
+  // shorts / accent
+  ctx.fillStyle = p.accent;
+  ctx.fillRect(-w/2, -h*0.42, w, h*0.16);
+  // legs
+  ctx.fillStyle = '#3a2a1a';
+  ctx.fillRect(-w/2, -h*0.26, w*0.4, h*0.26);
+  ctx.fillRect(w/2-w*0.4, -h*0.26, w*0.4, h*0.26);
+  // head
+  ctx.fillStyle = '#e0a978';
+  ctx.fillRect(-w*0.28, -h-h*0.28, w*0.56, h*0.28);
+
+  // user highlight ring
+  if(p.isUser){
+    ctx.strokeStyle='#4ade80'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.ellipse(0,6,w*0.75,7,0,0,Math.PI*2); ctx.stroke();
+  }
+  if(p.buffed){
+    ctx.strokeStyle='#ffd166'; ctx.lineWidth=1;
+    ctx.strokeRect(-w/2-2,-h-2,w+4,h*0.62+4);
+  }
+  ctx.restore();
+
+  // name tag
+  if(p.isUser){
+    ctx.fillStyle='#4ade80';
+    ctx.font='9px monospace';
+    ctx.textAlign='center';
+    ctx.fillText(S.player.name, p.x, screenY-h-6);
+    ctx.textAlign='left';
+  }
+}
+
+function drawBall(){
+  const b = Game.ball;
+  const screenY = b.y - (b.z||0)*0.9;
+  ctx.save();
+  ctx.translate(b.x, screenY);
+  ctx.fillStyle='#e8792c';
+  ctx.beginPath(); ctx.arc(0,0,7,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#000'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(-7,0); ctx.lineTo(7,0); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0,-7); ctx.lineTo(0,7); ctx.stroke();
+  ctx.restore();
+}
+
+function drawFloatTexts(){
+  Game.floatTexts.forEach(f=>{
+    const alpha = 1 - f.t/1.4;
+    const x = f.anchor ? f.anchor.x : f.x;
+    const baseY = f.anchor ? (COURT.groundY - (f.anchor.z*0.9) - f.anchor.h - 20) : f.y;
+    const y = baseY - f.t*40;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0,alpha);
+    ctx.fillStyle = f.color;
+    ctx.font = `bold ${f.size*0.4}px monospace`;
+    ctx.textAlign='center';
+    ctx.strokeStyle='#000'; ctx.lineWidth=3;
+    ctx.strokeText(f.text, x, y);
+    ctx.fillText(f.text, x, y);
+    ctx.restore();
+  });
+  ctx.textAlign='left';
+}
+
+function drawHUD(){
+  ctx.fillStyle='rgba(0,0,0,0.55)';
+  ctx.fillRect(0,0,canvas.width,54);
+  ctx.font='bold 16px monospace';
+  ctx.fillStyle = S.team.primary;
+  ctx.fillText(`${S.team.name.split(' ')[0]}  ${Game.scoreHome}`, 16, 24);
+  ctx.fillStyle = Game.opponent.primary;
+  ctx.textAlign='right';
+  ctx.fillText(`${Game.scoreAway}  ${Game.opponent.name.split(' ')[0]}`, canvas.width-16, 24);
+  ctx.textAlign='center';
+  ctx.fillStyle='#fff';
+  ctx.font='12px monospace';
+  ctx.fillText(`Q${Game.quarter}  ${Math.max(0,Game.quarterTime).toFixed(0)}s`, canvas.width/2, 20);
+  ctx.font='10px monospace';
+  ctx.fillStyle='#ffd166';
+  ctx.fillText(`PTS ${Game.stats.points} REB ${Game.stats.rebounds} AST ${Game.stats.assists} STL ${Game.stats.steals} BLK ${Game.stats.blocks}`, canvas.width/2, 40);
+  ctx.textAlign='left';
+
+  // controls reminder
+  ctx.font='9px monospace';
+  ctx.fillStyle='rgba(255,255,255,0.6)';
+  ctx.fillText('WASD/Arrows: Move   SPACE: Shot/Jump   X: Pass/Steal', 10, canvas.height-8);
+}
+
+function drawShotMeter(){
+  const user = Game.home[0];
+  const barX = canvas.width/2-60, barY = canvas.height-70, barW=120, barH=14;
+  ctx.fillStyle='rgba(0,0,0,0.7)';
+  ctx.fillRect(barX-4,barY-4,barW+8,barH+8);
+  ctx.fillStyle='#333'; ctx.fillRect(barX,barY,barW,barH);
+  // sweet spot
+  ctx.fillStyle='rgba(74,222,128,0.5)';
+  ctx.fillRect(barX+barW*0.45, barY, barW*0.2, barH);
+  // indicator
+  const t = Game.shotMeter.t;
+  ctx.fillStyle='#ffd166';
+  ctx.fillRect(barX+t*barW-2, barY-3, 4, barH+6);
+  ctx.strokeStyle='#ff8c00'; ctx.strokeRect(barX,barY,barW,barH);
+}
+
+/* =========================================================================
+   END OF GAME -> RESULTS
+========================================================================= */
+function endGame(){
+  Game.over = true;
+  Audio8.buzzer();
+  const won = Game.scoreHome > Game.scoreAway;
+  if(won){ S.season.wins++; } else { S.season.losses++; }
+
+  // bonus XP for game performance
+  gainXP(Game.stats.points*2 + Game.stats.assists*3 + Game.stats.rebounds*2 + Game.stats.steals*5 + Game.stats.blocks*5 + (won?30:5));
+
+  // apply sponsor multiplier if it was completed this game, set up for NEXT game
+  S.spMultiplierNextGame = (S.sponsor && S.sponsor.done) ? S.sponsor.mult : 1;
+  S.sponsor = null; // new offer generated next hub visit
+
+  if(won){
+    if(S.season.round < 2){
+      S.season.round++;
+      showPostGame(true, false);
+    } else {
+      // championship win
+      S.season.round = 3;
+      showTrophyScreen();
+      return;
+    }
+  } else {
+    // lose -> eliminated, restart season at quarterfinals (career continues)
+    S.season.round = 0;
+    S.season.wins = 0; S.season.losses = 0;
+    showPostGame(false, true);
+  }
+}
+
+function showPostGame(won, eliminated){
+  renderHub();
+  document.getElementById('hubMsg').textContent = won
+    ? `Victory! Advancing to ${ROUND_NAMES[S.season.round]}.`
+    : `Defeat. Eliminated from playoffs — new season begins at Quarterfinals.`;
+  showScreen('screen-hub');
+}
+
+function showTrophyScreen(){
+  showScreen('screen-trophy');
+  document.getElementById('mvpText').textContent =
+    `${S.player.name} led the ${S.team.name} to the NBA Championship! Final: ${Game.scoreHome}-${Game.scoreAway}. Career continues...`;
+  Audio8.badge();
+  drawTrophy();
+}
+
+function drawTrophy(){
+  const tc = document.getElementById('trophyCanvas');
+  const tctx = tc.getContext('2d');
+  tctx.imageSmoothingEnabled=false;
+  tctx.fillStyle='#000'; tctx.fillRect(0,0,tc.width,tc.height);
+  // pixel trophy
+  const px = (x,y,w,h,c)=>{ tctx.fillStyle=c; tctx.fillRect(x,y,w,h); };
+  // rays
+  for(let i=0;i<12;i++){
+    const ang = i*(Math.PI*2/12);
+    const x = 150+Math.cos(ang)*90, y=110+Math.sin(ang)*90;
+    px(x,y,4,4,'#ffd166');
+  }
+  // cup
+  px(110,60,80,50,'#ffd700');
+  px(100,60,10,10,'#ffd700'); px(190,60,10,10,'#ffd700');
+  px(95,60,10,40,'#e0b400'); px(195,60,10,40,'#e0b400');
+  px(130,110,40,30,'#ffd700');
+  px(110,140,80,14,'#e0b400');
+  px(90,154,120,16,'#7a4a1e');
+  px(140,170,20,50,'#e0b400');
+  px(110,220,80,20,'#5a3a1a');
+  tctx.fillStyle='#fff'; tctx.font='bold 14px monospace'; tctx.textAlign='center';
+  tctx.fillText('MVP', 150, 90);
+}
+
+/* wire trophy continue is already bound above (btnPostChamp) */
+
+})();
+</script>
+</body>
+</html>
