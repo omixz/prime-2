@@ -31,6 +31,7 @@
     display:flex; align-items:center; justify-content:center;
   }
   #gameCanvas{
+    image-rendering:pixelated; image-rendering:crisp-edges;
     border-radius:14px;
     border:1px solid var(--border);
     box-shadow: 0 0 0 1px rgba(255,122,41,.15), 0 20px 60px rgba(0,0,0,.55), 0 0 40px rgba(34,211,238,.08);
@@ -522,14 +523,16 @@ document.getElementById('btnPostChamp').addEventListener('click', ()=>{
 ========================================================================= */
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-ctx.imageSmoothingEnabled = true;
+ctx.imageSmoothingEnabled = false;
 
 const COURT = {
-  width: 2400, height: 460,
+  width: 1500, height: 460,
   groundY: 460,
-  hoopLeftX: 90, hoopRightX: 2310,
+  hoopLeftX: 110, hoopRightX: 1390,
   hoopY: 150
 };
+const Z_MAX = 130;
+const Z_SCREEN_FACTOR = 1.4;
 
 const KEYS = {};
 window.addEventListener('keydown', e=>{
@@ -552,6 +555,9 @@ function makePlayerEntity(opts){
     role:'',
     isUser:false,
     color:'#fff', accent:'#000',
+    skin: (Math.random()<0.5?'#dda877':'#8a5a34'),
+    hair: (Math.random()<0.5?'#1b140f':'#3b2415'),
+    pixelScale:1, moving:false,
     jumpZ:0, jumping:false,
     stunTimer:0,
     lastDir:1,
@@ -579,7 +585,7 @@ function startGame(){
     isUser:true, team:'home', role: S.player.position,
     color:userTeamColor.primary, accent:userTeamColor.secondary,
     x: COURT.width*0.3, y:0, z: 40,
-    w: 22*hScale*0.94, h: 34*hScale
+    pixelScale: hScale
   });
   home.push(userEnt);
 
@@ -628,6 +634,7 @@ function startGame(){
 function attachBallTo(p){
   Game.ball.holder = p;
   Game.ball.inAir = false;
+  Game.ball.snapToHolder = true;
   Game.allPlayers.forEach(pl=>pl.hasBall=false);
   p.hasBall = true;
   Game.possessionTeam = p.team;
@@ -637,7 +644,7 @@ function attachBallTo(p){
 function dist2(a,b){ const dx=a.x-b.x, dz=(a.z||0)-(b.z||0); return dx*dx+dz*dz; }
 function clampCourt(p){
   p.x = Math.max(20, Math.min(COURT.width-20, p.x));
-  p.z = Math.max(0, Math.min(90, p.z));
+  p.z = Math.max(0, Math.min(Z_MAX, p.z));
 }
 
 /* ---------------- Game Loop ---------------- */
@@ -683,11 +690,12 @@ function updateInput(dt){
   let dx=0, dz=0;
   if(KEYS['ArrowLeft']||KEYS['KeyA']) dx-=1;
   if(KEYS['ArrowRight']||KEYS['KeyD']) dx+=1;
-  if(KEYS['ArrowUp']||KEYS['KeyW']) dz-=1;
-  if(KEYS['ArrowDown']||KEYS['KeyS']) dz+=1;
+  if(KEYS['ArrowUp']||KEYS['KeyW']) dz+=1;   // up = further from camera (background)
+  if(KEYS['ArrowDown']||KEYS['KeyS']) dz-=1; // down = closer to camera (foreground)
 
   const speed = attrSpeedPx(S.player.attrs.speed + heightSpdBonus());
-  if(dx!==0||dz!==0){
+  user.moving = (dx!==0||dz!==0);
+  if(user.moving){
     const len = Math.hypot(dx,dz);
     user.x += (dx/len)*speed*dt;
     user.z += (dz/len)*speed*dt;
@@ -805,9 +813,20 @@ function nearestHoop(p){
 function updateBall(dt){
   const ball = Game.ball;
   if(ball.holder){
-    ball.x = ball.holder.x + ball.holder.facing*14;
-    ball.z = ball.holder.z;
-    ball.y = COURT.groundY - 20 - (ball.holder.jumpZ||0);
+    const h = ball.holder;
+    const dribble = Math.abs(Math.sin(h.animT*2))*9;
+    const targetX = h.x + h.facing*14;
+    const targetZ = h.z;
+    const targetY = COURT.groundY - 20 - (h.jumpZ||0) - dribble;
+    if(ball.snapToHolder){
+      ball.x = targetX; ball.z = targetZ; ball.y = targetY;
+      ball.snapToHolder = false;
+    } else {
+      const lerp = 1 - Math.pow(0.001, dt);
+      ball.x += (targetX-ball.x)*lerp;
+      ball.z += (targetZ-ball.z)*lerp;
+      ball.y += (targetY-ball.y)*lerp;
+    }
     return;
   }
   if(ball.inAir){
@@ -1014,7 +1033,8 @@ function updateAI(dt){
     const dx = targetX-p.x, dz=targetZ-p.z;
     const len = Math.hypot(dx,dz)||1;
     const spd = (60+Game.diff*20)*dt;
-    if(len>4){
+    p.moving = len>4;
+    if(p.moving){
       p.x += (dx/len)*Math.min(spd,len);
       p.z += (dz/len)*Math.min(spd,len);
       p.facing = dx>0?1:-1;
@@ -1105,87 +1125,164 @@ function render(){
 }
 
 function drawCourt(){
+  // back wall band above the court
+  const wg = ctx.createLinearGradient(0,0,0,60);
+  wg.addColorStop(0,'#0d3f8f'); wg.addColorStop(1,'#0a2f6b');
+  ctx.fillStyle = wg;
+  ctx.fillRect(0,0,COURT.width,60);
+  ctx.fillStyle='rgba(255,255,255,0.08)';
+  ctx.font='bold 26px sans-serif';
+  ctx.textAlign='left';
+  for(let x=-40; x<COURT.width; x+=220){
+    ctx.fillText('LEAGUE', x, 42);
+  }
+  ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(0,60); ctx.lineTo(COURT.width,60); ctx.stroke();
+
+  // hardwood floor
   const g = ctx.createLinearGradient(0,60,0,460);
-  g.addColorStop(0,'#c98a4b'); g.addColorStop(1,'#a8703a');
+  g.addColorStop(0,'#d99a56'); g.addColorStop(1,'#b3793c');
   ctx.fillStyle = g;
   ctx.fillRect(0, 60, COURT.width, 400);
-  ctx.strokeStyle = 'rgba(0,0,0,0.06)';
-  for(let x=0;x<COURT.width;x+=48){
-    ctx.beginPath(); ctx.moveTo(x,60); ctx.lineTo(x,460); ctx.stroke();
+
+  // herringbone-style plank texture
+  ctx.strokeStyle='rgba(0,0,0,0.09)'; ctx.lineWidth=1;
+  const step=22;
+  for(let gx=-400; gx<COURT.width+400; gx+=step){
+    for(let gy=64; gy<456; gy+=step){
+      ctx.beginPath();
+      if(((gx+gy)/step)%2===0){ ctx.moveTo(gx,gy); ctx.lineTo(gx+step,gy+step*0.5); }
+      else{ ctx.moveTo(gx,gy+step*0.5); ctx.lineTo(gx+step,gy); }
+      ctx.stroke();
+    }
   }
-  ctx.strokeStyle='rgba(255,255,255,0.85)'; ctx.lineWidth=3;
+
+  ctx.strokeStyle='rgba(255,255,255,0.9)'; ctx.lineWidth=3;
   ctx.beginPath(); ctx.moveTo(COURT.width/2,60); ctx.lineTo(COURT.width/2,460); ctx.stroke();
-  ctx.beginPath(); ctx.arc(COURT.width/2, 260, 50, 0, Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(COURT.width/2, 260, 46, 0, Math.PI*2); ctx.stroke();
 
-  ctx.fillStyle='rgba(34,211,238,0.14)';
-  roundRect(20,140,160,240,6); ctx.fill();
-  roundRect(COURT.width-180,140,160,240,6); ctx.fill();
-  ctx.strokeStyle='rgba(255,255,255,0.8)'; ctx.lineWidth=2;
-  ctx.strokeRect(20,140,160,240);
-  ctx.strokeRect(COURT.width-180,140,160,240);
+  // painted key areas (solid, matches reference)
+  ctx.fillStyle='#1d5fd6';
+  roundRect(16,140,150,240,4); ctx.fill();
+  roundRect(COURT.width-166,140,150,240,4); ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.9)'; ctx.lineWidth=3;
+  ctx.strokeRect(16,140,150,240);
+  ctx.strokeRect(COURT.width-166,140,150,240);
+  // free-throw circles
+  ctx.beginPath(); ctx.arc(166,260,46,0,Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(COURT.width-166,260,46,0,Math.PI*2); ctx.stroke();
 
-  ctx.beginPath(); ctx.arc(COURT.hoopLeftX, 260, 260, -1.15, 1.15); ctx.stroke();
-  ctx.beginPath(); ctx.arc(COURT.hoopRightX, 260, 260, Math.PI-1.15, Math.PI+1.15); ctx.stroke();
+  // three point arcs
+  ctx.beginPath(); ctx.arc(COURT.hoopLeftX, 260, 245, -1.2, 1.2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(COURT.hoopRightX, 260, 245, Math.PI-1.2, Math.PI+1.2); ctx.stroke();
 
   ctx.strokeStyle='rgba(255,255,255,0.9)'; ctx.lineWidth=4;
   ctx.strokeRect(4,60,COURT.width-8,400);
 }
 
 function drawHoop(x){
-  ctx.fillStyle='#c7d2e0';
-  ctx.fillRect(x-4, 60, 6, 100);
+  const left = x < COURT.width/2;
+  ctx.fillStyle='#9aa7bb';
+  ctx.fillRect(x-5, 62, 8, 96);
+  ctx.fillStyle='#324155';
+  ctx.fillRect(x-5, 154, left?26:-26, 6);
+
+  // backboard
   ctx.fillStyle='#f4f7fb';
-  roundRect(x-22, 150, 44, 26, 3); ctx.fill();
+  roundRect(x-26, 132, 52, 34, 3); ctx.fill();
+  ctx.strokeStyle='#2a3242'; ctx.lineWidth=2;
+  ctx.strokeRect(x-26,132,52,34);
   ctx.strokeStyle='#ff6a1f'; ctx.lineWidth=3;
-  ctx.beginPath(); ctx.ellipse(x, 176, 16, 5, 0, 0, Math.PI*2); ctx.stroke();
-  ctx.strokeStyle='rgba(255,255,255,0.6)'; ctx.lineWidth=1;
-  for(let i=-1;i<=1;i++){
-    ctx.beginPath(); ctx.moveTo(x+i*10,178); ctx.lineTo(x+i*7,200); ctx.stroke();
+  ctx.strokeRect(x-11,150,22,14);
+
+  // rim
+  ctx.strokeStyle='#ff6a1f'; ctx.lineWidth=4;
+  ctx.beginPath(); ctx.ellipse(x, 178, 18, 5.5, 0, 0, Math.PI*2); ctx.stroke();
+
+  // net (crosshatch)
+  ctx.strokeStyle='rgba(255,255,255,0.75)'; ctx.lineWidth=1;
+  const netW=16, netTop=180, netBot=206;
+  for(let i=-4;i<=4;i+=2){
+    ctx.beginPath(); ctx.moveTo(x+i*(netW/4), netTop); ctx.lineTo(x+i*(netW/8), netBot); ctx.stroke();
+  }
+  for(let j=0;j<3;j++){
+    const yy = netTop + (netBot-netTop)*(j+1)/4;
+    const spread = netW*(1-j*0.22);
+    ctx.beginPath(); ctx.moveTo(x-spread, yy); ctx.lineTo(x+spread, yy); ctx.stroke();
   }
 }
 
+function spriteHeightPx(p){ return 21.4*2.6*(p.pixelScale||1)*(1-p.z*0.0018); }
+
 function drawPlayer(p){
-  const screenY = COURT.groundY - (p.z*0.9) - (p.jumpZ||0);
-  const scale = 1 - p.z*0.0025;
-  const w = p.w*scale, h = p.h*scale;
-  const bob = Math.sin(p.animT)*2*scale;
+  const depthScale = 1 - p.z*0.0018;
+  const u = 2.6 * (p.pixelScale||1) * depthScale;
+  const feetY = COURT.groundY - p.z*Z_SCREEN_FACTOR - (p.jumpZ||0);
+  const runPhase = Math.sin(p.animT);
+  const legOffset = p.moving ? runPhase*1.4 : 0;
+  const armSwing = p.moving ? runPhase*1.0 : 0;
 
   ctx.save();
-  ctx.translate(p.x, screenY+bob);
+  ctx.translate(Math.round(p.x), Math.round(feetY));
 
-  ctx.fillStyle='rgba(0,0,0,0.3)';
-  ctx.beginPath(); ctx.ellipse(0, 4, w*0.65, 5, 0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,0.32)';
+  ctx.beginPath(); ctx.ellipse(0, 1, 9*u, 2.6*u, 0,0,Math.PI*2); ctx.fill();
 
-  if(p.stunTimer>0){
-    ctx.fillStyle='#ffd166';
-    ctx.font='11px sans-serif';
-    ctx.fillText('★', -10, -h-10);
-    ctx.fillText('★', 4, -h-14);
-  }
+  const R = (x,y,w,h,c)=>{
+    ctx.fillStyle=c;
+    ctx.fillRect(Math.round(x*u), Math.round(y*u), Math.max(1,Math.round(w*u)), Math.max(1,Math.round(h*u)));
+  };
+  const OUT = '#141414';
+  const RO = (x,y,w,h,c)=>{ R(x-0.35,y-0.35,w+0.7,h+0.7,OUT); R(x,y,w,h,c); };
 
-  const grad = ctx.createLinearGradient(0,-h,0,-h*0.38);
-  grad.addColorStop(0, p.color);
-  grad.addColorStop(1, shade(p.color,-25));
-  ctx.fillStyle = grad;
-  roundRect(-w/2, -h, w, h*0.62, 4); ctx.fill();
+  const skin = p.skin, hair = p.hair;
+  const jersey = p.color, jerseyDark = shade(p.color,-30);
+  const trim = p.accent, short = shade(p.accent,-10);
+  const shoe = '#f4f7fb';
 
-  ctx.fillStyle = p.accent;
-  roundRect(-w/2, -h*0.42, w, h*0.16, 3); ctx.fill();
+  // legs + shoes (offset for run cycle)
+  RO(-3.6+legOffset, -8, 2.4, 6.4, skin);
+  RO(1.2-legOffset, -8, 2.4, 6.4, skin);
+  RO(-4+legOffset, -1.8, 3.2, 2, shoe);
+  RO(0.8-legOffset, -1.8, 3.2, 2, shoe);
+  R(-4+legOffset, -0.4, 3.2, 0.6, trim);
+  R(0.8-legOffset, -0.4, 3.2, 0.6, trim);
 
-  ctx.fillStyle = '#2c2013';
-  roundRect(-w/2, -h*0.26, w*0.4, h*0.26, 3); ctx.fill();
-  roundRect(w/2-w*0.4, -h*0.26, w*0.4, h*0.26, 3); ctx.fill();
+  // shorts
+  RO(-4.2, -10.6, 8.4, 3, short);
+  R(-4.2, -8.2, 8.4, 0.9, trim);
 
-  ctx.fillStyle = '#dda877';
-  ctx.beginPath(); ctx.ellipse(0, -h-h*0.14, w*0.28, h*0.16, 0, 0, Math.PI*2); ctx.fill();
+  // arms
+  RO(-6.4, -16.6+armSwing, 2.1, 5.4, jersey);
+  RO(4.3, -16.6-armSwing, 2.1, 5.4, jersey);
+  RO(-6.4, -12.2+armSwing, 2.1, 1.8, skin);
+  RO(4.3, -12.2-armSwing, 2.1, 1.8, skin);
+
+  // torso jersey
+  RO(-4.2, -17, 8.4, 4.4, jersey);
+  R(-4.2, -17, 8.4, 1.6, jerseyDark);
+  R(-4.2, -17, 8.4, 0.9, trim);
+  R(-1.1, -15.3, 2.2, 2.6, trim);
+
+  // neck + head
+  RO(-2.6, -21, 5.2, 4.6, skin);
+  RO(-2.9, -22.4, 5.8, 2, hair);
+  R(-2.9, -20.8, 5.8, 0.9, hair);
+  R(-2.9, -19.9, 5.8, 0.8, trim);
 
   if(p.isUser){
-    ctx.strokeStyle='#34d399'; ctx.lineWidth=2;
-    ctx.beginPath(); ctx.ellipse(0,6,w*0.78,7,0,0,Math.PI*2); ctx.stroke();
+    ctx.strokeStyle='#34d399'; ctx.lineWidth=Math.max(1,u*0.5);
+    ctx.beginPath(); ctx.ellipse(0, 1, 9.6*u, 3*u, 0,0,Math.PI*2); ctx.stroke();
   }
   if(p.buffed){
-    ctx.strokeStyle='#ffd166'; ctx.lineWidth=1.5;
-    roundRect(-w/2-2,-h-2,w+4,h*0.62+4,5); ctx.stroke();
+    ctx.strokeStyle='#ffd166'; ctx.lineWidth=Math.max(1,u*0.4);
+    ctx.strokeRect(Math.round(-5*u), Math.round(-21*u), Math.round(10*u), Math.round(21*u));
+  }
+  if(p.stunTimer>0){
+    ctx.fillStyle='#ffd166';
+    ctx.font=`${Math.round(8*u)}px sans-serif`;
+    ctx.fillText('★', -10*u, -22*u);
+    ctx.fillText('★', 2*u, -25*u);
   }
   ctx.restore();
 
@@ -1193,7 +1290,7 @@ function drawPlayer(p){
     ctx.fillStyle='#34d399';
     ctx.font='10px sans-serif';
     ctx.textAlign='center';
-    ctx.fillText(S.player.name, p.x, screenY-h-6);
+    ctx.fillText(S.player.name, p.x, feetY-21.4*u-4);
     ctx.textAlign='left';
   }
 }
@@ -1207,7 +1304,7 @@ function shade(hex, pct){
 
 function drawBall(){
   const b = Game.ball;
-  const screenY = b.y - (b.z||0)*0.9;
+  const screenY = b.y - (b.z||0)*Z_SCREEN_FACTOR;
   ctx.save();
   ctx.translate(b.x, screenY);
   const g = ctx.createRadialGradient(-2,-2,1,0,0,7);
@@ -1224,7 +1321,7 @@ function drawFloatTexts(){
   Game.floatTexts.forEach(f=>{
     const alpha = 1 - f.t/1.4;
     const x = f.anchor ? f.anchor.x : f.x;
-    const baseY = f.anchor ? (COURT.groundY - (f.anchor.z*0.9) - f.anchor.h - 20) : f.y;
+    const baseY = f.anchor ? (COURT.groundY - f.anchor.z*Z_SCREEN_FACTOR - spriteHeightPx(f.anchor) - 6) : f.y;
     const y = baseY - f.t*40;
     ctx.save();
     ctx.globalAlpha = Math.max(0,alpha);
