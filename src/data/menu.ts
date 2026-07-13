@@ -126,6 +126,18 @@ export const smallDrinks: MenuItem[] = menuSections.find((s) => s.title === "Sma
 export const bottleDrinks: MenuItem[] = menuSections.find((s) => s.title === "Bottles")!.items;
 export const extraItems: MenuItem[] = menuSections.find((s) => s.title === "Extras")!.items;
 
+// Grouped quick-adds shown in the cart drawer's "Want to add extras?" panel —
+// fries/tenders/sides alongside the topping & sauce extras, so people can top
+// up an order at checkout without going back to the menu.
+export type ExtraGroup = { title: string; items: MenuItem[] };
+
+export const checkoutExtraGroups: ExtraGroup[] = [
+  { title: "Fries & Sides", items: [...menuSections.find((s) => s.title === "Loaded Fries")!.items, ...menuSections.find((s) => s.title === "Sides & Tenders")!.items] },
+  { title: "Extra Fillings", items: extraItems.filter((i) => !i.id.startsWith("sauce-")) },
+  { title: "Sauces", items: extraItems.filter((i) => i.id.startsWith("sauce-")) },
+  { title: "Drinks", items: [...smallDrinks, ...bottleDrinks] },
+];
+
 export function formatPrice(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }

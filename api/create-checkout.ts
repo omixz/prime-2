@@ -42,14 +42,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Support both the documented var names and the ones currently set in Vercel
   // (SquareToken / SquareLocation / SquareEnviorment / SiteURL) so this works
-  // without renaming anything in the dashboard.
-  const accessToken = process.env.SQUARE_ACCESS_TOKEN || process.env.SquareToken;
-  const locationId = process.env.SQUARE_LOCATION_ID || process.env.SquareLocation;
-  const environment = process.env.SQUARE_ENVIRONMENT || process.env.SquareEnviorment;
+  // without renaming anything in the dashboard. Trimmed because a stray
+  // newline/space pasted into a Vercel env var value is a common source of
+  // Square rejecting an otherwise-correct location ID or token outright.
+  const accessToken = (process.env.SQUARE_ACCESS_TOKEN || process.env.SquareToken)?.trim();
+  const locationId = (process.env.SQUARE_LOCATION_ID || process.env.SquareLocation)?.trim();
+  const environment = (process.env.SQUARE_ENVIRONMENT || process.env.SquareEnviorment)?.trim();
   const squareApiBase = environment === "production"
     ? "https://connect.squareup.com"
     : "https://connect.squareupsandbox.com";
-  const siteUrl = process.env.SITE_URL || process.env.SiteURL;
+  const siteUrl = (process.env.SITE_URL || process.env.SiteURL)?.trim().replace(/\/+$/, "");
 
   if (!accessToken || !locationId || !siteUrl) {
     console.error("Missing Square configuration env vars");
