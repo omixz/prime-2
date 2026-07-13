@@ -1,5 +1,9 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { allItems, smallDrinks, bottleDrinks } from "../src/data/menu";
+// Vercel's Node runtime resolves this as native ESM (package.json has
+// "type": "module"), which requires an explicit file extension on relative
+// imports — omitting it caused a production 500 crash
+// (ERR_MODULE_NOT_FOUND: Cannot find module '/var/task/src/data/menu').
+import { allItems, smallDrinks, bottleDrinks } from "../src/data/menu.js";
 
 // Server-side price lookup, keyed by menu item id. We NEVER trust prices sent
 // from the browser — only the item id, combo size, drink id and quantity —
