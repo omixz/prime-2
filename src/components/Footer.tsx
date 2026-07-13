@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Instagram, MapPin, Clock } from "lucide-react";
+import { Logo } from "./Logo";
 
 export function Footer() {
   return (
@@ -7,9 +8,7 @@ export function Footer() {
       <div className="mx-auto grid max-w-6xl gap-10 px-5 py-14 md:grid-cols-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="grid h-10 w-10 place-items-center rounded-full bg-flame font-display text-lg font-black text-cream">
-              P
-            </span>
+            <Logo size={40} className="shrink-0" />
             <span className="font-display text-xl font-black uppercase">Prime Burger Co</span>
           </div>
           <p className="mt-4 max-w-xs text-sm opacity-80">

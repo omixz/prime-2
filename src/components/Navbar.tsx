@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { Menu, X, ShoppingBag } from "lucide-react";
 import { useCart } from "../context/CartContext";
+import { Logo } from "./Logo";
 
 export function Navbar({ onOpenCart }: { onOpenCart: () => void }) {
   const [open, setOpen] = useState(false);
@@ -26,9 +27,7 @@ export function Navbar({ onOpenCart }: { onOpenCart: () => void }) {
     >
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
         <Link to="/" className="flex items-center gap-2 group">
-          <span className="grid h-10 w-10 place-items-center rounded-full bg-flame text-cream font-display text-lg font-black shadow-soft transition-transform group-hover:scale-105">
-            P
-          </span>
+          <Logo size={40} className="shrink-0 shadow-soft rounded-full transition-transform group-hover:scale-105" />
           <span className="font-display text-lg font-black uppercase text-cream">Prime Burger Co</span>
         </Link>
 
