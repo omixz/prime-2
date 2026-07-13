@@ -5,84 +5,104 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Hoop Legends: Career RPG</title>
 <style>
-  :root{ --pix: pixelated; }
+  :root{
+    --bg-deep:#0b1220;
+    --bg-panel:#131c2e;
+    --bg-panel2:#0f1728;
+    --accent:#ff7a29;
+    --accent-soft:#ffb37a;
+    --accent2:#22d3ee;
+    --text:#eaf0f8;
+    --text-dim:#8fa0b8;
+    --success:#34d399;
+    --danger:#f87171;
+    --border:#22314a;
+  }
   *{ box-sizing:border-box; }
   html,body{
-    margin:0; padding:0; height:100%; background:#0a0a14; color:#eee;
-    font-family: 'Courier New', monospace; overflow:hidden;
-    -webkit-user-select:none; user-select:none;
+    margin:0; padding:0; height:100%;
+    background: radial-gradient(circle at 50% 0%, #16233d 0%, var(--bg-deep) 60%);
+    color:var(--text);
+    font-family:'Segoe UI', system-ui, -apple-system, Helvetica, Arial, sans-serif;
+    overflow:hidden; -webkit-user-select:none; user-select:none;
   }
   #app{
     position:relative; width:100vw; height:100vh;
     display:flex; align-items:center; justify-content:center;
-    background: radial-gradient(circle at 50% 30%, #1a1a2e 0%, #05050a 100%);
   }
   #gameCanvas{
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
-    border:4px solid #444;
-    box-shadow: 0 0 40px rgba(255,140,0,0.25), 0 0 4px #000 inset;
-    background:#111;
+    border-radius:14px;
+    border:1px solid var(--border);
+    box-shadow: 0 0 0 1px rgba(255,122,41,.15), 0 20px 60px rgba(0,0,0,.55), 0 0 40px rgba(34,211,238,.08);
+    background:#0e1524;
     max-width:100vw; max-height:100vh;
   }
   .screen{
     position:absolute; inset:0; display:none; flex-direction:column;
     align-items:center; justify-content:center; text-align:center;
-    padding:20px; overflow:auto;
+    padding:24px; overflow:auto;
   }
   .screen.active{ display:flex; }
   .panel{
-    background: linear-gradient(#1c1c2b,#111119);
-    border:4px solid #ff8c00; border-radius:6px; padding:24px 32px;
-    box-shadow:0 0 24px rgba(255,140,0,.35), inset 0 0 12px #000;
-    max-width:640px; width:92%;
+    background: linear-gradient(160deg, var(--bg-panel), var(--bg-panel2));
+    border:1px solid var(--border); border-radius:18px; padding:28px 34px;
+    box-shadow: 0 24px 70px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.03);
+    max-width:680px; width:94%;
   }
   h1{
-    font-size:28px; letter-spacing:2px; color:#ffd166; text-shadow:3px 3px 0 #7a3e00;
-    margin:0 0 12px;
+    font-size:30px; font-weight:800; letter-spacing:-0.5px; margin:0 0 6px;
+    background:linear-gradient(90deg, var(--accent-soft), var(--accent));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
   }
-  h2{ color:#ffd166; margin:0 0 14px; letter-spacing:1px; font-size:18px; }
-  p, label{ font-size:13px; line-height:1.6; color:#ddd; }
+  h2{
+    color:var(--text); margin:22px 0 12px; font-size:15px; font-weight:700;
+    letter-spacing:.3px; text-align:left; border-bottom:1px solid var(--border); padding-bottom:6px;
+  }
+  p, label{ font-size:13.5px; line-height:1.65; color:var(--text-dim); }
+  .story{
+    font-size:13px; color:var(--accent-soft); font-style:italic; margin:2px 0 18px;
+    border-left:3px solid var(--accent); padding-left:12px; text-align:left;
+  }
   input[type=text]{
-    font-family:inherit; font-size:15px; padding:8px; width:100%;
-    background:#000; color:#0f0; border:2px solid #ff8c00; border-radius:3px;
-    text-align:center; margin-bottom:12px;
+    font-family:inherit; font-size:16px; padding:10px 12px; width:100%;
+    background:#0a1220; color:var(--text); border:1px solid var(--border); border-radius:8px;
+    text-align:center; margin-bottom:4px; outline:none;
   }
+  input[type=text]:focus{ border-color:var(--accent); }
+  input[type=range]{ width:100%; accent-color:var(--accent); }
   .row{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:10px 0; }
   button{
-    font-family:inherit; cursor:pointer; background:#ff8c00; color:#000; border:none;
-    padding:10px 16px; font-size:13px; font-weight:bold; border-radius:4px;
-    box-shadow:0 3px 0 #a35700; letter-spacing:.5px; transition:transform .05s;
+    font-family:inherit; cursor:pointer; background:linear-gradient(160deg, var(--accent-soft), var(--accent));
+    color:#1a1204; border:none; padding:11px 18px; font-size:13px; font-weight:700;
+    border-radius:9px; letter-spacing:.2px; box-shadow:0 4px 14px rgba(255,122,41,.28);
+    transition:transform .08s, box-shadow .08s;
   }
-  button:hover{ background:#ffa733; }
-  button:active{ transform:translateY(3px); box-shadow:none; }
-  button.sel{ background:#4ade80; box-shadow:0 3px 0 #1c7a3d; }
-  button:disabled{ background:#555; color:#999; box-shadow:0 3px 0 #222; cursor:not-allowed; }
-  button.small{ padding:6px 10px; font-size:11px; }
-  .posCard{
-    border:2px solid #555; border-radius:4px; padding:10px; width:150px; background:#161622;
+  button:hover{ transform:translateY(-1px); box-shadow:0 6px 18px rgba(255,122,41,.4); }
+  button:active{ transform:translateY(1px); box-shadow:0 2px 6px rgba(255,122,41,.3); }
+  button.sel{ background:linear-gradient(160deg, #6ee7b7, var(--success)); box-shadow:0 4px 14px rgba(52,211,153,.3); }
+  button:disabled{ background:#28324a; color:#5c6c85; box-shadow:none; cursor:not-allowed; }
+  button.small{ padding:7px 11px; font-size:11.5px; }
+  button.ghost{ background:transparent; border:1px solid var(--border); color:var(--text-dim); box-shadow:none; }
+  button.ghost:hover{ color:var(--text); border-color:var(--accent2); }
+  .posCard, .teamPick{
+    border:1px solid var(--border); border-radius:12px; padding:12px; width:150px; background:#0e1727;
+    cursor:pointer; transition:border-color .12s, transform .12s;
   }
-  .posCard.sel{ border-color:#4ade80; background:#173322; }
-  .attrRow{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin:4px 0; font-size:12px; }
-  .bar{ width:120px; height:10px; background:#333; border:1px solid #666; position:relative; }
-  .bar>div{ height:100%; background:linear-gradient(90deg,#ff8c00,#ffd166); }
-  .teamCard{
-    border:2px solid #555; border-radius:4px; padding:10px; width:130px; background:#161622; cursor:pointer;
-  }
-  .teamCard.sel{ border-color:#4ade80; }
-  .jersey{ width:36px; height:36px; margin:0 auto 6px; border-radius:4px; border:2px solid #000; }
-  #hudTop{
-    position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between;
-    padding:4px 10px; font-size:11px; color:#fff; text-shadow:1px 1px 0 #000; pointer-events:none;
-  }
+  .posCard:hover, .teamPick:hover{ border-color:var(--accent2); transform:translateY(-2px); }
+  .posCard.sel, .teamPick.sel{ border-color:var(--success); box-shadow:0 0 0 1px var(--success) inset; }
+  .attrRow{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin:6px 0; font-size:12.5px; }
+  .bar{ width:130px; height:9px; background:#1a2438; border-radius:5px; position:relative; overflow:hidden; }
+  .bar>div{ height:100%; background:linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .jersey{ width:34px; height:34px; margin:0 auto 6px; border-radius:8px; border:2px solid rgba(0,0,0,.35); }
   .hidden{ display:none !important; }
   .badgeChip{
-    display:inline-block; background:#222; border:2px solid #ffd166; border-radius:4px;
-    padding:4px 8px; margin:3px; font-size:11px; color:#ffd166;
+    display:inline-block; background:#1a2438; border:1px solid var(--accent2); border-radius:20px;
+    padding:5px 11px; margin:3px; font-size:11px; color:var(--accent2); font-weight:600;
   }
-  select{ font-family:inherit; padding:6px; background:#000; color:#0f0; border:2px solid #ff8c00; }
-  .small-txt{ font-size:11px; color:#aaa; }
-  .flashMsg{ color:#4ade80; font-weight:bold; min-height:18px; }
+  select{ font-family:inherit; padding:6px; background:#0a1220; color:var(--text); border:1px solid var(--border); border-radius:6px; }
+  .small-txt{ font-size:11.5px; color:var(--text-dim); }
+  .flashMsg{ color:var(--success); font-weight:600; min-height:18px; font-size:12.5px; margin-top:8px; }
+  .heightVal{ color:var(--accent2); font-weight:700; }
 </style>
 </head>
 <body>
@@ -92,34 +112,28 @@
   <div id="screen-create" class="screen active">
     <div class="panel">
       <h1>HOOP LEGENDS</h1>
-      <p class="small-txt">Create your baller. Choose wisely, rookie.</p>
+      <p class="story">Every legend starts on a dead-end court with a dream. Build your baller, get drafted by one of seven franchises, and chase a championship — one shot at a time.</p>
+
       <input type="text" id="playerName" maxlength="14" placeholder="Enter Player Name" value="Rookie" />
 
-      <h2>Choose Position</h2>
+      <h2>Position</h2>
       <div class="row" id="posRow">
-        <div class="posCard" data-pos="Guard">
-          <b>GUARD</b>
-          <p class="small-txt">High Speed &amp; Passing</p>
-        </div>
-        <div class="posCard" data-pos="Forward">
-          <b>FORWARD</b>
-          <p class="small-txt">Balanced Stats</p>
-        </div>
-        <div class="posCard" data-pos="Center">
-          <b>CENTER</b>
-          <p class="small-txt">Blocking &amp; Rebounding</p>
-        </div>
+        <div class="posCard" data-pos="Guard"><b>GUARD</b><p class="small-txt">Handles &amp; sets up plays</p></div>
+        <div class="posCard" data-pos="Forward"><b>FORWARD</b><p class="small-txt">Two-way playmaker</p></div>
+        <div class="posCard" data-pos="Center"><b>CENTER</b><p class="small-txt">Paint enforcer</p></div>
       </div>
 
-      <h2>Distribute Attribute Points <span id="ptsLeft" style="color:#4ade80">(10 left)</span></h2>
+      <h2>Height <span class="heightVal" id="heightLabel">6'3"</span></h2>
+      <input type="range" id="heightSlider" min="66" max="84" value="75" />
+      <p class="small-txt">Taller boosts Defense &amp; rebounding. Shorter boosts Speed.</p>
+
+      <h2>Attributes <span id="ptsLeft" style="color:var(--success)">(10 points left)</span></h2>
       <div id="attrEditor"></div>
 
-      <h2>Draft Interview</h2>
-      <div id="interviewBox"></div>
+      <h2>Choose Your Team</h2>
+      <div class="row" id="teamRow"></div>
 
-      <div class="row">
-        <button id="btnStartCareer">Enter The Draft</button>
-      </div>
+      <div class="row"><button id="btnStartCareer">Enter The Draft</button></div>
       <div class="flashMsg" id="createMsg"></div>
     </div>
   </div>
@@ -129,34 +143,33 @@
     <div class="panel">
       <h1 id="draftHeadline">DRAFTED!</h1>
       <div id="draftTeamCard"></div>
-      <p id="draftBlurb" class="small-txt"></p>
+      <p id="draftBlurb" class="story"></p>
       <div class="row"><button id="btnToHub">Enter Career Hub</button></div>
     </div>
   </div>
 
   <!-- ============ CAREER HUB ============ -->
   <div id="screen-hub" class="screen">
-    <div class="panel" style="max-width:720px;">
+    <div class="panel" style="max-width:740px;">
       <h1 id="hubTeamName">CAREER HUB</h1>
+      <p class="story" id="hubStory"></p>
       <div class="row" style="justify-content:space-between; text-align:left;">
         <div>
           <p><b>Player:</b> <span id="hubPlayerName"></span> (<span id="hubPos"></span>)</p>
           <p><b>Level:</b> <span id="hubLevel"></span> &nbsp; <b>XP:</b> <span id="hubXP"></span></p>
           <p><b>Season Record:</b> <span id="hubRecord"></span></p>
           <p><b>Round:</b> <span id="hubRound"></span></p>
-          <p><b>Skill Points:</b> <span id="hubSP" style="color:#4ade80"></span></p>
+          <p><b>Skill Points:</b> <span id="hubSP" style="color:var(--success)"></span></p>
         </div>
         <div id="hubBadges"><b>Badges:</b><br/><div id="hubBadgeList"></div></div>
       </div>
 
-      <div id="sponsorBox" class="panel" style="background:#141420; margin:12px 0;"></div>
+      <div id="sponsorBox" class="panel" style="background:#0e1727; margin:12px 0; padding:14px 16px;"></div>
 
       <h2>Upgrade Center</h2>
       <div id="upgradeGrid"></div>
 
-      <div class="row">
-        <button id="btnPlayGame">Tip Off Next Game ▶</button>
-      </div>
+      <div class="row"><button id="btnPlayGame">Tip Off Next Game ▶</button></div>
       <div class="flashMsg" id="hubMsg"></div>
     </div>
   </div>
@@ -169,9 +182,9 @@
   <!-- ============ TROPHY / MVP SCREEN ============ -->
   <div id="screen-trophy" class="screen">
     <div class="panel">
-      <h1 style="color:#ffd166;">🏆 NBA FINALS MVP 🏆</h1>
-      <canvas id="trophyCanvas" width="300" height="260" style="image-rendering:pixelated; border:2px solid #ff8c00; background:#000;"></canvas>
-      <p id="mvpText"></p>
+      <h1 style="color:var(--accent-soft);">🏆 NBA FINALS MVP 🏆</h1>
+      <canvas id="trophyCanvas" width="300" height="260" style="border-radius:10px; border:1px solid var(--border); background:#0a1220;"></canvas>
+      <p id="mvpText" class="story"></p>
       <div class="row"><button id="btnPostChamp">Continue Career</button></div>
     </div>
   </div>
@@ -241,59 +254,45 @@ const Audio8 = (function(){
    GLOBAL STATE
 ========================================================================= */
 const POSITIONS = {
-  Guard:   { base:{shooting:5, passing:7, speed:8, defense:4}, desc:"High speed & passing" },
-  Forward: { base:{shooting:6, passing:5, speed:6, defense:6}, desc:"Balanced" },
-  Center:  { base:{shooting:4, passing:3, speed:4, defense:9}, desc:"High blocking & rebounding" }
+  Guard:   { desc:"Handles & sets up plays" },
+  Forward: { desc:"Two-way playmaker" },
+  Center:  { desc:"Paint enforcer" }
 };
 
 const TEAMS = [
-  { name:"Los Angeles Lakes", primary:"#552583", secondary:"#FDB927" },
-  { name:"Chicago Bulls",     primary:"#CE1141", secondary:"#000000" },
-  { name:"Boston Greens",     primary:"#007A33", secondary:"#BA9653" },
-  { name:"Miami Heats",       primary:"#98002E", secondary:"#F9A01B" }
+  { name:"Los Angeles Lakes",   primary:"#552583", secondary:"#FDB927" },
+  { name:"Chicago Bisons",      primary:"#CE1141", secondary:"#0b0b0b" },
+  { name:"Boston Greens",       primary:"#007A33", secondary:"#BA9653" },
+  { name:"Miami Heats",         primary:"#98002E", secondary:"#F9A01B" },
+  { name:"New York Knights",    primary:"#1d5fd6", secondary:"#F58426" },
+  { name:"Golden Bay Warlocks", primary:"#1d4289", secondary:"#FFC72C" },
+  { name:"Phoenix Embers",      primary:"#E56020", secondary:"#5b2a86" }
 ];
 
-const INTERVIEW_QUESTIONS = [
-  {
-    q:"A teammate is wide open but you have a contested shot. What do you do?",
-    opts:[
-      {t:"Take the shot, I trust my hands.", team:1},
-      {t:"Pass it, trust the team.", team:2},
-      {t:"Drive and dish depending on the defense.", team:0},
-      {t:"Call a timeout to reset.", team:3}
-    ]
-  },
-  {
-    q:"Describe your ideal defensive philosophy.",
-    opts:[
-      {t:"Lockdown one-on-one denial.", team:0},
-      {t:"Aggressive trapping and steals.", team:1},
-      {t:"Disciplined team rotations.", team:2},
-      {t:"Physical post defense.", team:3}
-    ]
-  },
-  {
-    q:"What's your mentality down the stretch of a close game?",
-    opts:[
-      {t:"Give me the ball, I want the moment.", team:1},
-      {t:"Stay calm, execute the system.", team:2},
-      {t:"Find the hot hand.", team:0},
-      {t:"Bully ball in the paint.", team:3}
-    ]
-  }
-];
+const STORY = {
+  round: [
+    "Quarterfinals. Nobody expected you here — the league's cellar team playing spoiler. Prove them wrong.",
+    "Semifinals. Only two series stand between you and the Finals. The air gets thinner from here.",
+    "The Championship. This is it — win four quarters and your name goes in the rafters forever."
+  ],
+  win: [
+    "You survived the first round. The city is starting to notice.",
+    "You're going to the Finals. History is one series away.",
+    ""
+  ],
+  lose: "The season ends early. It stings — but next year starts right now."
+};
 
 function freshState(){
   return {
     player: {
-      name:"Rookie", position:"Guard",
+      name:"Rookie", position:"Guard", heightIn:75,
       attrs:{ shooting:5, passing:5, speed:5, defense:5 },
       level:1, xp:0, xpToNext:100, sp:0,
       badges:[]
     },
     team: null,
-    interviewTally:[0,0,0,0],
-    season:{ wins:0, losses:0, round:0 }, // round 0=quarterfinal,1=semi,2=final,3=champ done
+    season:{ wins:0, losses:0, round:0 },
     sponsor:null,
     lastGameStats:null,
     spMultiplierNextGame:1
@@ -317,7 +316,7 @@ function showScreen(id){
 let attrPoints = 10;
 const attrKeys = ['shooting','passing','speed','defense'];
 let chosenPos = null;
-let interviewAnswers = [null,null,null];
+let chosenTeamIdx = null;
 
 function renderAttrEditor(){
   const box = document.getElementById('attrEditor');
@@ -340,41 +339,47 @@ function renderAttrEditor(){
       Audio8.click();
       const k = b.dataset.k, d = parseInt(b.dataset.d);
       if(d>0 && attrPoints>0 && S.player.attrs[k]<10){ S.player.attrs[k]++; attrPoints--; }
-      else if(d<0 && S.player.attrs[k] > (POSITIONS[chosenPos||'Guard'].base[k]) ){ S.player.attrs[k]--; attrPoints++; }
-      document.getElementById('ptsLeft').textContent = `(${attrPoints} left)`;
+      else if(d<0 && S.player.attrs[k] > 5){ S.player.attrs[k]--; attrPoints++; }
+      document.getElementById('ptsLeft').textContent = `(${attrPoints} points left)`;
       renderAttrEditor();
     };
   });
 }
 
-function renderInterview(){
-  const box = document.getElementById('interviewBox');
-  box.innerHTML='';
-  INTERVIEW_QUESTIONS.forEach((item,qi)=>{
-    const wrap = document.createElement('div');
-    wrap.style.marginBottom='10px';
-    wrap.style.textAlign='left';
-    wrap.innerHTML = `<p style="color:#ffd166">${qi+1}. ${item.q}</p>`;
-    const row = document.createElement('div');
-    row.className='row';
-    row.style.justifyContent='flex-start';
-    item.opts.forEach((o,oi)=>{
-      const btn = document.createElement('button');
-      btn.className='small';
-      btn.textContent = o.t;
-      btn.style.maxWidth='260px';
-      btn.onclick = ()=>{
-        Audio8.click();
-        interviewAnswers[qi]=oi;
-        row.querySelectorAll('button').forEach(bb=>bb.classList.remove('sel'));
-        btn.classList.add('sel');
-      };
-      row.appendChild(btn);
-    });
-    wrap.appendChild(row);
-    box.appendChild(wrap);
+function renderTeamRow(){
+  const row = document.getElementById('teamRow');
+  row.innerHTML='';
+  TEAMS.forEach((t,i)=>{
+    const card = document.createElement('div');
+    card.className='teamPick';
+    card.dataset.idx=i;
+    card.innerHTML = `
+      <div class="jersey" style="background:${t.primary}; border-color:${t.secondary}"></div>
+      <p style="margin:0;font-size:12px;color:var(--text)"><b>${t.name}</b></p>
+    `;
+    card.onclick = ()=>{
+      Audio8.click();
+      document.querySelectorAll('.teamPick').forEach(c=>c.classList.remove('sel'));
+      card.classList.add('sel');
+      chosenTeamIdx = i;
+    };
+    row.appendChild(card);
   });
 }
+
+function heightLabelStr(inches){
+  const ft = Math.floor(inches/12), inch = inches%12;
+  return `${ft}'${inch}"`;
+}
+
+document.getElementById('heightSlider').addEventListener('input', (e)=>{
+  S.player.heightIn = parseInt(e.target.value);
+  document.getElementById('heightLabel').textContent = heightLabelStr(S.player.heightIn);
+});
+
+function heightDefBonus(){ return Math.round((S.player.heightIn-75)/6); }
+function heightSpdBonus(){ return Math.round((75-S.player.heightIn)/6); }
+function heightScale(){ return 0.8 + (S.player.heightIn-66)/(84-66)*0.5; }
 
 document.getElementById('posRow').addEventListener('click', (e)=>{
   const card = e.target.closest('.posCard');
@@ -384,10 +389,6 @@ document.getElementById('posRow').addEventListener('click', (e)=>{
   card.classList.add('sel');
   chosenPos = card.dataset.pos;
   S.player.position = chosenPos;
-  S.player.attrs = Object.assign({}, POSITIONS[chosenPos].base);
-  attrPoints = 10; // extra points to distribute on top of base
-  document.getElementById('ptsLeft').textContent = `(${attrPoints} left)`;
-  renderAttrEditor();
 });
 
 document.getElementById('btnStartCareer').addEventListener('click', ()=>{
@@ -397,15 +398,10 @@ document.getElementById('btnStartCareer').addEventListener('click', ()=>{
   const msg = document.getElementById('createMsg');
   if(!nm){ msg.textContent = "Enter a player name!"; return; }
   if(!chosenPos){ msg.textContent = "Select a position!"; return; }
-  if(interviewAnswers.includes(null)){ msg.textContent = "Answer all interview questions!"; return; }
+  if(chosenTeamIdx===null){ msg.textContent = "Pick a team to be drafted by!"; return; }
   if(attrPoints>0){ msg.textContent = `Distribute all attribute points! (${attrPoints} left)`; return; }
   S.player.name = nm;
-  // tally interview -> team
-  const tally=[0,0,0,0];
-  interviewAnswers.forEach((oi,qi)=> tally[INTERVIEW_QUESTIONS[qi].opts[oi].team]++ );
-  let best=0;
-  for(let i=1;i<4;i++) if(tally[i]>tally[best]) best=i;
-  S.team = TEAMS[best];
+  S.team = TEAMS[chosenTeamIdx];
   showDraftResult();
 });
 
@@ -413,12 +409,11 @@ function showDraftResult(){
   document.getElementById('draftHeadline').textContent = `Welcome to the ${S.team.name}!`;
   const card = document.getElementById('draftTeamCard');
   card.innerHTML = `
-    <div class="jersey" style="background:${S.team.primary}; border-color:${S.team.secondary}"></div>
+    <div class="jersey" style="width:48px;height:48px;background:${S.team.primary}; border-color:${S.team.secondary}"></div>
     <p><b>${S.team.name}</b></p>
-    <p class="small-txt">Jersey: <span style="color:${S.team.primary}">■</span> primary / <span style="color:${S.team.secondary}">■</span> secondary</p>
   `;
   document.getElementById('draftBlurb').textContent =
-    `${S.player.name} the ${S.player.position} has been drafted based on your interview responses. Time to prove yourself, rookie!`;
+    `${S.player.name} the ${S.player.position} signs a rookie deal with the ${S.team.name}. The front office believes — now it's on you. Three playoff rounds stand between you and a championship.`;
   showScreen('screen-teamResult');
 }
 
@@ -427,6 +422,9 @@ document.getElementById('btnToHub').addEventListener('click', ()=>{
   renderHub();
   showScreen('screen-hub');
 });
+
+renderAttrEditor();
+renderTeamRow();
 
 /* =========================================================================
    CAREER HUB
@@ -440,8 +438,9 @@ const BADGE_INFO = {
 
 function renderHub(){
   document.getElementById('hubTeamName').textContent = S.team.name.toUpperCase() + " — CAREER HUB";
+  document.getElementById('hubStory').textContent = STORY.round[Math.min(S.season.round,2)];
   document.getElementById('hubPlayerName').textContent = S.player.name;
-  document.getElementById('hubPos').textContent = S.player.position;
+  document.getElementById('hubPos').textContent = `${S.player.position}, ${heightLabelStr(S.player.heightIn)}`;
   document.getElementById('hubLevel').textContent = S.player.level;
   document.getElementById('hubXP').textContent = `${S.player.xp} / ${S.player.xpToNext}`;
   document.getElementById('hubRecord').textContent = `${S.season.wins}W - ${S.season.losses}L`;
@@ -457,14 +456,10 @@ function renderHub(){
     badgeList.appendChild(chip);
   });
 
-  // sponsor box
   const sBox = document.getElementById('sponsorBox');
-  if(!S.sponsor){
-    S.sponsor = generateSponsorOffer();
-  }
+  if(!S.sponsor){ S.sponsor = generateSponsorOffer(); }
   sBox.innerHTML = `<b>📣 Sponsor Deal:</b> ${S.sponsor.text}<br/><span class="small-txt">${S.sponsor.done ? '✅ Completed! Bonus applied next game.' : 'Pending — complete it during your next game.'}</span>`;
 
-  // upgrade grid
   const grid = document.getElementById('upgradeGrid');
   grid.innerHTML='';
   attrKeys.forEach(k=>{
@@ -476,7 +471,7 @@ function renderHub(){
     div.innerHTML = `
       <span style="width:80px;text-align:left;text-transform:capitalize">${k}</span>
       <div class="bar"><div style="width:${val*10}%"></div></div>
-      <span style="width:24px">${val}${val>=10?' ★':''}</span>
+      <span style="width:28px">${val}${val>=10?' ★':''}</span>
       <button class="small" data-k="${k}" ${ (S.player.sp<=0 || val>=10) ? 'disabled':'' }>+1 (1 SP)</button>
     `;
     grid.appendChild(div);
@@ -517,7 +512,6 @@ document.getElementById('btnPlayGame').addEventListener('click', ()=>{
 
 document.getElementById('btnPostChamp').addEventListener('click', ()=>{
   Audio8.click();
-  // reset season but keep player progress
   S.season = { wins:0, losses:0, round:0 };
   renderHub();
   showScreen('screen-hub');
@@ -528,11 +522,11 @@ document.getElementById('btnPostChamp').addEventListener('click', ()=>{
 ========================================================================= */
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-ctx.imageSmoothingEnabled = false;
+ctx.imageSmoothingEnabled = true;
 
 const COURT = {
   width: 2400, height: 460,
-  groundY: 460, // baseline for feet
+  groundY: 460,
   hoopLeftX: 90, hoopRightX: 2310,
   hoopY: 150
 };
@@ -544,18 +538,18 @@ window.addEventListener('keydown', e=>{
 });
 window.addEventListener('keyup', e=>{ KEYS[e.code]=false; });
 
-let Game = null; // active game object
+let Game = null;
 
 function makePlayerEntity(opts){
   return Object.assign({
-    x:0, y:0, z:0, // z = depth (foreground/background offset)
+    x:0, y:0, z:0,
     w:22, h:34,
     vx:0, vy:0,
     speed: 140,
     facing:1,
     hasBall:false,
-    team:'home', // 'home' or 'away'
-    role:'', // 'PG','SG','SF','PF','C' etc for flavor
+    team:'home',
+    role:'',
     isUser:false,
     color:'#fff', accent:'#000',
     jumpZ:0, jumping:false,
@@ -573,21 +567,19 @@ function startGame(){
   const oppTeams = TEAMS.filter(t=>t.name!==S.team.name);
   const opponent = oppTeams[Math.floor(Math.random()*oppTeams.length)];
 
-  // difficulty scales with round
   const diff = 1 + round*0.18;
-
   const userTeamColor = S.team;
   const aiTeamColor = opponent;
 
-  // Build 5 home (user side) + 5 away
   const home = [];
   const away = [];
 
-  // user player
+  const hScale = heightScale();
   const userEnt = makePlayerEntity({
     isUser:true, team:'home', role: S.player.position,
     color:userTeamColor.primary, accent:userTeamColor.secondary,
-    x: COURT.width*0.3, y:0, z: 40
+    x: COURT.width*0.3, y:0, z: 40,
+    w: 22*hScale*0.94, h: 34*hScale
   });
   home.push(userEnt);
 
@@ -606,24 +598,23 @@ function startGame(){
   }
 
   const allPlayers = home.concat(away);
-  allPlayers.forEach(p=>{ p.y = COURT.groundY - (p.z*0.0); });
 
   Game = {
     home, away, allPlayers,
     opponent,
     ball: { x: userEnt.x, y: COURT.groundY-20, z: userEnt.z, vx:0, vy:0, vz:0, holder: userEnt, inAir:false, arcT:0, shooter:null, targetHoop:null },
     camX: 0,
-    quarter:1, quarterTime: 60, // seconds per quarter (compressed)
+    quarter:1, quarterTime: 42,
     scoreHome:0, scoreAway:0,
     diff,
     stats:{ points:0, rebounds:0, assists:0, steals:0, blocks:0 },
     shotMeter:{ active:false, t:0, holding:false },
+    shotPopup:null,
     floatTexts:[],
     possessionTeam:'home',
     lastFrame: performance.now(),
     paused:false,
     over:false,
-    userDir:{x:0,y:0},
     lastUserMoveDir: 1,
     dirChangeTimer:0,
     ankleStunApplied:false,
@@ -644,7 +635,6 @@ function attachBallTo(p){
 
 /* ---------------- Physics helpers ---------------- */
 function dist2(a,b){ const dx=a.x-b.x, dz=(a.z||0)-(b.z||0); return dx*dx+dz*dz; }
-
 function clampCourt(p){
   p.x = Math.max(20, Math.min(COURT.width-20, p.x));
   p.z = Math.max(0, Math.min(90, p.z));
@@ -656,10 +646,8 @@ function gameLoop(now){
   let dt = (now - Game.lastFrame)/1000;
   dt = Math.min(dt, 0.05);
   Game.lastFrame = now;
-
   update(dt);
   render();
-
   requestAnimationFrame(gameLoop);
 }
 
@@ -669,6 +657,7 @@ function update(dt){
   updateBall(dt);
   updateCamera();
   updateFloatTexts(dt);
+  updateShotPopup(dt);
   updateClock(dt);
 }
 
@@ -677,7 +666,7 @@ function updateClock(dt){
   if(Game.quarterTime<=0){
     if(Game.quarter<4){
       Game.quarter++;
-      Game.quarterTime = 60;
+      Game.quarterTime = 42;
       Audio8.buzzer();
       addFloatText(COURT.width/2, 60, `END OF Q${Game.quarter-1}`, '#ffd166', 40);
     } else {
@@ -694,22 +683,18 @@ function updateInput(dt){
   let dx=0, dz=0;
   if(KEYS['ArrowLeft']||KEYS['KeyA']) dx-=1;
   if(KEYS['ArrowRight']||KEYS['KeyD']) dx+=1;
-  if(KEYS['ArrowUp']||KEYS['KeyW']) dz-=1; // into background
-  if(KEYS['ArrowDown']||KEYS['KeyS']) dz+=1; // into foreground
+  if(KEYS['ArrowUp']||KEYS['KeyW']) dz-=1;
+  if(KEYS['ArrowDown']||KEYS['KeyS']) dz+=1;
 
-  const speed = attrSpeedPx(S.player.attrs.speed);
+  const speed = attrSpeedPx(S.player.attrs.speed + heightSpdBonus());
   if(dx!==0||dz!==0){
     const len = Math.hypot(dx,dz);
     user.x += (dx/len)*speed*dt;
     user.z += (dz/len)*speed*dt;
     user.facing = dx!==0 ? (dx>0?1:-1) : user.facing;
     user.animT += dt*8;
-
-    // Ankle Breaker badge: detect sudden direction reversal
     if(dx!==0){
-      if(Math.sign(dx)!== Math.sign(user.lastUserMoveDir||dx) ){
-        Game.dirChangeTimer = 0.25;
-      }
+      if(Math.sign(dx)!== Math.sign(user.lastUserMoveDir||dx) ){ Game.dirChangeTimer = 0.25; }
       user.lastUserMoveDir = dx;
     }
   }
@@ -718,7 +703,6 @@ function updateInput(dt){
   if(Game.dirChangeTimer>0){
     Game.dirChangeTimer-=dt;
     if(S.player.badges.includes('speed')){
-      // stun nearby defenders once per reversal
       if(!Game.ankleStunApplied){
         Game.away.forEach(def=>{
           if(dist2(def,user) < 70*70){ def.stunTimer = 0.8; addFloatText(def.x, -20, "ANKLE BROKEN!", '#ff5577', 30, def); }
@@ -726,19 +710,13 @@ function updateInput(dt){
         Game.ankleStunApplied = true;
       }
     }
-  } else {
-    Game.ankleStunApplied = false;
-  }
+  } else { Game.ankleStunApplied = false; }
 
-  if(user.x < Game.ball.holderTargetX) {} // no-op placeholder
-
-  // dribble sound occasionally while holding+moving
   if(user.hasBall && (dx!==0||dz!==0)){
     user.dribbleTimer = (user.dribbleTimer||0) - dt;
     if(user.dribbleTimer<=0){ Audio8.dribble(); user.dribbleTimer = 0.28; }
   }
 
-  // shooting (spacebar hold/release) only if has ball
   if(user.hasBall){
     if(KEYS['Space'] && !Game.shotMeter.active && !Game.shotMeter.consumed){
       Game.shotMeter.active = true; Game.shotMeter.t = 0; Game.shotMeter.holding = true;
@@ -746,7 +724,7 @@ function updateInput(dt){
     }
     if(Game.shotMeter.active && Game.shotMeter.holding){
       Game.shotMeter.t += dt*1.6;
-      if(Game.shotMeter.t>1) Game.shotMeter.t = 1 - (Game.shotMeter.t-1); // bounce back down
+      if(Game.shotMeter.t>1) Game.shotMeter.t = 1 - (Game.shotMeter.t-1);
       if(!KEYS['Space']){
         Game.shotMeter.holding = false;
         releaseShot(user, Game.shotMeter.t);
@@ -754,7 +732,6 @@ function updateInput(dt){
       }
     }
   } else {
-    // defense: spacebar = jump for block/rebound
     if(KEYS['Space'] && !user.jumping){
       user.jumping = true; user.jumpZVel = 220; Audio8.squeak();
     }
@@ -766,7 +743,6 @@ function updateInput(dt){
     if(user.jumpZ<=0){ user.jumpZ=0; user.jumping=false; }
   }
 
-  // X key: pass or steal (edge-triggered)
   if(KEYS['KeyX'] && !Game.xPressed){
     Game.xPressed = true;
     if(user.hasBall){ doPass(user); }
@@ -779,19 +755,17 @@ function attrSpeedPx(spd){ return 90 + spd*14; }
 
 /* -------- shooting -------- */
 function releaseShot(shooter, meterT){
-  // meterT in [0,1], peak accuracy near 0.5..0.6 due to bounce timing (peak of sine)
   const peak = 1 - Math.abs(meterT-0.55)*2.2;
   const timingScore = Math.max(0, Math.min(1, peak));
-  const shootAttr = shooter.isUser ? S.player.attrs.shooting : (5+Game.diff*2);
-  let baseChance = 0.25 + shootAttr*0.055 + timingScore*0.45;
+  const shootAttr = S.player.attrs.shooting;
+  let baseChance = 0.28 + shootAttr*0.055 + timingScore*0.45;
 
-  // distance factor
   const hoop = nearestHoop(shooter);
   const d = Math.hypot(shooter.x-hoop.x, (shooter.z||0));
   const isThree = d > 260;
   if(isThree){
-    baseChance -= 0.18;
-    if(shooter.isUser && S.player.badges.includes('shooting')) baseChance += 0.22;
+    baseChance -= 0.16;
+    if(S.player.badges.includes('shooting')) baseChance += 0.22;
   }
   baseChance = Math.max(0.03, Math.min(0.97, baseChance));
 
@@ -808,8 +782,18 @@ function releaseShot(shooter, meterT){
   Game.ball.arcDur = 0.9;
   Game.ball.startX = shooter.x; Game.ball.startZ = shooter.z;
 
-  addFloatText(shooter.x, -50, `${Math.round(baseChance*100)}% Chance!`, '#4ade80', 45, shooter);
+  showShotPopup(`${Math.round(baseChance*100)}% Chance!`, baseChance>0.6?'#34d399':baseChance>0.35?'#ffd166':'#f87171');
   Audio8.shotRelease();
+}
+
+function showShotPopup(text, color){
+  Game.shotPopup = { text, color, t:0, dur:1.3 };
+}
+function updateShotPopup(dt){
+  if(Game.shotPopup){
+    Game.shotPopup.t += dt;
+    if(Game.shotPopup.t>=Game.shotPopup.dur) Game.shotPopup=null;
+  }
 }
 
 function nearestHoop(p){
@@ -833,13 +817,9 @@ function updateBall(dt){
     ball.z = ball.startZ + (0-ball.startZ)*t*0.3;
     const height = Math.sin(Math.PI*t) * (120+ (ball.isThree?30:0));
     ball.y = (COURT.groundY-40) - height;
-    if(t>=1){
-      ball.inAir=false;
-      resolveShotOutcome();
-    }
+    if(t>=1){ ball.inAir=false; resolveShotOutcome(); }
     return;
   }
-  // loose ball (rebound/steal bounce) simple gravity
   if(ball.loose){
     ball.vy += 500*dt;
     ball.x += ball.vx*dt;
@@ -866,11 +846,14 @@ function resolveShotOutcome(){
       checkSponsor();
     }
     addFloatText(ball.targetHoop.x, -20, `+${pts}`, '#ffd166', 35);
-    // check for assist credit (simplified): if user passed within last 2s
+    if(Game.pendingAssist){
+      Game.stats.assists++;
+      gainXP(6);
+      Game.pendingAssist = null;
+    }
     resetPossessionAfterScore(shooter.team);
   } else {
     Audio8.rimMiss();
-    // ball becomes loose near hoop for rebound
     ball.loose = true;
     ball.x = ball.targetHoop.x + (Math.random()*40-20);
     ball.z = 20+Math.random()*40;
@@ -883,7 +866,6 @@ function resolveShotOutcome(){
 function resetPossessionAfterScore(scoringTeam){
   const otherTeam = scoringTeam==='home' ? Game.away : Game.home;
   const inbounder = otherTeam[0];
-  const hoop = nearestHoop(Game.home[0]);
   inbounder.x = scoringTeam==='home' ? COURT.hoopLeftX+80 : COURT.hoopRightX-80;
   attachBallTo(inbounder);
 }
@@ -897,21 +879,14 @@ function assignLooseBallToNearest(){
   if(best && bestD < 120*120){
     attachBallTo(best);
     if(best.isUser){ Game.stats.rebounds++; gainXP(5); }
-  } else {
-    // ball stays loose but slow-drift; simple fallback: give to closest anyway after settle
-    if(best) attachBallTo(best);
-  }
+  } else if(best){ attachBallTo(best); }
 }
 
 /* -------- passing / stealing -------- */
 function doPass(passer){
   const teammates = (passer.team==='home'?Game.home:Game.away).filter(p=>p!==passer);
-  // closest open teammate
   let best=null, bestD=Infinity;
-  teammates.forEach(t=>{
-    const d = dist2(t,passer);
-    if(d<bestD){ bestD=d; best=t; }
-  });
+  teammates.forEach(t=>{ const d = dist2(t,passer); if(d<bestD){ bestD=d; best=t; } });
   if(!best) return;
   const passAttr = passer.isUser ? S.player.attrs.passing : (5+Game.diff);
   let successChance = 0.55 + passAttr*0.045;
@@ -922,16 +897,10 @@ function doPass(passer){
     attachBallTo(best);
     if(passer.isUser){
       gainXP(2);
-      Game.stats.assists += 0; // assist counted if next action scores; simplified tracking
-      passer.assistPending = true;
-      if(S.player.badges.includes('passing')){
-        best.buffTimer = 5; best.buffed = true; // Floor General boosts teammate briefly
-      }
+      Game.pendingAssist = { to:best, t: 3 };
+      if(S.player.badges.includes('passing')){ best.buffTimer = 5; best.buffed = true; }
     }
-    // credit assist stat if user passed and target scores soon
-    if(passer.isUser){ Game.pendingAssist = { to:best, t: 3 }; }
   } else {
-    // intercepted-ish: ball becomes loose
     Game.ball.holder = null;
     passer.hasBall = false;
     Game.ball.loose = true;
@@ -951,7 +920,7 @@ function attemptSteal(user){
   let radius = 45;
   if(S.player.badges.includes('defense')) radius = 75;
   if(d>radius) return;
-  const defAttr = S.player.attrs.defense;
+  const defAttr = S.player.attrs.defense + heightDefBonus();
   let chance = 0.15 + defAttr*0.05;
   if(S.player.badges.includes('defense')) chance += 0.2;
   Audio8.squeak();
@@ -996,12 +965,11 @@ function updateAI(dt){
     const ball = Game.ball;
     const onBallTeam = ball.holder ? ball.holder.team : null;
     const isOffense = p.team===onBallTeam;
-    const hoop = p.team==='home' ? {x:COURT.hoopRightX} : {x:COURT.hoopLeftX}; // attacking hoop is opposite side (simplify: home attacks right)
+    const hoop = p.team==='home' ? {x:COURT.hoopRightX} : {x:COURT.hoopLeftX};
 
     let targetX = p.x, targetZ = p.z;
 
     if(p.hasBall){
-      // AI ball handler: move toward hoop, shoot when close, occasionally pass
       const dHoop = Math.abs(p.x-hoop.x);
       targetX = p.x + (hoop.x>p.x?1:-1)*30;
       targetZ = 45 + Math.sin(performance.now()/500+p.x)*20;
@@ -1013,18 +981,15 @@ function updateAI(dt){
         aiPass(p);
       }
     } else if(isOffense){
-      // move to open space relative to hoop, spread out
       const spread = (p.role==='PG'? -80 : p.role==='SG'?-40: p.role==='SF'?0: p.role==='PF'?40:80);
       targetX = hoop.x + (hoop.x>COURT.width/2? -220:220) + spread*0.6;
       targetZ = 20 + (spread+80)*0.4;
     } else {
-      // defense: guard nearest offensive player
       const offTeam = p.team==='home'?Game.away:Game.home;
       let mark = offTeam[0], bestD=Infinity;
       offTeam.forEach(o=>{ const d=dist2(o,p); if(d<bestD){bestD=d; mark=o;} });
       targetX = mark.x + (p.team==='home'? 18:-18);
       targetZ = mark.z;
-      // steal attempt occasionally if close to ball handler
       if(mark.hasBall && bestD < 50*50 && p.aiTimer<=0){
         p.aiTimer = 0.8;
         const chance = 0.1 + Game.diff*0.05;
@@ -1035,7 +1000,6 @@ function updateAI(dt){
           addFloatText(p.x,-25,"STEAL!","#ff8c00",30,p);
         }
       }
-      // block attempt if user shooting nearby
       if(Game.ball.inAir && Game.ball.shooter && Game.ball.shooter.team!==p.team){
         const dShooter = dist2(p, {x:Game.ball.shooter.x, z:Game.ball.shooter.z});
         if(dShooter < 60*60 && Math.random()<0.01){
@@ -1059,7 +1023,6 @@ function updateAI(dt){
     clampCourt(p);
   });
 
-  // pending assist resolution timer
   if(Game.pendingAssist){
     Game.pendingAssist.t -= dt;
     if(Game.pendingAssist.t<=0) Game.pendingAssist=null;
@@ -1073,7 +1036,6 @@ function aiShoot(p){
 function releaseShotAI(shooter, timingScore){
   const shootAttr = 5+Game.diff*2;
   let baseChance = 0.25+shootAttr*0.05+timingScore*0.4;
-  const hoop = nearestHoop({x:shooter.x, team: shooter.team, isUser:false});
   const targetHoop = shooter.team==='home' ? {x:COURT.hoopRightX,y:COURT.hoopY} : {x:COURT.hoopLeftX,y:COURT.hoopY};
   const d = Math.hypot(shooter.x-targetHoop.x, shooter.z);
   const isThree = d>260;
@@ -1109,10 +1071,20 @@ function updateCamera(){
 }
 
 /* =========================================================================
-   RENDERING
+   RENDERING (modern flat-shaded style)
 ========================================================================= */
+function roundRect(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
 function render(){
-  ctx.fillStyle = '#0a0a12';
+  ctx.fillStyle = '#0e1524';
   ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.save();
   ctx.translate(-Game.camX, 0);
@@ -1120,7 +1092,6 @@ function render(){
   drawHoop(COURT.hoopLeftX);
   drawHoop(COURT.hoopRightX);
 
-  // sort players by z (depth) for draw order, then y
   const drawList = Game.allPlayers.slice().sort((a,b)=> (a.z)-(b.z));
   drawList.forEach(drawPlayer);
   drawBall();
@@ -1130,44 +1101,42 @@ function render(){
 
   drawHUD();
   if(Game.shotMeter.active) drawShotMeter();
+  if(Game.shotPopup) drawShotPopupUI();
 }
 
 function drawCourt(){
-  ctx.fillStyle = '#a9713f';
+  const g = ctx.createLinearGradient(0,60,0,460);
+  g.addColorStop(0,'#c98a4b'); g.addColorStop(1,'#a8703a');
+  ctx.fillStyle = g;
   ctx.fillRect(0, 60, COURT.width, 400);
-  // wood planks
-  ctx.strokeStyle = 'rgba(0,0,0,0.08)';
-  for(let x=0;x<COURT.width;x+=24){
+  ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+  for(let x=0;x<COURT.width;x+=48){
     ctx.beginPath(); ctx.moveTo(x,60); ctx.lineTo(x,460); ctx.stroke();
   }
-  // center line
-  ctx.strokeStyle='#f2e6d0'; ctx.lineWidth=3;
+  ctx.strokeStyle='rgba(255,255,255,0.85)'; ctx.lineWidth=3;
   ctx.beginPath(); ctx.moveTo(COURT.width/2,60); ctx.lineTo(COURT.width/2,460); ctx.stroke();
   ctx.beginPath(); ctx.arc(COURT.width/2, 260, 50, 0, Math.PI*2); ctx.stroke();
 
-  // paint areas
-  ctx.fillStyle='rgba(200,60,60,0.25)';
-  ctx.fillRect(20,140,160,240);
-  ctx.fillRect(COURT.width-180,140,160,240);
-  ctx.strokeStyle='#f2e6d0';
+  ctx.fillStyle='rgba(34,211,238,0.14)';
+  roundRect(20,140,160,240,6); ctx.fill();
+  roundRect(COURT.width-180,140,160,240,6); ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.8)'; ctx.lineWidth=2;
   ctx.strokeRect(20,140,160,240);
   ctx.strokeRect(COURT.width-180,140,160,240);
 
-  // three point arcs (simplified as vertical lines + arc)
   ctx.beginPath(); ctx.arc(COURT.hoopLeftX, 260, 260, -1.15, 1.15); ctx.stroke();
   ctx.beginPath(); ctx.arc(COURT.hoopRightX, 260, 260, Math.PI-1.15, Math.PI+1.15); ctx.stroke();
 
-  // baselines / sidelines
-  ctx.strokeStyle='#f2e6d0'; ctx.lineWidth=4;
+  ctx.strokeStyle='rgba(255,255,255,0.9)'; ctx.lineWidth=4;
   ctx.strokeRect(4,60,COURT.width-8,400);
 }
 
 function drawHoop(x){
-  ctx.fillStyle='#ccc';
-  ctx.fillRect(x-4, 60, 6, 100); // pole
-  ctx.fillStyle='#eee';
-  ctx.fillRect(x-22, 150, 44, 26); // backboard
-  ctx.strokeStyle='#ff6600'; ctx.lineWidth=3;
+  ctx.fillStyle='#c7d2e0';
+  ctx.fillRect(x-4, 60, 6, 100);
+  ctx.fillStyle='#f4f7fb';
+  roundRect(x-22, 150, 44, 26, 3); ctx.fill();
+  ctx.strokeStyle='#ff6a1f'; ctx.lineWidth=3;
   ctx.beginPath(); ctx.ellipse(x, 176, 16, 5, 0, 0, Math.PI*2); ctx.stroke();
   ctx.strokeStyle='rgba(255,255,255,0.6)'; ctx.lineWidth=1;
   for(let i=-1;i<=1;i++){
@@ -1179,56 +1148,61 @@ function drawPlayer(p){
   const screenY = COURT.groundY - (p.z*0.9) - (p.jumpZ||0);
   const scale = 1 - p.z*0.0025;
   const w = p.w*scale, h = p.h*scale;
-  const bob = p.hasBall||true ? Math.sin(p.animT)*2*scale : 0;
+  const bob = Math.sin(p.animT)*2*scale;
 
   ctx.save();
   ctx.translate(p.x, screenY+bob);
 
-  // shadow
-  ctx.fillStyle='rgba(0,0,0,0.35)';
-  ctx.beginPath(); ctx.ellipse(0, 4, w*0.6, 5, 0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.ellipse(0, 4, w*0.65, 5, 0,0,Math.PI*2); ctx.fill();
 
-  // stun stars
   if(p.stunTimer>0){
     ctx.fillStyle='#ffd166';
-    ctx.font='10px monospace';
+    ctx.font='11px sans-serif';
     ctx.fillText('★', -10, -h-10);
     ctx.fillText('★', 4, -h-14);
   }
 
-  // body (jersey)
-  ctx.fillStyle = p.color;
-  ctx.fillRect(-w/2, -h, w, h*0.62);
-  // shorts / accent
-  ctx.fillStyle = p.accent;
-  ctx.fillRect(-w/2, -h*0.42, w, h*0.16);
-  // legs
-  ctx.fillStyle = '#3a2a1a';
-  ctx.fillRect(-w/2, -h*0.26, w*0.4, h*0.26);
-  ctx.fillRect(w/2-w*0.4, -h*0.26, w*0.4, h*0.26);
-  // head
-  ctx.fillStyle = '#e0a978';
-  ctx.fillRect(-w*0.28, -h-h*0.28, w*0.56, h*0.28);
+  const grad = ctx.createLinearGradient(0,-h,0,-h*0.38);
+  grad.addColorStop(0, p.color);
+  grad.addColorStop(1, shade(p.color,-25));
+  ctx.fillStyle = grad;
+  roundRect(-w/2, -h, w, h*0.62, 4); ctx.fill();
 
-  // user highlight ring
+  ctx.fillStyle = p.accent;
+  roundRect(-w/2, -h*0.42, w, h*0.16, 3); ctx.fill();
+
+  ctx.fillStyle = '#2c2013';
+  roundRect(-w/2, -h*0.26, w*0.4, h*0.26, 3); ctx.fill();
+  roundRect(w/2-w*0.4, -h*0.26, w*0.4, h*0.26, 3); ctx.fill();
+
+  ctx.fillStyle = '#dda877';
+  ctx.beginPath(); ctx.ellipse(0, -h-h*0.14, w*0.28, h*0.16, 0, 0, Math.PI*2); ctx.fill();
+
   if(p.isUser){
-    ctx.strokeStyle='#4ade80'; ctx.lineWidth=2;
-    ctx.beginPath(); ctx.ellipse(0,6,w*0.75,7,0,0,Math.PI*2); ctx.stroke();
+    ctx.strokeStyle='#34d399'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.ellipse(0,6,w*0.78,7,0,0,Math.PI*2); ctx.stroke();
   }
   if(p.buffed){
-    ctx.strokeStyle='#ffd166'; ctx.lineWidth=1;
-    ctx.strokeRect(-w/2-2,-h-2,w+4,h*0.62+4);
+    ctx.strokeStyle='#ffd166'; ctx.lineWidth=1.5;
+    roundRect(-w/2-2,-h-2,w+4,h*0.62+4,5); ctx.stroke();
   }
   ctx.restore();
 
-  // name tag
   if(p.isUser){
-    ctx.fillStyle='#4ade80';
-    ctx.font='9px monospace';
+    ctx.fillStyle='#34d399';
+    ctx.font='10px sans-serif';
     ctx.textAlign='center';
     ctx.fillText(S.player.name, p.x, screenY-h-6);
     ctx.textAlign='left';
   }
+}
+
+function shade(hex, pct){
+  const n = parseInt(hex.slice(1),16);
+  let r=(n>>16)+pct, g=(n>>8&0xff)+pct, b=(n&0xff)+pct;
+  r=Math.max(0,Math.min(255,r)); g=Math.max(0,Math.min(255,g)); b=Math.max(0,Math.min(255,b));
+  return `rgb(${r},${g},${b})`;
 }
 
 function drawBall(){
@@ -1236,9 +1210,11 @@ function drawBall(){
   const screenY = b.y - (b.z||0)*0.9;
   ctx.save();
   ctx.translate(b.x, screenY);
-  ctx.fillStyle='#e8792c';
+  const g = ctx.createRadialGradient(-2,-2,1,0,0,7);
+  g.addColorStop(0,'#ff9d55'); g.addColorStop(1,'#c25a10');
+  ctx.fillStyle=g;
   ctx.beginPath(); ctx.arc(0,0,7,0,Math.PI*2); ctx.fill();
-  ctx.strokeStyle='#000'; ctx.lineWidth=1;
+  ctx.strokeStyle='rgba(0,0,0,0.5)'; ctx.lineWidth=1;
   ctx.beginPath(); ctx.moveTo(-7,0); ctx.lineTo(7,0); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(0,-7); ctx.lineTo(0,7); ctx.stroke();
   ctx.restore();
@@ -1253,9 +1229,9 @@ function drawFloatTexts(){
     ctx.save();
     ctx.globalAlpha = Math.max(0,alpha);
     ctx.fillStyle = f.color;
-    ctx.font = `bold ${f.size*0.4}px monospace`;
+    ctx.font = `bold ${f.size*0.4}px sans-serif`;
     ctx.textAlign='center';
-    ctx.strokeStyle='#000'; ctx.lineWidth=3;
+    ctx.strokeStyle='rgba(0,0,0,0.6)'; ctx.lineWidth=3;
     ctx.strokeText(f.text, x, y);
     ctx.fillText(f.text, x, y);
     ctx.restore();
@@ -1264,43 +1240,63 @@ function drawFloatTexts(){
 }
 
 function drawHUD(){
-  ctx.fillStyle='rgba(0,0,0,0.55)';
+  const hg = ctx.createLinearGradient(0,0,0,54);
+  hg.addColorStop(0,'rgba(10,15,25,0.85)'); hg.addColorStop(1,'rgba(10,15,25,0.35)');
+  ctx.fillStyle = hg;
   ctx.fillRect(0,0,canvas.width,54);
-  ctx.font='bold 16px monospace';
+  ctx.font='bold 17px sans-serif';
   ctx.fillStyle = S.team.primary;
   ctx.fillText(`${S.team.name.split(' ')[0]}  ${Game.scoreHome}`, 16, 24);
   ctx.fillStyle = Game.opponent.primary;
   ctx.textAlign='right';
   ctx.fillText(`${Game.scoreAway}  ${Game.opponent.name.split(' ')[0]}`, canvas.width-16, 24);
   ctx.textAlign='center';
-  ctx.fillStyle='#fff';
-  ctx.font='12px monospace';
+  ctx.fillStyle='#eaf0f8';
+  ctx.font='13px sans-serif';
   ctx.fillText(`Q${Game.quarter}  ${Math.max(0,Game.quarterTime).toFixed(0)}s`, canvas.width/2, 20);
-  ctx.font='10px monospace';
+  ctx.font='11px sans-serif';
   ctx.fillStyle='#ffd166';
   ctx.fillText(`PTS ${Game.stats.points} REB ${Game.stats.rebounds} AST ${Game.stats.assists} STL ${Game.stats.steals} BLK ${Game.stats.blocks}`, canvas.width/2, 40);
   ctx.textAlign='left';
 
-  // controls reminder
-  ctx.font='9px monospace';
+  ctx.font='10px sans-serif';
   ctx.fillStyle='rgba(255,255,255,0.6)';
   ctx.fillText('WASD/Arrows: Move   SPACE: Shot/Jump   X: Pass/Steal', 10, canvas.height-8);
 }
 
 function drawShotMeter(){
-  const user = Game.home[0];
   const barX = canvas.width/2-60, barY = canvas.height-70, barW=120, barH=14;
-  ctx.fillStyle='rgba(0,0,0,0.7)';
-  ctx.fillRect(barX-4,barY-4,barW+8,barH+8);
-  ctx.fillStyle='#333'; ctx.fillRect(barX,barY,barW,barH);
-  // sweet spot
-  ctx.fillStyle='rgba(74,222,128,0.5)';
-  ctx.fillRect(barX+barW*0.45, barY, barW*0.2, barH);
-  // indicator
+  ctx.fillStyle='rgba(0,0,0,0.6)';
+  roundRect(barX-4,barY-4,barW+8,barH+8,8); ctx.fill();
+  ctx.fillStyle='#1a2438'; roundRect(barX,barY,barW,barH,6); ctx.fill();
+  ctx.fillStyle='rgba(52,211,153,0.55)';
+  roundRect(barX+barW*0.45, barY, barW*0.2, barH,4); ctx.fill();
   const t = Game.shotMeter.t;
   ctx.fillStyle='#ffd166';
-  ctx.fillRect(barX+t*barW-2, barY-3, 4, barH+6);
-  ctx.strokeStyle='#ff8c00'; ctx.strokeRect(barX,barY,barW,barH);
+  roundRect(barX+t*barW-2, barY-3, 4, barH+6,2); ctx.fill();
+  ctx.strokeStyle='#ff7a29'; ctx.lineWidth=2; roundRect(barX,barY,barW,barH,6); ctx.stroke();
+}
+
+function drawShotPopupUI(){
+  const sp = Game.shotPopup;
+  const tNorm = sp.t/sp.dur;
+  const scale = tNorm<0.15 ? (tNorm/0.15) : 1;
+  const alpha = tNorm>0.75 ? 1-((tNorm-0.75)/0.25) : 1;
+  ctx.save();
+  ctx.globalAlpha = Math.max(0,alpha);
+  ctx.translate(canvas.width/2, 90);
+  ctx.scale(scale,scale);
+  ctx.font='bold 22px sans-serif';
+  const w = ctx.measureText(sp.text).width+36;
+  ctx.fillStyle='rgba(10,15,25,0.82)';
+  roundRect(-w/2,-24,w,42,21); ctx.fill();
+  ctx.strokeStyle=sp.color; ctx.lineWidth=2;
+  roundRect(-w/2,-24,w,42,21); ctx.stroke();
+  ctx.fillStyle=sp.color;
+  ctx.textAlign='center';
+  ctx.fillText(sp.text, 0, 5);
+  ctx.restore();
+  ctx.textAlign='left';
 }
 
 /* =========================================================================
@@ -1312,43 +1308,40 @@ function endGame(){
   const won = Game.scoreHome > Game.scoreAway;
   if(won){ S.season.wins++; } else { S.season.losses++; }
 
-  // bonus XP for game performance
   gainXP(Game.stats.points*2 + Game.stats.assists*3 + Game.stats.rebounds*2 + Game.stats.steals*5 + Game.stats.blocks*5 + (won?30:5));
 
-  // apply sponsor multiplier if it was completed this game, set up for NEXT game
   S.spMultiplierNextGame = (S.sponsor && S.sponsor.done) ? S.sponsor.mult : 1;
-  S.sponsor = null; // new offer generated next hub visit
+  S.sponsor = null;
 
   if(won){
     if(S.season.round < 2){
+      const finishedRound = S.season.round;
       S.season.round++;
-      showPostGame(true, false);
+      showPostGame(true, false, finishedRound);
     } else {
-      // championship win
       S.season.round = 3;
       showTrophyScreen();
       return;
     }
   } else {
-    // lose -> eliminated, restart season at quarterfinals (career continues)
     S.season.round = 0;
     S.season.wins = 0; S.season.losses = 0;
-    showPostGame(false, true);
+    showPostGame(false, true, 0);
   }
 }
 
-function showPostGame(won, eliminated){
+function showPostGame(won, eliminated, finishedRound){
   renderHub();
   document.getElementById('hubMsg').textContent = won
-    ? `Victory! Advancing to ${ROUND_NAMES[S.season.round]}.`
-    : `Defeat. Eliminated from playoffs — new season begins at Quarterfinals.`;
+    ? `Victory! ${STORY.win[finishedRound]} Advancing to ${ROUND_NAMES[S.season.round]}.`
+    : STORY.lose;
   showScreen('screen-hub');
 }
 
 function showTrophyScreen(){
   showScreen('screen-trophy');
   document.getElementById('mvpText').textContent =
-    `${S.player.name} led the ${S.team.name} to the NBA Championship! Final: ${Game.scoreHome}-${Game.scoreAway}. Career continues...`;
+    `${S.player.name} led the ${S.team.name} to the championship! Final: ${Game.scoreHome}-${Game.scoreAway}. The city will remember this run — but a new season, and a new challenge, awaits.`;
   Audio8.badge();
   drawTrophy();
 }
@@ -1356,17 +1349,13 @@ function showTrophyScreen(){
 function drawTrophy(){
   const tc = document.getElementById('trophyCanvas');
   const tctx = tc.getContext('2d');
-  tctx.imageSmoothingEnabled=false;
-  tctx.fillStyle='#000'; tctx.fillRect(0,0,tc.width,tc.height);
-  // pixel trophy
+  tctx.fillStyle='#0a1220'; tctx.fillRect(0,0,tc.width,tc.height);
   const px = (x,y,w,h,c)=>{ tctx.fillStyle=c; tctx.fillRect(x,y,w,h); };
-  // rays
   for(let i=0;i<12;i++){
     const ang = i*(Math.PI*2/12);
     const x = 150+Math.cos(ang)*90, y=110+Math.sin(ang)*90;
     px(x,y,4,4,'#ffd166');
   }
-  // cup
   px(110,60,80,50,'#ffd700');
   px(100,60,10,10,'#ffd700'); px(190,60,10,10,'#ffd700');
   px(95,60,10,40,'#e0b400'); px(195,60,10,40,'#e0b400');
@@ -1375,11 +1364,10 @@ function drawTrophy(){
   px(90,154,120,16,'#7a4a1e');
   px(140,170,20,50,'#e0b400');
   px(110,220,80,20,'#5a3a1a');
-  tctx.fillStyle='#fff'; tctx.font='bold 14px monospace'; tctx.textAlign='center';
+  tctx.fillStyle='#fff'; tctx.font='bold 14px sans-serif'; tctx.textAlign='center';
   tctx.fillText('MVP', 150, 90);
+  tctx.textAlign='left';
 }
-
-/* wire trophy continue is already bound above (btnPostChamp) */
 
 })();
 </script>
