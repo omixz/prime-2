@@ -9,8 +9,14 @@ export function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () =
   const [error, setError] = useState<string | null>(null);
   const [extrasOpen, setExtrasOpen] = useState(false);
   const [activeGroup, setActiveGroup] = useState(0);
+  const [pickupName, setPickupName] = useState("");
+  const [pickupPhone, setPickupPhone] = useState("");
 
   const handleCheckout = async () => {
+    if (!pickupName.trim()) {
+      setError("Please enter a name for pickup so the shop can call it out.");
+      return;
+    }
     setError(null);
     setLoading(true);
     const controller = new AbortController();
@@ -21,6 +27,8 @@ export function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () =
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
         body: JSON.stringify({
+          pickupName: pickupName.trim(),
+          pickupPhone: pickupPhone.trim(),
           items: lines.map((l) => ({
             id: l.itemId,
             comboSize: l.comboSize,
@@ -178,6 +186,29 @@ export function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                     </ul>
                   </div>
                 )}
+              </div>
+              <div className="mb-4 space-y-2">
+                <label htmlFor="pickup-name" className="font-display text-xs font-bold uppercase text-charcoal/60">
+                  Name for pickup
+                </label>
+                <input
+                  id="pickup-name"
+                  type="text"
+                  value={pickupName}
+                  onChange={(e) => setPickupName(e.target.value)}
+                  placeholder="e.g. Sam"
+                  maxLength={60}
+                  className="w-full rounded-xl border border-charcoal/15 bg-white px-4 py-2.5 text-sm"
+                />
+                <input
+                  id="pickup-phone"
+                  type="tel"
+                  value={pickupPhone}
+                  onChange={(e) => setPickupPhone(e.target.value)}
+                  placeholder="Phone (optional)"
+                  maxLength={30}
+                  className="w-full rounded-xl border border-charcoal/15 bg-white px-4 py-2.5 text-sm"
+                />
               </div>
               <div className="flex items-center justify-between text-lg">
                 <span className="font-semibold">Total</span>

@@ -33,6 +33,9 @@ function isRateLimited(ip: string): boolean {
 
 type IncomingItem = { id: unknown; quantity: unknown; comboSize?: unknown; drinkId?: unknown };
 
+const MAX_NAME_LENGTH = 60;
+const MAX_PHONE_LENGTH = 30;
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -62,13 +65,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: "Checkout isn't configured yet. Please contact the shop directly." });
   }
 
-  const body = req.body as { items?: IncomingItem[] };
+  const body = req.body as { items?: IncomingItem[]; pickupName?: unknown; pickupPhone?: unknown };
   if (!body || !Array.isArray(body.items) || body.items.length === 0) {
     return res.status(400).json({ error: "Your cart is empty." });
   }
   if (body.items.length > MAX_LINE_ITEMS) {
     return res.status(400).json({ error: "Too many different items in one order." });
   }
+
+  const pickupName = typeof body.pickupName === "string" ? body.pickupName.trim().slice(0, MAX_NAME_LENGTH) : "";
+  if (!pickupName) {
+    return res.status(400).json({ error: "Please enter a name for pickup." });
+  }
+  const pickupPhone =
+    typeof body.pickupPhone === "string" ? body.pickupPhone.trim().slice(0, MAX_PHONE_LENGTH) : "";
 
   const lineItems: { name: string; quantity: string; base_price_money: { amount: number; currency: string } }[] = [];
 
@@ -126,6 +136,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         order: {
           location_id: locationId,
           line_items: lineItems,
+          // Without a fulfillment, Square records the payment but the order
+          // never surfaces in the Point of Sale app's Orders queue — the
+          // money moves but no ticket ever reaches the till.
+          fulfillments: [
+            {
+              type: "PICKUP",
+              pickup_details: {
+                schedule_type: "ASAP",
+                prep_time_duration: "PT15M",
+                recipient: {
+                  display_name: pickupName,
+                  ...(pickupPhone ? { phone_number: pickupPhone } : {}),
+                },
+              },
+            },
+          ],
         },
         checkout_options: {
           redirect_url: `${siteUrl}/checkout/success`,
