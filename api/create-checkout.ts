@@ -40,12 +40,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(429).json({ error: "Too many requests. Please wait a moment and try again." });
   }
 
-  const accessToken = process.env.SQUARE_ACCESS_TOKEN;
-  const locationId = process.env.SQUARE_LOCATION_ID;
-  const squareApiBase = process.env.SQUARE_ENVIRONMENT === "production"
+  // Support both the documented var names and the ones currently set in Vercel
+  // (SquareToken / SquareLocation / SquareEnviorment / SiteURL) so this works
+  // without renaming anything in the dashboard.
+  const accessToken = process.env.SQUARE_ACCESS_TOKEN || process.env.SquareToken;
+  const locationId = process.env.SQUARE_LOCATION_ID || process.env.SquareLocation;
+  const environment = process.env.SQUARE_ENVIRONMENT || process.env.SquareEnviorment;
+  const squareApiBase = environment === "production"
     ? "https://connect.squareup.com"
     : "https://connect.squareupsandbox.com";
-  const siteUrl = process.env.SITE_URL;
+  const siteUrl = process.env.SITE_URL || process.env.SiteURL;
 
   if (!accessToken || !locationId || !siteUrl) {
     console.error("Missing Square configuration env vars");
