@@ -110,16 +110,35 @@
     <div class="panel">
       <h1>HOOP LEGENDS</h1>
       <p class="story">Two ways to play. Rise from rookie to Finals MVP, or run a franchise to a title.</p>
-      <div class="row" style="gap:16px;">
-        <div class="teamPick" id="modeJourney" style="width:220px;">
+      <div class="row" style="gap:14px;">
+        <div class="teamPick" id="modeJourney" style="width:200px;">
           <h2 style="border:none;text-align:center;margin:6px 0;color:var(--accent-soft)">🏀 MY JOURNEY</h2>
           <p class="small-txt">Create one baller. Level up, unlock badges, and carry your team through the playoffs.</p>
         </div>
-        <div class="teamPick" id="modeFranchise" style="width:220px;">
+        <div class="teamPick" id="modeFranchise" style="width:200px;">
           <h2 style="border:none;text-align:center;margin:6px 0;color:var(--accent2)">🏆 FRANCHISE HQ</h2>
           <p class="small-txt">Run a whole team. Play or sim a full season, climb the standings, and win it all.</p>
         </div>
+        <div class="teamPick" id="modeVersus" style="width:200px;">
+          <h2 style="border:none;text-align:center;margin:6px 0;color:var(--success)">🎮 LOCAL VERSUS</h2>
+          <p class="small-txt">Two players, one keyboard. Pick both teams and battle head-to-head.</p>
+        </div>
       </div>
+      <div class="row"><button id="btnLoadGame" class="small ghost">Load Saved Game</button></div>
+    </div>
+  </div>
+
+  <!-- ============ VERSUS SETUP ============ -->
+  <div id="screen-vsSetup" class="screen">
+    <div class="panel">
+      <h1>LOCAL VERSUS</h1>
+      <p class="story">Two players share one keyboard. Choose each team, then tip off.</p>
+      <h2 style="color:var(--success)">Player 1 Team</h2>
+      <div class="row" id="vsTeamRow1"></div>
+      <h2 style="color:var(--accent2)">Player 2 Team</h2>
+      <div class="row" id="vsTeamRow2"></div>
+      <div class="row"><button id="btnVsStart">Tip Off ▶</button></div>
+      <div class="flashMsg" id="vsSetupMsg"></div>
     </div>
   </div>
 
@@ -184,7 +203,9 @@
       <h2>Upgrade Center</h2>
       <div id="upgradeGrid"></div>
 
-      <div class="row"><button id="btnPlayGame">Tip Off Next Game ▶</button></div>
+      <div class="row"><button id="btnPlayGame">Tip Off Next Game ▶</button>
+        <button id="btnHubSave" class="small ghost">Save</button>
+        <button id="btnHubMenu" class="small ghost">Menu</button></div>
       <div class="flashMsg" id="hubMsg"></div>
     </div>
   </div>
@@ -220,10 +241,35 @@
           </div>
           <div class="row" style="justify-content:flex-start;">
             <button id="btnFrSimWeek" class="small ghost">Sim Rest of Season</button>
+            <button id="btnFrRoster" class="small ghost">Roster / Trade</button>
+          </div>
+          <div class="row" style="justify-content:flex-start;">
+            <button id="btnFrSave" class="small ghost">Save</button>
+            <button id="btnFrMenu" class="small ghost">Menu</button>
           </div>
           <div class="flashMsg" id="frMsg"></div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ============ ROSTER / TRADE ============ -->
+  <div id="screen-roster" class="screen">
+    <div class="panel" style="max-width:820px;">
+      <h1 id="rosTitle">ROSTER</h1>
+      <p class="story">Your roster and the trade market. Propose a swap — the other GM accepts if it doesn't hurt their team.</p>
+      <div class="row" style="align-items:flex-start; gap:24px; justify-content:space-between;">
+        <div style="flex:1; min-width:280px;">
+          <h2>Your Roster <span class="small-txt" id="rosOvr"></span></h2>
+          <div id="rosMine"></div>
+        </div>
+        <div style="flex:1; min-width:280px;">
+          <h2>Trade Block <select id="rosTeamSel"></select></h2>
+          <div id="rosOther"></div>
+        </div>
+      </div>
+      <div class="row"><button id="btnRosPropose">Propose Trade</button><button id="btnRosBack" class="small ghost">Back to HQ</button></div>
+      <div class="flashMsg" id="rosMsg"></div>
     </div>
   </div>
 
@@ -526,27 +572,43 @@ function renderFrTeamRow(){
   });
 }
 
-function newFranchise(teamIdx){
-  const standings = TEAMS.map((t,i)=>({ idx:i, w:0, l:0, pf:0, pa:0 }));
-  // round-robin: each team plays every other team twice → 12 games
-  const order = [0,1,2,3,4,5,6];
-  const sched = [];
-  for(let rep=0; rep<2; rep++){
-    for(let j=0;j<TEAMS.length;j++){
-      if(j!==teamIdx) sched.push(j);
-    }
-  }
-  // shuffle opponent order lightly
-  for(let i=sched.length-1;i>0;i--){ const k=Math.floor(Math.random()*(i+1)); [sched[i],sched[k]]=[sched[k],sched[i]]; }
-  return { teamIdx, standings, sched, gameIdx:0, phase:'season', playoff:null, champion:null };
+// --- original name pools for generated players (not real athletes) ---
+const FIRST_NAMES=['Deuce','Marlo','Kip','Treyson','Zane','Cassius','Rome','Jax','Devonte','Malik','Rio','Kolt','Amari','Beau','Nash','Tobias','Quill','Dane','Elias','Cruz','Ade','Bishop','Onyx','Vince','Rashad','Kobe','Solo','Trace','Emeka','Dario'];
+const LAST_NAMES=['Vance','Okafor','Hollis','Braxton','Mercer','Sable','Duqu','Yates','Ashford','Bell','Ngata','Frost','Cortez','Rhodes','Ivory','Tan','Bishara','Colt','Reyes','Sloan','Adebayo','Wu','Kane','Marsh','Delgado','Pike','Osei','Vaughn','Rivera','Storm'];
+function randName(){ return FIRST_NAMES[Math.floor(Math.random()*FIRST_NAMES.length)]+' '+LAST_NAMES[Math.floor(Math.random()*LAST_NAMES.length)]; }
+function makeRosterPlayer(role, baseline){
+  const ovr = Math.max(38, Math.min(96, Math.round(baseline + (Math.random()*20-10))));
+  return { name:randName(), pos:role, ovr, age:19+Math.floor(Math.random()*16) };
+}
+function makeRoster(teamBaseline){
+  const roles=['PG','SG','SF','PF','C','G','F','C'];
+  return roles.map((r,i)=> makeRosterPlayer(r, teamBaseline - i*1.5));
+}
+function teamOverall(roster){
+  const top = roster.slice().sort((a,b)=>b.ovr-a.ovr).slice(0,5);
+  return top.reduce((s,p)=>s+p.ovr,0)/5;
 }
 
-// power rating for sim purposes
-function teamPower(idx){ return 48 + ((idx*37)%20) + Math.random()*10; }
+function newFranchise(teamIdx){
+  const standings = TEAMS.map((t,i)=>({ idx:i, w:0, l:0, pf:0, pa:0 }));
+  const rosters = TEAMS.map((t,i)=> makeRoster(58 + ((i*13)%18)));  // varied team strengths
+  const sched = [];
+  for(let rep=0; rep<2; rep++){
+    for(let j=0;j<TEAMS.length;j++){ if(j!==teamIdx) sched.push(j); }
+  }
+  for(let i=sched.length-1;i>0;i--){ const k=Math.floor(Math.random()*(i+1)); [sched[i],sched[k]]=[sched[k],sched[i]]; }
+  return { teamIdx, standings, rosters, sched, gameIdx:0, phase:'season', playoff:null, champion:null, season:1 };
+}
+
+// rating-based sim using each team's roster overall
+function teamPower(idx){
+  const r = S.franchise && S.franchise.rosters ? S.franchise.rosters[idx] : null;
+  return r ? teamOverall(r) : 60;
+}
 function simGame(aIdx,bIdx){
   const pa=teamPower(aIdx), pb=teamPower(bIdx);
-  const sa=Math.round(70 + pa*0.55 + Math.random()*24);
-  const sb=Math.round(70 + pb*0.55 + Math.random()*24);
+  const sa=Math.round(74 + (pa-60)*0.9 + Math.random()*22);
+  const sb=Math.round(74 + (pb-60)*0.9 + Math.random()*22);
   let A=sa,B=sb; if(A===B){ Math.random()<0.5?A++:B++; }
   return { a:A, b:B, aWin:A>B };
 }
@@ -610,7 +672,14 @@ function renderFranchise(){
       ? `🏆 The ${myTeam.name} are CHAMPIONS! What a season.`
       : `Season over. ${TEAMS[fr.champion].name} took the title. There's always next year.`;
     nextBox.innerHTML = `<div class="row"><button id="btnFrNewSeason">Start New Season</button></div>`;
-    document.getElementById('btnFrNewSeason').onclick=()=>{ Audio8.click(); S.franchise=newFranchise(fr.teamIdx); renderFranchise(); };
+    document.getElementById('btnFrNewSeason').onclick=()=>{ Audio8.click();
+      // keep rosters, develop them, and reset the schedule/standings for a new year
+      developRosters();
+      const keptRosters=fr.rosters, nextSeason=(fr.season||1)+1;
+      S.franchise=newFranchise(fr.teamIdx);
+      S.franchise.rosters=keptRosters; S.franchise.season=nextSeason;
+      renderFranchise();
+    };
     playBtn.style.display='none'; simBtn.style.display='none'; weekBtn.style.display='none';
   }
 }
@@ -738,6 +807,180 @@ document.getElementById('btnFrSimWeek').addEventListener('click', ()=>{
   renderFranchise();
 });
 
+/* ---------------- LOCAL VERSUS setup ---------------- */
+let vsP1Idx=null, vsP2Idx=null;
+document.getElementById('modeVersus').addEventListener('click', ()=>{
+  Audio8.ensureRunning(); Audio8.startMusic(); Audio8.click();
+  S.mode='versus';
+  vsP1Idx=null; vsP2Idx=null;
+  renderVsTeams();
+  showScreen('screen-vsSetup');
+});
+function renderVsTeams(){
+  [['vsTeamRow1',1],['vsTeamRow2',2]].forEach(([rowId,pnum])=>{
+    const row=document.getElementById(rowId); row.innerHTML='';
+    TEAMS.forEach((t,i)=>{
+      const card=document.createElement('div'); card.className='teamPick'; card.style.width='120px';
+      card.innerHTML=`<div class="jersey" style="background:${t.primary};border-color:${t.secondary}"></div>
+        <p style="margin:0;font-size:11px;color:var(--text)"><b>${t.abbr}</b></p>`;
+      card.onclick=()=>{ Audio8.click();
+        row.querySelectorAll('.teamPick').forEach(c=>c.classList.remove('sel')); card.classList.add('sel');
+        if(pnum===1) vsP1Idx=i; else vsP2Idx=i; };
+      row.appendChild(card);
+    });
+  });
+}
+document.getElementById('btnVsStart').addEventListener('click', ()=>{
+  Audio8.ensureRunning(); Audio8.startMusic(); Audio8.click();
+  if(vsP1Idx===null||vsP2Idx===null){ document.getElementById('vsSetupMsg').textContent='Pick a team for each player!'; return; }
+  if(vsP1Idx===vsP2Idx){ document.getElementById('vsSetupMsg').textContent='Players need different teams!'; return; }
+  S.team=TEAMS[vsP1Idx];
+  S.versusP2Idx=vsP2Idx;
+  S.player={ name:'P1', position:'Guard', heightIn:75, attrs:{shooting:6,passing:6,speed:6,defense:6}, level:1, xp:0, xpToNext:100, sp:0, badges:[] };
+  startGame();
+});
+
+/* ---------------- SAVE / LOAD (manual slots in localStorage) ---------------- */
+const SAVE_KEY='hoopLegendsSaves';
+function readSaves(){ try{ return JSON.parse(localStorage.getItem(SAVE_KEY))||{}; }catch(e){ return {}; } }
+function writeSaves(o){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(o)); }catch(e){} }
+function serializeState(){
+  // strip the runtime function from the sponsor before saving
+  const spon = S.sponsor ? { id:S.sponsor.id, done:S.sponsor.done } : null;
+  return JSON.stringify({
+    mode:S.mode, player:S.player, team:S.team?TEAMS.indexOf(S.team):null,
+    season:S.season, sponsorId:spon, spMult:S.spMultiplierNextGame,
+    franchise:S.franchise||null
+  });
+}
+function deserializeState(str){
+  const d=JSON.parse(str);
+  S.mode=d.mode; S.player=d.player;
+  S.team = d.team!=null ? TEAMS[d.team] : null;
+  S.season=d.season||{wins:0,losses:0,round:0};
+  S.spMultiplierNextGame=d.spMult||1;
+  S.franchise=d.franchise||null;
+  // rebuild sponsor from its saved id
+  S.sponsor = d.sponsorId ? rebuildSponsor(d.sponsorId.id, d.sponsorId.done) : null;
+}
+function doSave(slot){
+  const saves=readSaves();
+  saves['slot'+slot]={ when:Date.now(), label:(S.mode==='franchise'?'Franchise':'Journey')+' · '+(S.team?S.team.abbr:'—'), data:serializeState() };
+  writeSaves(saves);
+}
+function slotSummary(slot){
+  const s=readSaves()['slot'+slot];
+  if(!s) return 'Empty';
+  const d=new Date(s.when);
+  return `${s.label} · ${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`;
+}
+
+// simple prompt-based save/load UI so it stays a single file with no extra screens
+function openSaveMenu(){
+  const which = prompt(`SAVE — choose a slot (1-3):\n 1) ${slotSummary(1)}\n 2) ${slotSummary(2)}\n 3) ${slotSummary(3)}`, '1');
+  const n=parseInt(which); if(n>=1&&n<=3){ doSave(n); document.getElementById('hubMsg') && (document.getElementById('hubMsg').textContent=`Saved to slot ${n}.`); if(document.getElementById('frMsg')) document.getElementById('frMsg').textContent=`Saved to slot ${n}.`; }
+}
+function openLoadMenu(){
+  const which = prompt(`LOAD — choose a slot (1-3):\n 1) ${slotSummary(1)}\n 2) ${slotSummary(2)}\n 3) ${slotSummary(3)}`, '1');
+  const n=parseInt(which); if(!(n>=1&&n<=3)) return;
+  const s=readSaves()['slot'+n];
+  if(!s){ alert('That slot is empty.'); return; }
+  deserializeState(s.data);
+  Audio8.ensureRunning(); Audio8.startMusic();
+  if(S.mode==='franchise'){ renderFranchise(); showScreen('screen-franchise'); }
+  else { renderHub(); showScreen('screen-hub'); }
+}
+document.getElementById('btnLoadGame').addEventListener('click', ()=>{ Audio8.click(); openLoadMenu(); });
+
+/* ---------------- Franchise: roster, trades, development ---------------- */
+let rosSelMine=null, rosSelOther=null, rosOtherIdx=null;
+function renderRoster(){
+  const fr=S.franchise;
+  document.getElementById('rosTitle').textContent = `${TEAMS[fr.teamIdx].name.toUpperCase()} — ROSTER`;
+  const mine=fr.rosters[fr.teamIdx];
+  document.getElementById('rosOvr').textContent = `(Team OVR ${Math.round(teamOverall(mine))})`;
+  rosSelMine=null; rosSelOther=null;
+
+  const listHTML=(roster, which)=> roster.slice().sort((a,b)=>b.ovr-a.ovr).map((p,i)=>{
+    const realIdx=roster.indexOf(p);
+    return `<div class="attrRow rosItem" data-which="${which}" data-i="${realIdx}" style="cursor:pointer;border:1px solid var(--border);border-radius:6px;padding:5px 8px;margin:3px 0;">
+      <span style="width:26px;color:var(--text-dim)">${p.pos}</span>
+      <span style="flex:1;text-align:left">${p.name}</span>
+      <span style="width:34px;color:${p.ovr>=80?'#34d399':p.ovr>=68?'#ffd166':'#8fa0b8'};font-weight:700">${p.ovr}</span>
+      <span style="width:34px;color:var(--text-dim)">${p.age}y</span></div>`;
+  }).join('');
+
+  document.getElementById('rosMine').innerHTML=listHTML(mine,'mine');
+
+  // opponent selector
+  const sel=document.getElementById('rosTeamSel');
+  if(!sel.dataset.filled){
+    sel.innerHTML='';
+    TEAMS.forEach((t,i)=>{ if(i!==fr.teamIdx){ const o=document.createElement('option'); o.value=i; o.textContent=t.name; sel.appendChild(o);} });
+    sel.dataset.filled='1';
+    sel.onchange=()=>{ rosOtherIdx=parseInt(sel.value); renderOtherRoster(); };
+  }
+  rosOtherIdx = rosOtherIdx!=null && rosOtherIdx!==fr.teamIdx ? rosOtherIdx : TEAMS.findIndex((t,i)=>i!==fr.teamIdx);
+  sel.value=rosOtherIdx;
+  renderOtherRoster();
+
+  function renderOtherRoster(){
+    document.getElementById('rosOther').innerHTML=listHTML(fr.rosters[rosOtherIdx],'other');
+    bindRosItems();
+  }
+  bindRosItems();
+  function bindRosItems(){
+    document.querySelectorAll('.rosItem').forEach(el=>{
+      el.onclick=()=>{ Audio8.click();
+        const which=el.dataset.which, i=parseInt(el.dataset.i);
+        document.querySelectorAll(`.rosItem[data-which="${which}"]`).forEach(e=>e.style.background='');
+        el.style.background='#12324a';
+        if(which==='mine') rosSelMine=i; else rosSelOther=i;
+      };
+    });
+  }
+}
+document.getElementById('btnFrRoster').addEventListener('click', ()=>{ Audio8.click(); renderRoster(); showScreen('screen-roster'); });
+document.getElementById('btnRosBack').addEventListener('click', ()=>{ Audio8.click(); renderFranchise(); showScreen('screen-franchise'); });
+document.getElementById('btnRosPropose').addEventListener('click', ()=>{
+  Audio8.click();
+  const fr=S.franchise, msg=document.getElementById('rosMsg');
+  if(rosSelMine==null || rosSelOther==null){ msg.style.color='var(--danger)'; msg.textContent='Select one player from each side.'; return; }
+  const mine=fr.rosters[fr.teamIdx], other=fr.rosters[rosOtherIdx];
+  const give=mine[rosSelMine], get=other[rosSelOther];
+  // other GM accepts if the incoming player is at least as good (within 3 ovr)
+  if(give.ovr + 3 >= get.ovr){
+    mine[rosSelMine]=get; other[rosSelOther]=give;
+    msg.style.color='var(--success)';
+    msg.textContent=`Trade accepted! ${give.name} ↔ ${get.name}.`;
+    Audio8.badge();
+    renderRoster();
+  } else {
+    msg.style.color='var(--danger)';
+    msg.textContent=`${TEAMS[rosOtherIdx].abbr} rejects — you'd need to give up more value.`;
+  }
+});
+
+// between seasons: young players improve, older players decline
+function developRosters(){
+  const fr=S.franchise;
+  fr.rosters.forEach(roster=>{
+    roster.forEach(p=>{
+      p.age++;
+      if(p.age<=24) p.ovr=Math.min(96, p.ovr + (1+Math.floor(Math.random()*3)));
+      else if(p.age>=31) p.ovr=Math.max(40, p.ovr - (1+Math.floor(Math.random()*3)));
+      // retirements → fresh rookie
+      if(p.age>=38){ Object.assign(p, makeRosterPlayer(p.pos, 52)); }
+    });
+  });
+}
+
+// hub + franchise menu/save buttons
+document.getElementById('btnHubSave').addEventListener('click', ()=>{ Audio8.click(); openSaveMenu(); });
+document.getElementById('btnHubMenu').addEventListener('click', ()=>{ Audio8.click(); showScreen('screen-mode'); });
+document.getElementById('btnFrSave').addEventListener('click', ()=>{ Audio8.click(); openSaveMenu(); });
+document.getElementById('btnFrMenu').addEventListener('click', ()=>{ Audio8.click(); showScreen('screen-mode'); });
+
 /* =========================================================================
    MY JOURNEY HUB
 ========================================================================= */
@@ -805,15 +1048,19 @@ function renderHub(){
   });
 }
 
+const SPONSOR_OPTIONS = [
+  { id:0, text:"Score 10+ points this game for a 1.5x SP Multiplier next game.", check:(st)=> st.points>=10, mult:1.5 },
+  { id:1, text:"Grab 5+ rebounds this game for a 1.5x SP Multiplier next game.", check:(st)=> st.rebounds>=5, mult:1.5 },
+  { id:2, text:"Dish 5+ assists this game for a 1.75x SP Multiplier next game.", check:(st)=> st.assists>=5, mult:1.75 },
+  { id:3, text:"Record 3+ steals or blocks this game for a 2x SP Multiplier next game.", check:(st)=> (st.steals+st.blocks)>=3, mult:2 }
+];
 function generateSponsorOffer(){
-  const options = [
-    { text:"Score 10+ points this game for a 1.5x SP Multiplier next game.", check:(st)=> st.points>=10, mult:1.5 },
-    { text:"Grab 5+ rebounds this game for a 1.5x SP Multiplier next game.", check:(st)=> st.rebounds>=5, mult:1.5 },
-    { text:"Dish 5+ assists this game for a 1.75x SP Multiplier next game.", check:(st)=> st.assists>=5, mult:1.75 },
-    { text:"Record 3+ steals or blocks this game for a 2x SP Multiplier next game.", check:(st)=> (st.steals+st.blocks)>=3, mult:2 }
-  ];
-  const o = options[Math.floor(Math.random()*options.length)];
-  return { text:o.text, check:o.check, mult:o.mult, done:false };
+  const o = SPONSOR_OPTIONS[Math.floor(Math.random()*SPONSOR_OPTIONS.length)];
+  return { id:o.id, text:o.text, check:o.check, mult:o.mult, done:false };
+}
+function rebuildSponsor(id, done){
+  const o = SPONSOR_OPTIONS[id] || SPONSOR_OPTIONS[0];
+  return { id:o.id, text:o.text, check:o.check, mult:o.mult, done:!!done };
 }
 
 document.getElementById('btnPlayGame').addEventListener('click', ()=>{
@@ -823,6 +1070,7 @@ document.getElementById('btnPlayGame').addEventListener('click', ()=>{
 });
 document.getElementById('btnPostChamp').addEventListener('click', ()=>{
   Audio8.click();
+  if(S.mode==='versus'){ showScreen('screen-mode'); return; }
   S.season = { wins:0, losses:0, round:0 };
   renderHub();
   showScreen('screen-hub');
@@ -1038,13 +1286,15 @@ function attackingHoopX(team){ return team==='home' ? COURT.hoopRightX : COURT.h
 function startGame(forcedOpponent){
   Audio8.ensureRunning();
   const round = S.season.round;
+  const versus = S.mode==='versus';
   let opponent;
   if(forcedOpponent){ opponent = forcedOpponent; }
+  else if(versus){ opponent = TEAMS[S.versusP2Idx]; }
   else {
     const oppTeams = TEAMS.filter(t=>t.name!==S.team.name);
     opponent = oppTeams[Math.floor(Math.random()*oppTeams.length)];
   }
-  const diff = S.mode==='franchise' ? 1.15 : 1 + round*0.18;
+  const diff = versus ? 1.0 : S.mode==='franchise' ? 1.15 : 1 + round*0.18;
 
   const home=[], away=[];
   // home attacks the RIGHT hoop; away attacks the LEFT hoop
@@ -1070,27 +1320,43 @@ function startGame(forcedOpponent){
       aiTimer: 2 // no instant steal rolls at tip-off
     }));
   }
+  // in local versus, Player 2 controls the away team's point guard
+  let user2 = null;
+  if(versus){
+    user2 = away[0];
+    user2.isUser2 = true;
+    user2.hairStyle='headband'; user2.sprites = buildSprite({ headband:true });
+  }
 
   Game = {
     home, away, all: home.concat(away),
     teamHome: S.team, teamAway: opponent,
+    versus, user, user2,
     ball:{ x:user.x, y:user.y, h:30, holder:user, inAir:false, loose:false,
            arcT:0, arcDur:0, sx:0, sy:0, tx:0, ty:0, made:false, isThree:false,
            shooter:null, vx:0, vy:0, vh:0, snap:true },
     camX: 0,
-    stamina: 100,
-    quarter:1, quarterTime:42,
+    stamina: 100, stamina2: 100,
+    special: 0, special2: 0,        // dunk/crossover charge meters
+    quarter:1, quarterTime:60,
+    shotClock: 24,
     scoreHome:0, scoreAway:0,
+    foulsHome:0, foulsAway:0,
     diff,
     stats:{ points:0, rebounds:0, assists:0, steals:0, blocks:0 },
     shotMeter:{ active:false, t:0, holding:false },
-    shotPopup:null,
+    shotMeter2:{ active:false, t:0, holding:false },
+    shotPopup:null, shotPopup2:null,
+    freeThrow:null,               // active free-throw sequence
+    playbook:null, playbookTimer:0,
+    banner:null,
     floatTexts:[],
     phase:'live', inbounder:null, inboundTargetX:0,
     pendingAssist:null,
     lastFrame: performance.now(),
     over:false,
-    xPressed:false,
+    xPressed:false, x2Pressed:false, ePressed:false, e2Pressed:false,
+    pbPressed:false,
     lastMoveDirX:0, ankleApplied:false, dirChangeTimer:0
   };
   attachBall(user);
@@ -1100,9 +1366,12 @@ function startGame(forcedOpponent){
 
 function attachBall(p){
   const b = Game.ball;
+  const prev = b.holder;
   b.holder = p; b.inAir = false; b.loose = false; b.snap = true;
   Game.all.forEach(pl=>pl.hasBall=false);
   p.hasBall = true;
+  // reset the shot clock whenever possession changes teams
+  if(Game && (!prev || prev.team!==p.team)) Game.shotClock = 24;
 }
 
 function dist2(a,b){ const dx=a.x-b.x, dy=a.y-b.y; return dx*dx+dy*dy; }
@@ -1124,7 +1393,11 @@ function gameLoop(now){
 }
 
 function update(dt){
+  if(Game.banner){ Game.banner.t-=dt; if(Game.banner.t<=0) Game.banner=null; }
+  // free throws freeze normal play
+  if(Game.freeThrow){ updateFreeThrow(dt); updateFloatTexts(dt); return; }
   updateInput(dt);
+  if(Game.versus) updateInput2(dt);
   updateAI(dt);
   updateInbound(dt);
   updateBall(dt);
@@ -1132,6 +1405,8 @@ function update(dt){
   updateFloatTexts(dt);
   updateShotPopup(dt);
   updatePoses(dt);
+  updatePlaybook(dt);
+  updateShotClock(dt);
   updateClock(dt);
 }
 
@@ -1139,14 +1414,33 @@ function updatePoses(dt){
   Game.all.forEach(p=>{ if(p.shootPose>0) p.shootPose-=dt; });
 }
 
+function updateShotClock(dt){
+  if(Game.phase!=='live') return;
+  Game.shotClock -= dt;
+  if(Game.shotClock<=0){
+    // shot-clock violation → turnover to the other team
+    const off = Game.ball.holder ? Game.ball.holder.team : 'home';
+    Audio8.buzzer();
+    addFloat(Game.ball.x, Game.ball.y-80, "SHOT CLOCK!", '#ff5577', 20);
+    const other = off==='home' ? Game.away : Game.home;
+    attachBall(other[0]);
+    Game.shotClock = 24;
+  }
+}
+
+function updatePlaybook(dt){
+  if(Game.playbookTimer>0){ Game.playbookTimer-=dt; if(Game.playbookTimer<=0) Game.playbook=null; }
+}
+
 function updateClock(dt){
   Game.quarterTime -= dt;
   if(Game.quarterTime<=0){
     if(Game.quarter<4){
       Game.quarter++;
-      Game.quarterTime = 42;
+      Game.quarterTime = 60;
+      Game.foulsHome=0; Game.foulsAway=0; // team fouls reset each quarter
       Audio8.buzzer();
-      addFloat(Game.ball.x, COURT.hoopY-80, `END OF Q${Game.quarter-1}`, '#ffd166', 22);
+      Game.banner={ text:`END OF Q${Game.quarter-1}`, t:1.6 };
     } else {
       endGame();
     }
@@ -1158,14 +1452,27 @@ function updateInput(dt){
   const user = Game.home[0];
   if(user.stunTimer>0){ user.stunTimer-=dt; return; }
 
+  // playbook calls (offense only) — 1 iso, 2 pick & roll, 3 fast break
+  if(user.hasBall && !Game.pbPressed){
+    if(KEYS['Digit1']){ callPlaybook('iso'); Game.pbPressed=true; }
+    else if(KEYS['Digit2']){ callPlaybook('pnr'); Game.pbPressed=true; }
+    else if(KEYS['Digit3']){ callPlaybook('fastbreak'); Game.pbPressed=true; }
+  }
+  if(!KEYS['Digit1']&&!KEYS['Digit2']&&!KEYS['Digit3']) Game.pbPressed=false;
+
+  // special move (C): dunk if near rim with ball, crossover if guarded, steal-swipe on D
+  if(KEYS['KeyC'] && !Game.ePressed){ Game.ePressed=true; useSpecial(user, 1); }
+  if(!KEYS['KeyC']) Game.ePressed=false;
+
   let dx=0, dy=0;
-  if(KEYS['ArrowLeft']||KEYS['KeyA']) dx-=1;
-  if(KEYS['ArrowRight']||KEYS['KeyD']) dx+=1;
-  if(KEYS['ArrowUp']||KEYS['KeyW']) dy-=1;
-  if(KEYS['ArrowDown']||KEYS['KeyS']) dy+=1;
+  const arrows = !Game.versus;   // in versus the arrows belong to Player 2
+  if(KEYS['KeyA']||(arrows&&KEYS['ArrowLeft'])) dx-=1;
+  if(KEYS['KeyD']||(arrows&&KEYS['ArrowRight'])) dx+=1;
+  if(KEYS['KeyW']||(arrows&&KEYS['ArrowUp'])) dy-=1;
+  if(KEYS['KeyS']||(arrows&&KEYS['ArrowDown'])) dy+=1;
 
   user.moving = (dx!==0||dy!==0);
-  const wantSprint = (KEYS['ShiftLeft']||KEYS['ShiftRight']) && user.moving && Game.stamina>2;
+  const wantSprint = KEYS['ShiftLeft'] && user.moving && Game.stamina>2;
   if(wantSprint){ Game.stamina = Math.max(0, Game.stamina - 30*dt); }
   else { Game.stamina = Math.min(100, Game.stamina + 16*dt); }
   const sprintMult = wantSprint ? 1.55 : 1;
@@ -1242,6 +1549,174 @@ function updateInput(dt){
     else attemptSteal(user);
   }
   if(!KEYS['KeyX']) Game.xPressed=false;
+}
+
+/* ---------------- Player 2 input (local versus) ---------------- */
+function updateInput2(dt){
+  const u = Game.user2;
+  if(!u) return;
+  if(u.stunTimer>0){ u.stunTimer-=dt; return; }
+
+  // special move (RightCtrl)
+  if(KEYS['ControlRight'] && !Game.e2Pressed){ Game.e2Pressed=true; useSpecial(u, 2); }
+  if(!KEYS['ControlRight']) Game.e2Pressed=false;
+
+  let dx=0,dy=0;
+  if(KEYS['ArrowLeft']) dx-=1;
+  if(KEYS['ArrowRight']) dx+=1;
+  if(KEYS['ArrowUp']) dy-=1;
+  if(KEYS['ArrowDown']) dy+=1;
+  u.moving=(dx!==0||dy!==0);
+  const wantSprint = KEYS['ShiftRight'] && u.moving && Game.stamina2>2;
+  if(wantSprint) Game.stamina2=Math.max(0,Game.stamina2-30*dt);
+  else Game.stamina2=Math.min(100,Game.stamina2+16*dt);
+  const spd=(150+6*14)*(wantSprint?1.55:1);
+  if(u.moving){
+    const len=Math.hypot(dx,dy);
+    u.x+=(dx/len)*spd*dt; u.y+=(dy/len)*spd*dt;
+    if(dx!==0) u.facing=dx>0?1:-1;
+    u.animT+=dt*(wantSprint?13:9);
+  }
+  clampP(u, Game.phase==='inbound' && Game.inbounder===u);
+
+  if(u.hasBall){
+    if(KEYS['Slash'] && !Game.shotMeter2.active){ Game.shotMeter2.active=true; Game.shotMeter2.t=0; Game.shotMeter2.holding=true; Audio8.shotRelease(); }
+    if(Game.shotMeter2.active && Game.shotMeter2.holding){
+      Game.shotMeter2.t += dt*1.6;
+      if(Game.shotMeter2.t>1) Game.shotMeter2.t = 1-(Game.shotMeter2.t-1);
+      if(!KEYS['Slash']){
+        Game.shotMeter2.holding=false; Game.shotMeter2.active=false;
+        releaseShot(u, Math.max(0,Math.min(1,Game.shotMeter2.t)));
+      }
+    }
+  } else if(KEYS['Slash'] && !u.jumping){
+    u.jumping=true; u.jumpVel=230; Audio8.squeak();
+  }
+  if(u.jumping){
+    u.jumpVel-=720*dt; u.jumpH+=u.jumpVel*dt;
+    if(u.jumpH<=0){ u.jumpH=0; u.jumping=false; }
+  }
+  if(KEYS['Period'] && !Game.x2Pressed){
+    Game.x2Pressed=true;
+    if(u.hasBall) doPass(u); else attemptStealBy(u);
+  }
+  if(!KEYS['Period']) Game.x2Pressed=false;
+}
+
+/* ---------------- special moves: dunk + crossover ---------------- */
+function chargeSpecial(who, amt){
+  if(who==='home'){ if(Game.versus||true) Game.special=Math.min(100,Game.special+amt); }
+  else Game.special2=Math.min(100,Game.special2+amt);
+}
+function useSpecial(u, who){
+  const meter = who===1 ? Game.special : Game.special2;
+  if(meter < 100) { addFloat(u.x,u.y-90,"CHARGING…",'#8fa0b8',13); return; }
+  const hx = attackingHoopX(u.team);
+  if(u.hasBall){
+    const dRim = Math.hypot(u.x-hx, u.y-COURT.hoopY);
+    if(dRim < 230){
+      // POSTER DUNK — guaranteed bucket with flair
+      const b=Game.ball; b.inAir=true; b.holder=null; u.hasBall=false; b.blockedThisShot=false;
+      u.shootPose=0.6; b.shooter=u; b.made=true; b.isThree=false;
+      b.sx=u.x; b.sy=u.y; b.tx=hx; b.ty=COURT.hoopY; b.arcT=0; b.arcDur=0.5;
+      addFloat(u.x,u.y-100,"💥 POSTER DUNK!",'#ffd166',20);
+      Audio8.shotRelease();
+    } else {
+      // CROSSOVER — juke: stun the nearest defender and burst forward
+      const defs = u.team==='home'?Game.away:Game.home;
+      let near=null,nd=Infinity; defs.forEach(df=>{ const d=dist2(df,u); if(d<nd){nd=d;near=df;} });
+      if(near){ near.stunTimer=1.0; addFloat(near.x,near.y-90,"BROKEN!",'#ff5577',16); }
+      u.x += (u.team==='home'?1:-1)*70;
+      addFloat(u.x,u.y-90,"CROSSOVER!",'#22d3ee',16);
+      Audio8.squeak();
+    }
+  } else {
+    // on defense: a lockdown swipe with a big steal radius
+    attemptStealBy(u, 0.9);
+  }
+  if(who===1) Game.special=0; else Game.special2=0;
+}
+
+/* ---------------- playbooks (reposition your AI teammates) ---------------- */
+function callPlaybook(kind){
+  Game.playbook={ kind, team:Game.ball.holder?Game.ball.holder.team:'home' };
+  Game.playbookTimer=4;
+  const label = kind==='iso'?'ISO — clear out!' : kind==='pnr'?'PICK & ROLL!' : 'FAST BREAK!';
+  Game.banner={ text:label, t:1.3 };
+  Audio8.click();
+}
+
+/* ---------------- fouls & free throws ---------------- */
+function commitFoul(offenseTeam, shooter, wasShooting){
+  const defTeam = offenseTeam==='home'?'away':'home';
+  if(defTeam==='home') Game.foulsHome++; else Game.foulsAway++;
+  addFloat(shooter.x, shooter.y-90, "FOUL!", '#ffd166', 16);
+  Audio8.buzzer();
+  const teamFouls = defTeam==='home'?Game.foulsHome:Game.foulsAway;
+  // shooting foul, or bonus after 5 team fouls → free throws
+  if(wasShooting || teamFouls>=5){
+    startFreeThrows(shooter, wasShooting? (Math.hypot(shooter.x-attackingHoopX(offenseTeam),shooter.y-COURT.hoopY)>330?3:2) : 2);
+  }
+}
+function startFreeThrows(shooter, count){
+  Game.freeThrow = { shooter, remaining:count, meter:0, dir:1, state:'aim', timer:0 };
+  Game.ball.holder=null; Game.ball.inAir=false; Game.ball.loose=false;
+  Game.ball.x=shooter.x; Game.ball.y=shooter.y; Game.ball.h=40;
+}
+function updateFreeThrow(dt){
+  const ft=Game.freeThrow;
+  const shooterIsHuman = ft.shooter.isUser || ft.shooter.isUser2;
+  if(ft.state==='aim'){
+    // moving meter; human taps space/slash to shoot, AI auto-fires
+    ft.meter += dt*1.3*ft.dir;
+    if(ft.meter>1){ ft.meter=1; ft.dir=-1; } if(ft.meter<0){ ft.meter=0; ft.dir=1; }
+    const fire = ft.shooter.isUser ? KEYS['Space'] : ft.shooter.isUser2 ? KEYS['Slash'] : false;
+    ft.timer+=dt;
+    if((shooterIsHuman && fire) || (!shooterIsHuman && ft.timer>0.8)){
+      const timing = shooterIsHuman ? (1-Math.abs(ft.meter-0.5)*2) : (0.55+Math.random()*0.3);
+      const ftAttr = ft.shooter.isUser? S.player.attrs.shooting : 6;
+      const made = Math.random() < (0.45 + ftAttr*0.03 + Math.max(0,timing)*0.30);
+      ft.made=made; ft.state='shot'; ft.timer=0;
+      Audio8.shotRelease();
+      if(made){ Audio8.swish(); if(ft.shooter.team==='home') Game.scoreHome++; else Game.scoreAway++;
+        if(ft.shooter.isUser){ Game.stats.points++; }
+        addFloat(attackingHoopX(ft.shooter.team), COURT.hoopY-60, "+1", '#ffd166', 18);
+      } else Audio8.rimMiss();
+    }
+  } else if(ft.state==='shot'){
+    ft.timer+=dt;
+    if(ft.timer>0.7){
+      ft.remaining--;
+      if(ft.remaining>0){ ft.state='aim'; ft.meter=0; ft.dir=1; ft.timer=0; }
+      else {
+        // done → other team inbounds
+        const off=ft.shooter.team;
+        Game.freeThrow=null;
+        const other = off==='home'?Game.away:Game.home;
+        attachBall(other[0]);
+        Game.phase='live';
+      }
+    }
+  }
+}
+
+/* alternate steal used by P2 / specials (mirrors attemptSteal but for any player) */
+function attemptStealBy(u, forcedChance){
+  if(Game.phase!=='live') return;
+  const bh=Game.ball.holder;
+  if(!bh || bh.team===u.team) return;
+  const d=Math.sqrt(dist2(u,bh));
+  const radius = forcedChance? 110 : 60;
+  if(d>radius) return;
+  Audio8.squeak();
+  const chance = forcedChance!=null ? forcedChance : 0.28;
+  if(Math.random()<chance){
+    Audio8.steal(); attachBall(u);
+    addFloat(u.x,u.y-90,"STEAL!", '#4ade80', 16);
+  } else if(Math.random()<0.28){
+    // reaching in → foul
+    commitFoul(bh.team, bh, false);
+  }
 }
 
 /* ---------------- shooting ---------------- */
@@ -1347,6 +1822,8 @@ function resolveShot(){
       gainXP(pts*8);
       checkSponsor();
     }
+    // build the special meter for the scoring side
+    chargeSpecial(shooter.team, b.isThree?26:20);
     if(Game.pendingAssist && shooter.team==='home' && !shooter.isUser){
       Game.stats.assists++; gainXP(6); Game.pendingAssist=null;
     }
@@ -1471,8 +1948,11 @@ function attemptSteal(user){
   if(Math.random()<chance){
     Audio8.steal();
     Game.stats.steals++; gainXP(10);
+    chargeSpecial(user.team, 22);
     attachBall(user);
     addFloat(user.x, user.y-90, "STEAL!", '#4ade80', 18);
+  } else if(Math.random()<0.22){
+    commitFoul(bh.team, bh, false);   // reach-in foul on a missed swipe
   }
 }
 
@@ -1499,7 +1979,7 @@ function checkSponsor(){
 /* ---------------- AI ---------------- */
 function updateAI(dt){
   Game.all.forEach(p=>{
-    if(p.isUser) return;
+    if(p.isUser || p.isUser2) return;
     if(Game.phase==='inbound' && p===Game.inbounder) return;
     if(p.stunTimer>0){ p.stunTimer-=dt; p.moving=false; return; }
     if(p.buffTimer>0){ p.buffTimer-=dt; if(p.buffTimer<=0) p.buffed=false; }
@@ -1529,6 +2009,27 @@ function updateAI(dt){
       const slot = SLOTS[p.role] || SLOTS.SF;
       tx = hx + (hx===COURT.hoopRightX ? -slot.dist : slot.dist);
       ty = COURT.hoopY + slot.yOff;
+      // a called play repositions teammates
+      if(Game.playbook && Game.playbook.team===p.team){
+        const toHoop = hx===COURT.hoopRightX ? -1 : 1;
+        if(Game.playbook.kind==='iso'){
+          // clear out: everyone but the handler spaces to the far side
+          tx = hx + toHoop*Math.max(slot.dist,300);
+          ty = COURT.hoopY + (p.role==='SG'?-160:p.role==='SF'?160:p.role==='PF'?-120:120);
+        } else if(Game.playbook.kind==='pnr'){
+          // the big sets a screen near the handler then rolls to the rim
+          if(p.role==='C'||p.role==='PF'){
+            const bh=Game.ball.holder;
+            if(bh){ tx = bh.x + toHoop*30; ty = bh.y - 20 + (p.role==='C'?40:-40); }
+            if(Math.hypot(p.x-hx,p.y-COURT.hoopY)<200){ tx=hx+toHoop*60; ty=COURT.hoopY; }
+          }
+        } else if(Game.playbook.kind==='fastbreak'){
+          // everyone sprints toward the rim
+          tx = hx + toHoop*(80+slot.dist*0.3);
+          ty = COURT.hoopY + slot.yOff*0.5;
+          speed *= 1.35;
+        }
+      }
     } else {
       const mine = p.team==='home'?Game.home:Game.away;
       const opp  = p.team==='home'?Game.away:Game.home;
@@ -1646,13 +2147,87 @@ function render(){
 
   drawScoreboard();
   drawStamina();
-  if(Game.shotMeter.active) drawMeter();
+  drawSpecialMeters();
+  if(Game.shotMeter.active) drawMeter(Game.shotMeter, Game.user, false);
+  if(Game.versus && Game.shotMeter2.active) drawMeter(Game.shotMeter2, Game.user2, true);
   if(Game.shotPopup) drawPopup();
+  if(Game.freeThrow) drawFreeThrow();
+  if(Game.banner) drawBanner();
 
   ctx.fillStyle='rgba(255,255,255,0.5)';
-  ctx.font='11px monospace';
+  ctx.font='10px monospace';
   ctx.textAlign='left';
-  ctx.fillText('WASD: Move  SHIFT: Sprint  SPACE: Shoot/Jump  X: Pass/Steal  M: '+(Audio8._muted?'Unmute':'Mute'), 10, canvas.height-8);
+  if(Game.versus){
+    ctx.fillStyle=Game.teamHome.secondary;
+    ctx.fillText('P1: WASD move · Shift sprint · Space shoot · X pass/steal · C special · 1/2/3 plays', 10, canvas.height-20);
+    ctx.fillStyle=Game.teamAway.secondary;
+    ctx.fillText('P2: Arrows move · RShift sprint · / shoot · . pass/steal · RCtrl special', 10, canvas.height-8);
+  } else {
+    ctx.fillText('WASD Move · SHIFT Sprint · SPACE Shoot/Jump · X Pass/Steal · C Special · 1/2/3 Plays · M '+(Audio8._muted?'Unmute':'Mute'), 10, canvas.height-8);
+  }
+}
+
+function drawBanner(){
+  const b=Game.banner;
+  const a = Math.min(1, b.t*2);
+  ctx.save();
+  ctx.globalAlpha=a;
+  ctx.fillStyle='rgba(10,15,25,0.85)';
+  ctx.fillRect(0, canvas.height/2-30, canvas.width, 60);
+  ctx.fillStyle='#ffd166';
+  ctx.font='bold 30px monospace';
+  ctx.textAlign='center';
+  ctx.fillText(b.text, canvas.width/2, canvas.height/2+10);
+  ctx.restore();
+  ctx.textAlign='left';
+}
+
+function drawSpecialMeters(){
+  // P1 special (bottom-left, above stamina)
+  drawSpecialBar(12, canvas.height-58, Game.special, Game.teamHome.secondary, 'SPECIAL [C]');
+  if(Game.versus){
+    drawSpecialBar(canvas.width-132, canvas.height-58, Game.special2, Game.teamAway.secondary, 'P2 [RCtrl]');
+    // P2 stamina bottom-right
+    const w=120,h=10,x=canvas.width-132,y=canvas.height-34;
+    ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(x-3,y-3,w+6,h+6);
+    ctx.fillStyle='#1a2438'; ctx.fillRect(x,y,w,h);
+    const f=Game.stamina2/100;
+    ctx.fillStyle=f>0.5?'#34d399':f>0.25?'#ffd166':'#f87171'; ctx.fillRect(x,y,w*f,h);
+    ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.font='bold 9px monospace';
+    ctx.fillText('P2 STAMINA', x, y-6);
+  }
+}
+function drawSpecialBar(x,y,val,col,label){
+  const w=120,h=8;
+  ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(x-3,y-3,w+6,h+6);
+  ctx.fillStyle='#1a2438'; ctx.fillRect(x,y,w,h);
+  ctx.fillStyle= val>=100 ? '#ffd166' : col;
+  ctx.fillRect(x,y,w*(val/100),h);
+  ctx.fillStyle= val>=100 ? '#ffd166' : 'rgba(255,255,255,0.7)';
+  ctx.font='bold 9px monospace';
+  ctx.fillText(val>=100?'★ '+label+' READY':label, x, y-5);
+}
+
+function drawFreeThrow(){
+  const ft=Game.freeThrow;
+  ctx.fillStyle='rgba(10,15,25,0.6)';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='#ffd166'; ctx.font='bold 22px monospace'; ctx.textAlign='center';
+  ctx.fillText(`FREE THROW  (${ft.remaining} left)`, canvas.width/2, 120);
+  if(ft.state==='aim'){
+    const isHuman = ft.shooter.isUser||ft.shooter.isUser2;
+    ctx.fillStyle='#eaf0f8'; ctx.font='13px monospace';
+    ctx.fillText(isHuman? `Tap ${ft.shooter.isUser?'SPACE':'/'} in the green to sink it` : 'Shooting…', canvas.width/2, 150);
+    const bw=200,bh=18,bx=canvas.width/2-bw/2,by=170;
+    ctx.fillStyle='#1a2438'; ctx.fillRect(bx,by,bw,bh);
+    ctx.fillStyle='rgba(52,211,153,0.5)'; ctx.fillRect(bx+bw*0.42,by,bw*0.16,bh);
+    ctx.fillStyle='#ffd166'; ctx.fillRect(bx+ft.meter*bw-2,by-3,4,bh+6);
+    ctx.strokeStyle='#ff7a29'; ctx.lineWidth=2; ctx.strokeRect(bx,by,bw,bh);
+  } else {
+    ctx.fillStyle=ft.made?'#34d399':'#f87171'; ctx.font='bold 26px monospace';
+    ctx.fillText(ft.made?'SWISH!':'MISS', canvas.width/2, 175);
+  }
+  ctx.textAlign='left';
 }
 
 function drawCourt(){
@@ -1801,6 +2376,10 @@ function drawPlayerSpr(p){
     ctx.strokeStyle='#34d399'; ctx.lineWidth=2;
     ctx.strokeRect(Math.round(p.x-w*0.4), Math.round(p.y-6), Math.round(w*0.8), 10);
   }
+  if(p.isUser2){
+    ctx.strokeStyle='#22d3ee'; ctx.lineWidth=2;
+    ctx.strokeRect(Math.round(p.x-w*0.4), Math.round(p.y-6), Math.round(w*0.8), 10);
+  }
   if(p.buffed){
     ctx.strokeStyle='#ffd166'; ctx.lineWidth=2;
     ctx.strokeRect(ox-2, oy-2, w+4, h+4);
@@ -1844,7 +2423,14 @@ function drawPlayerSpr(p){
     ctx.fillStyle='#34d399';
     ctx.font='bold 11px monospace';
     ctx.textAlign='center';
-    ctx.fillText(S.player.name, p.x, oy-8);
+    ctx.fillText(Game.versus?'P1':S.player.name, p.x, oy-8);
+    ctx.textAlign='left';
+  }
+  if(p.isUser2){
+    ctx.fillStyle='#22d3ee';
+    ctx.font='bold 11px monospace';
+    ctx.textAlign='center';
+    ctx.fillText('P2', p.x, oy-8);
     ctx.textAlign='left';
   }
 }
@@ -1891,12 +2477,15 @@ function drawScoreboard(){
   ctx.font='bold 14px monospace'; ctx.fillText(Game.teamAway.abbr, bx+bw-43, 18);
   ctx.font='bold 19px monospace'; ctx.fillText(String(Game.scoreAway), bx+bw-43, 38);
   ctx.fillStyle='#ffd166';
-  ctx.font='bold 13px monospace'; ctx.fillText(`Q${Game.quarter}`, bx+bw/2-52, 18);
-  ctx.font='bold 15px monospace'; ctx.fillText(`${Math.max(0,Game.quarterTime).toFixed(0)}s`, bx+bw/2-52, 38);
-  ctx.fillStyle='#8fa0b8';
-  ctx.font='10px monospace';
-  ctx.fillText(`P${Game.stats.points} R${Game.stats.rebounds} A${Game.stats.assists}`, bx+bw/2+45, 18);
-  ctx.fillText(`S${Game.stats.steals} B${Game.stats.blocks}`, bx+bw/2+45, 36);
+  ctx.font='bold 13px monospace'; ctx.fillText(`Q${Game.quarter} ${Math.max(0,Game.quarterTime).toFixed(0)}s`, bx+bw/2, 17);
+  // shot clock — turns red under 5s
+  ctx.fillStyle = Game.shotClock<5 ? '#f87171' : '#22d3ee';
+  ctx.font='bold 17px monospace'; ctx.fillText(`:${Math.ceil(Math.max(0,Game.shotClock)).toString().padStart(2,'0')}`, bx+bw/2, 38);
+  // team fouls
+  ctx.fillStyle='#8fa0b8'; ctx.font='9px monospace'; ctx.textAlign='left';
+  ctx.fillText(`FLS ${Game.foulsHome}`, bx+90, 40);
+  ctx.textAlign='right';
+  ctx.fillText(`FLS ${Game.foulsAway}`, bx+bw-90, 40);
   ctx.textAlign='left';
 }
 
@@ -1913,23 +2502,23 @@ function drawStamina(){
   ctx.fillText('STAMINA', x, y-6);
 }
 
-function drawMeter(){
+function drawMeter(meter, shooter, isP2){
   const barW=130, barH=14;
-  const bx=canvas.width/2-barW/2, by=canvas.height-64;
+  const cx = isP2 ? canvas.width*0.75 : (Game.versus? canvas.width*0.25 : canvas.width/2);
+  const bx=cx-barW/2, by=canvas.height-78;
   ctx.fillStyle='rgba(0,0,0,0.7)';
   ctx.fillRect(bx-4,by-4,barW+8,barH+8);
   ctx.fillStyle='#1a2438'; ctx.fillRect(bx,by,barW,barH);
   ctx.fillStyle='rgba(52,211,153,0.55)';
-  ctx.fillRect(bx+barW*0.45, by, barW*0.2, barH);
+  ctx.fillRect(bx+barW*0.42, by, barW*0.16, barH);
   ctx.fillStyle='#ffd166';
-  ctx.fillRect(bx+Game.shotMeter.t*barW-2, by-3, 4, barH+6);
+  ctx.fillRect(bx+meter.t*barW-2, by-3, 4, barH+6);
   ctx.strokeStyle='#ff7a29'; ctx.lineWidth=2; ctx.strokeRect(bx,by,barW,barH);
-  // live shot chance readout that follows the meter position
-  const { chance } = computeShotChance(Game.home[0], Math.max(0,Math.min(1,Game.shotMeter.t)));
+  const { chance } = computeShotChance(shooter, Math.max(0,Math.min(1,meter.t)));
   ctx.fillStyle = chance>0.6?'#34d399':chance>0.35?'#ffd166':'#f87171';
   ctx.font='bold 14px monospace';
   ctx.textAlign='center';
-  ctx.fillText(`${Math.round(chance*100)}%`, canvas.width/2, by-10);
+  ctx.fillText(`${Math.round(chance*100)}%`, cx, by-10);
   ctx.textAlign='left';
 }
 
@@ -1962,6 +2551,19 @@ function endGame(){
   Game.over=true;
   Audio8.buzzer();
   const won = Game.scoreHome > Game.scoreAway;
+
+  // LOCAL VERSUS: show a winner banner then back to the menu
+  if(S.mode==='versus'){
+    const p1win = Game.scoreHome>Game.scoreAway;
+    document.getElementById('mvpText').textContent =
+      `${p1win?'Player 1':'Player 2'} wins! Final: ${Game.teamHome.abbr} ${Game.scoreHome} — ${Game.scoreAway} ${Game.teamAway.abbr}.`;
+    document.querySelector('#screen-trophy h1').textContent = p1win?'🏆 PLAYER 1 WINS':'🏆 PLAYER 2 WINS';
+    document.getElementById('btnPostChamp').textContent='Back to Menu';
+    Audio8.badge();
+    drawTrophyArt();
+    showScreen('screen-trophy');
+    return;
+  }
 
   // FRANCHISE MODE: report to the dashboard, no MVP career progression
   if(S.mode==='franchise'){
@@ -1997,11 +2599,7 @@ function endGame(){
   }
 }
 
-function showTrophy(){
-  showScreen('screen-trophy');
-  document.getElementById('mvpText').textContent =
-    `${S.player.name} led the ${S.team.name} to the championship! Final: ${Game.scoreHome}-${Game.scoreAway}. The city will remember this run — but a new season awaits.`;
-  Audio8.badge();
+function drawTrophyArt(){
   const tc=document.getElementById('trophyCanvas');
   const t=tc.getContext('2d');
   t.imageSmoothingEnabled=false;
@@ -2022,6 +2620,16 @@ function showTrophy(){
   t.fillStyle='#fff'; t.font='bold 14px monospace'; t.textAlign='center';
   t.fillText('MVP',150,90);
   t.textAlign='left';
+}
+
+function showTrophy(){
+  showScreen('screen-trophy');
+  document.querySelector('#screen-trophy h1').textContent = '🏆 FINALS MVP 🏆';
+  document.getElementById('btnPostChamp').textContent = 'Continue My Journey';
+  document.getElementById('mvpText').textContent =
+    `${S.player.name} led the ${S.team.name} to the championship! Final: ${Game.scoreHome}-${Game.scoreAway}. The city will remember this run — but a new season awaits.`;
+  Audio8.badge();
+  drawTrophyArt();
 }
 
 })();
