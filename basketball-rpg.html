@@ -501,7 +501,7 @@ const BODY_STAND = [
 "...OHhhHHHHHHO...",
 "...OHhHHHHHHHO...",
 "...OHHHHHHHHHO...",
-"...OHSSSSSSSHO...",
+"...OHSHSSSHSHO...",
 "...OSSESSSESSO...",
 "...OSSSSSSSSSO...",
 "...OsSSSSMSSsO...",
@@ -522,13 +522,21 @@ const BODY_STAND = [
 "...OWWWO.OWWWO...",
 "...OOOOO.OOOOO...",
 ];
-// run frame: legs spread wider
-const LEGS_RUN = [
+// run frame A: legs spread wide (mid-stride)
+const LEGS_RUN_A = [
 "....OkkO.OkkO....",
 "...OSSO...OSSO...",
 "...OssO...OssO...",
 "..OWWWO...OWWWO..",
 "..OOOOO...OOOOO..",
+];
+// run frame B: feet together (gather step)
+const LEGS_RUN_B = [
+"....OkkO.OkkO....",
+".....OSSOSSO.....",
+".....OssOssO.....",
+"....OWWWWWWO.....",
+"....OOOOOOOO.....",
 ];
 const HAIR_AFRO = [
 ".....OOOOOOO.....",
@@ -538,15 +546,39 @@ const HAIR_AFRO = [
 "..OHHHHHHHHHHHO..",
 ];
 const ROW_HEADBAND = "...OTTTTTTTTTO...";
+// narrower torso used while arms are raised (shoot / block poses)
+const TORSO_SHOOT = [
+"..OSOJJJJJJJOSO..",
+"..OSOJjJJJjJOSO..",
+"..OSOJJJJJJJOSO..",
+"..OOOJJJJJJJOOO..",
+"....OJJJJJJJO....",
+];
 
 const SPRITE_W = 17, SPRITE_H = 25;
+
+// raise arms alongside the head: both sides for a shot, one side for a block
+function raiseArms(grid, both){
+  const g = grid.map(r=>r.split(''));
+  const sides = both ? [[1,2],[15,14]] : [[15,14]];
+  sides.forEach(([oc,sc])=>{
+    for(let r=4;r<=10;r++){ g[r][oc]='O'; g[r][sc]='S'; }
+    g[3][oc]='O'; g[3][sc]='S';
+    g[2][sc]='O';
+  });
+  return g.map(r=>r.join(''));
+}
 
 function buildSprite(opts){
   let g = BODY_STAND.slice();
   if(opts.afro){ g = HAIR_AFRO.concat(g.slice(5)); }
   if(opts.headband){ g = g.slice(); g[5] = ROW_HEADBAND; }
-  const run = g.slice(0,20).concat(LEGS_RUN);
-  return { stand:g, run };
+  const runA = g.slice(0,20).concat(LEGS_RUN_A);
+  const runB = g.slice(0,20).concat(LEGS_RUN_B);
+  const armsBase = g.slice(0,11).concat(TORSO_SHOOT, g.slice(16));
+  const shoot = raiseArms(armsBase, true);
+  const block = raiseArms(armsBase, false);
+  return { stand:g, runA, runB, shoot, block };
 }
 
 const SKINS = [
@@ -605,20 +637,19 @@ const DIGITS = {
 };
 
 /* =========================================================================
-   GAMEPLAY — top-down vertical court, camera pans along its length
+   GAMEPLAY — Hoop Land-style side angle: horizontal court, camera pans left/right
 ========================================================================= */
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
 const COURT = {
-  W: 720,           // court width (across floor)
-  H: 1600,          // court length (vertical)
-  X: 120,           // left offset of court within the 960-wide canvas
-  inLeft: 30, inRight: 690,
-  inTop: 40, inBottom: 1560,
-  hoopTopY: 105, hoopBotY: 1495,
-  hoopX: 360
+  W: 2000,               // court length (horizontal)
+  bandTop: 30, bandBottom: 510,   // floor band on screen
+  inLeft: 50, inRight: 1950,
+  inTop: 62, inBottom: 478,
+  hoopLeftX: 95, hoopRightX: 1905,
+  hoopY: 270
 };
 const SC = 4; // sprite pixel scale
 
@@ -632,22 +663,22 @@ window.addEventListener('keyup', e=>{ KEYS[e.code]=false; });
 let Game = null;
 
 const ROLES = ['PG','SG','SF','PF','C'];
-// slots: vertical distance from the attacking hoop + horizontal offset from court center
+// slots: horizontal distance back from the attacking hoop + vertical offset from hoop line
 const SLOTS = {
-  PG:{ dist:340, xOff:0 },
-  SG:{ dist:260, xOff:-190 },
-  SF:{ dist:260, xOff:190 },
-  PF:{ dist:150, xOff:-120 },
-  C: { dist:80,  xOff:110 }
+  PG:{ dist:380, yOff:0 },
+  SG:{ dist:300, yOff:-140 },
+  SF:{ dist:300, yOff:140 },
+  PF:{ dist:170, yOff:-100 },
+  C: { dist:90,  yOff:85 }
 };
 
 function makePlayer(opts){
   const e = Object.assign({
-    x:COURT.hoopX, y:COURT.H/2,
+    x:COURT.W/2, y:COURT.hoopY,
     team:'home', role:'PG', isUser:false,
     facing:1, moving:false,
-    speed:170,
     jumpH:0, jumping:false, jumpVel:0,
+    shootPose:0,
     stunTimer:0, aiTimer:0, animT:0, dribbleT:0,
     buffed:false, buffTimer:0,
     scale:1,
@@ -660,6 +691,8 @@ function makePlayer(opts){
   return e;
 }
 
+function attackingHoopX(team){ return team==='home' ? COURT.hoopRightX : COURT.hoopLeftX; }
+
 function startGame(){
   Audio8.ensureRunning();
   const round = S.season.round;
@@ -668,10 +701,10 @@ function startGame(){
   const diff = 1 + round*0.18;
 
   const home=[], away=[];
-  // home attacks the TOP hoop; away attacks the BOTTOM hoop
+  // home attacks the RIGHT hoop; away attacks the LEFT hoop
   const user = makePlayer({
     isUser:true, team:'home', role:'PG',
-    x:COURT.hoopX, y: COURT.hoopTopY + SLOTS.PG.dist,
+    x: COURT.hoopRightX - SLOTS.PG.dist, y: COURT.hoopY,
     scale: heightScale(), hairStyle:'headband'
   });
   home.push(user);
@@ -679,15 +712,15 @@ function startGame(){
     const slot = SLOTS[ROLES[i+1]] || SLOTS.SG;
     home.push(makePlayer({
       team:'home', role:ROLES[i+1],
-      x:COURT.hoopX + slot.xOff, y: COURT.hoopTopY + slot.dist
+      x: COURT.hoopRightX - slot.dist, y: COURT.hoopY + slot.yOff
     }));
   }
-  // away starts on defense near home's attacking end, each matched to a home player
+  // away starts on defense, matched to home players, spaced off them
   for(let i=0;i<5;i++){
     const mark = home[i];
     away.push(makePlayer({
       team:'away', role:ROLES[i],
-      x: mark.x + 30, y: mark.y + 130,
+      x: mark.x + 130, y: mark.y + 25,
       aiTimer: 2 // no instant steal rolls at tip-off
     }));
   }
@@ -697,8 +730,9 @@ function startGame(){
     teamHome: S.team, teamAway: opponent,
     ball:{ x:user.x, y:user.y, h:30, holder:user, inAir:false, loose:false,
            arcT:0, arcDur:0, sx:0, sy:0, tx:0, ty:0, made:false, isThree:false,
-           shooter:null, targetHoop:null, vy:0, vh:0, snap:true },
-    camY: 0,
+           shooter:null, vx:0, vy:0, vh:0, snap:true },
+    camX: 0,
+    stamina: 100,
     quarter:1, quarterTime:42,
     scoreHome:0, scoreAway:0,
     diff,
@@ -706,7 +740,7 @@ function startGame(){
     shotMeter:{ active:false, t:0, holding:false },
     shotPopup:null,
     floatTexts:[],
-    phase:'live', inbounder:null, inboundTargetY:0,
+    phase:'live', inbounder:null, inboundTargetX:0,
     pendingAssist:null,
     lastFrame: performance.now(),
     over:false,
@@ -728,10 +762,9 @@ function attachBall(p){
 function dist2(a,b){ const dx=a.x-b.x, dy=a.y-b.y; return dx*dx+dy*dy; }
 function clampP(p, allowOOB){
   const m = allowOOB ? 70 : 0;
-  p.x = Math.max(COURT.inLeft, Math.min(COURT.inRight, p.x));
-  p.y = Math.max(COURT.inTop - m, Math.min(COURT.inBottom + m, p.y));
+  p.x = Math.max(COURT.inLeft - m, Math.min(COURT.inRight + m, p.x));
+  p.y = Math.max(COURT.inTop, Math.min(COURT.inBottom, p.y));
 }
-function attackingHoopY(team){ return team==='home' ? COURT.hoopTopY : COURT.hoopBotY; }
 
 /* ---------------- game loop ---------------- */
 function gameLoop(now){
@@ -752,7 +785,12 @@ function update(dt){
   updateCamera(dt);
   updateFloatTexts(dt);
   updateShotPopup(dt);
+  updatePoses(dt);
   updateClock(dt);
+}
+
+function updatePoses(dt){
+  Game.all.forEach(p=>{ if(p.shootPose>0) p.shootPose-=dt; });
 }
 
 function updateClock(dt){
@@ -762,14 +800,14 @@ function updateClock(dt){
       Game.quarter++;
       Game.quarterTime = 42;
       Audio8.buzzer();
-      addFloat(COURT.hoopX, Game.ball.y, `END OF Q${Game.quarter-1}`, '#ffd166', 22);
+      addFloat(Game.ball.x, COURT.hoopY-80, `END OF Q${Game.quarter-1}`, '#ffd166', 22);
     } else {
       endGame();
     }
   }
 }
 
-/* ---------------- input ---------------- */
+/* ---------------- input (sprint + stamina) ---------------- */
 function updateInput(dt){
   const user = Game.home[0];
   if(user.stunTimer>0){ user.stunTimer-=dt; return; }
@@ -777,17 +815,22 @@ function updateInput(dt){
   let dx=0, dy=0;
   if(KEYS['ArrowLeft']||KEYS['KeyA']) dx-=1;
   if(KEYS['ArrowRight']||KEYS['KeyD']) dx+=1;
-  if(KEYS['ArrowUp']||KEYS['KeyW']) dy-=1;   // up-court, toward the hoop you attack
+  if(KEYS['ArrowUp']||KEYS['KeyW']) dy-=1;
   if(KEYS['ArrowDown']||KEYS['KeyS']) dy+=1;
 
-  const spd = 130 + (S.player.attrs.speed + heightSpdBonus())*13;
   user.moving = (dx!==0||dy!==0);
+  const wantSprint = (KEYS['ShiftLeft']||KEYS['ShiftRight']) && user.moving && Game.stamina>2;
+  if(wantSprint){ Game.stamina = Math.max(0, Game.stamina - 30*dt); }
+  else { Game.stamina = Math.min(100, Game.stamina + 16*dt); }
+  const sprintMult = wantSprint ? 1.55 : 1;
+
+  const spd = (150 + (S.player.attrs.speed + heightSpdBonus())*14) * sprintMult;
   if(user.moving){
     const len = Math.hypot(dx,dy);
     user.x += (dx/len)*spd*dt;
     user.y += (dy/len)*spd*dt;
     if(dx!==0) user.facing = dx>0?1:-1;
-    user.animT += dt*9;
+    user.animT += dt*(wantSprint?13:9);
     if(dx!==0){
       if(Game.lastMoveDirX!==0 && Math.sign(dx)!==Math.sign(Game.lastMoveDirX)) Game.dirChangeTimer = 0.25;
       Game.lastMoveDirX = dx;
@@ -808,7 +851,7 @@ function updateInput(dt){
 
   if(user.hasBall && user.moving){
     user.dribbleSnd = (user.dribbleSnd||0)-dt;
-    if(user.dribbleSnd<=0){ Audio8.dribble(); user.dribbleSnd=0.3; }
+    if(user.dribbleSnd<=0){ Audio8.dribble(); user.dribbleSnd = wantSprint?0.22:0.3; }
   }
 
   if(user.hasBall){
@@ -834,7 +877,6 @@ function updateInput(dt){
     user.jumpVel -= 720*dt;
     user.jumpH += user.jumpVel*dt;
     if(user.jumpH<=0){ user.jumpH=0; user.jumping=false; }
-    // block attempt: if ball in air nearby and user is up
     const b = Game.ball;
     if(b.inAir && b.shooter && b.shooter.team!=='home' && user.jumpH>30){
       const d = Math.hypot(b.x-user.x, b.y-user.y);
@@ -857,32 +899,35 @@ function updateInput(dt){
 }
 
 /* ---------------- shooting ---------------- */
-function releaseShot(shooter, meterT){
-  const hoopY = attackingHoopY(shooter.team);
+function computeShotChance(shooter, meterT){
+  const hx = attackingHoopX(shooter.team);
   const peak = 1 - Math.abs(meterT-0.55)*2.2;
   const timing = Math.max(0, Math.min(1, peak));
   const shootAttr = shooter.isUser ? S.player.attrs.shooting : (5+Game.diff*2);
   let chance = 0.28 + shootAttr*0.055 + timing*0.45;
-
-  const d = Math.hypot(shooter.x-COURT.hoopX, shooter.y-hoopY);
-  const isThree = d > 300;
+  const d = Math.hypot(shooter.x-hx, shooter.y-COURT.hoopY);
+  const isThree = d > 320;
   if(isThree){
     chance -= 0.16;
     if(shooter.isUser && S.player.badges.includes('shooting')) chance += 0.22;
   }
   if(shooter.buffed) chance += 0.08;
   chance = Math.max(0.03, Math.min(0.97, chance));
+  return { chance, isThree, hx };
+}
 
+function releaseShot(shooter, meterT){
+  const { chance, isThree, hx } = computeShotChance(shooter, meterT);
   const b = Game.ball;
   b.inAir=true; b.loose=false; b.holder=null; b.blockedThisShot=false;
   shooter.hasBall=false;
+  shooter.shootPose = 0.55;
   b.shooter=shooter;
   b.made = Math.random()<chance;
   b.isThree = isThree;
   b.sx=shooter.x; b.sy=shooter.y;
-  b.tx=COURT.hoopX; b.ty=hoopY;
+  b.tx=hx; b.ty=COURT.hoopY;
   b.arcT=0; b.arcDur=0.85;
-
   if(shooter.isUser) showPopup(`${Math.round(chance*100)}% Chance!`, chance>0.6?'#34d399':chance>0.35?'#ffd166':'#f87171');
   Audio8.shotRelease();
 }
@@ -897,10 +942,10 @@ function updateBall(dt){
   const b = Game.ball;
   if(b.holder){
     const h = b.holder;
-    h.dribbleT += dt*8;
+    h.dribbleT += dt*(h.moving?10:7);
     const bounce = Math.abs(Math.sin(h.dribbleT)) * 42;
     const tx = h.x + h.facing*40;
-    const ty = h.y + 6;
+    const ty = h.y + 4;
     if(b.snap){ b.x=tx; b.y=ty; b.snap=false; }
     else {
       const l = 1 - Math.pow(0.0005, dt);
@@ -947,13 +992,13 @@ function resolveShot(){
     if(Game.pendingAssist && shooter.team==='home' && !shooter.isUser){
       Game.stats.assists++; gainXP(6); Game.pendingAssist=null;
     }
-    addFloat(b.tx, b.ty+60, `+${pts}`, '#ffd166', 20);
+    addFloat(b.tx, b.ty-60, `+${pts}`, '#ffd166', 20);
     startInbound(shooter.team);
   } else {
     Audio8.rimMiss();
     b.loose=true;
-    b.x = b.tx + (Math.random()*80-40);
-    b.y = b.ty + (b.ty<COURT.H/2 ? 40+Math.random()*70 : -(40+Math.random()*70));
+    b.x = b.tx + (b.tx<COURT.W/2 ? 40+Math.random()*70 : -(40+Math.random()*70));
+    b.y = b.ty + (Math.random()*120-60);
     b.h = 90; b.vh = -30;
     b.vx = Math.random()*60-30;
     b.vy = Math.random()*60-30;
@@ -965,23 +1010,24 @@ function resolveShot(){
 function startInbound(scoringTeam){
   const other = scoringTeam==='home' ? Game.away : Game.home;
   const inb = other[0];
-  const scoredTop = attackingHoopY(scoringTeam)===COURT.hoopTopY;
-  inb.x = COURT.hoopX - 120;
-  inb.y = scoredTop ? COURT.inTop - 55 : COURT.inBottom + 55;
+  const scoredLeft = attackingHoopX(scoringTeam)===COURT.hoopLeftX;
+  inb.y = COURT.hoopY + 90;
+  inb.x = scoredLeft ? COURT.inLeft - 55 : COURT.inRight + 55;
   attachBall(inb);
   Game.phase='inbound';
   Game.inbounder=inb;
-  Game.inboundTargetY = scoredTop ? COURT.inTop + 60 : COURT.inBottom - 60;
+  Game.inboundTargetX = scoredLeft ? COURT.inLeft + 70 : COURT.inRight - 70;
 }
 function updateInbound(dt){
   if(Game.phase!=='inbound' || !Game.inbounder) return;
   const p = Game.inbounder;
   if(!p.isUser){
-    const dir = Math.sign(Game.inboundTargetY - p.y) || 1;
-    p.y += dir*140*dt;
-    p.moving = true; p.animT += dt*9;
+    const dir = Math.sign(Game.inboundTargetX - p.x) || 1;
+    p.x += dir*180*dt;
+    p.facing = dir;
+    p.moving = true; p.animT += dt*10;
   }
-  if(p.y>=COURT.inTop && p.y<=COURT.inBottom){
+  if(p.x>=COURT.inLeft && p.x<=COURT.inRight){
     Game.phase='live';
     Game.inbounder=null;
   }
@@ -1075,38 +1121,36 @@ function updateAI(dt){
 
     const b = Game.ball;
     const offense = b.holder ? b.holder.team : null;
-    const hoopY = attackingHoopY(p.team);
+    const hx = attackingHoopX(p.team);
 
     let tx=p.x, ty=p.y;
+    let speed = 200 + Game.diff*25;
 
     if(p.hasBall){
-      const dHoop = Math.hypot(p.x-COURT.hoopX, p.y-hoopY);
-      // drive toward the hoop
-      const dirY = Math.sign(hoopY - p.y)||1;
-      tx = COURT.hoopX + Math.sin(performance.now()/700 + p.y)*120;
-      ty = p.y + dirY*60;
-      if(dHoop<240 && p.aiTimer<=0){
-        p.aiTimer = 1.2 + Math.random();
+      const dHoop = Math.hypot(p.x-hx, p.y-COURT.hoopY);
+      const dirX = Math.sign(hx - p.x)||1;
+      tx = p.x + dirX*80;
+      ty = COURT.hoopY + Math.sin(performance.now()/700 + p.x)*110;
+      speed = 240 + Game.diff*25;
+      if(dHoop<260 && p.aiTimer<=0){
+        p.aiTimer = 1.1 + Math.random();
         releaseShot(p, 0.4+Math.random()*0.35);
       } else if(p.aiTimer<=0 && Math.random()<0.3){
-        p.aiTimer = 1.5;
+        p.aiTimer = 1.4;
         doPass(p);
       }
     } else if(p.team===offense){
-      // fixed formation slot around own attacking hoop — no stacking
       const slot = SLOTS[p.role] || SLOTS.SF;
-      tx = COURT.hoopX + slot.xOff;
-      ty = hoopY + (hoopY===COURT.hoopTopY ? slot.dist : -slot.dist);
+      tx = hx + (hx===COURT.hoopRightX ? -slot.dist : slot.dist);
+      ty = COURT.hoopY + slot.yOff;
     } else {
-      // index-matched man defense: defender i guards opponent i
       const mine = p.team==='home'?Game.home:Game.away;
       const opp  = p.team==='home'?Game.away:Game.home;
       const mark = opp[mine.indexOf(p)] || opp[0];
-      const defHoopY = attackingHoopY(p.team==='home'?'away':'home');
-      // stand between the mark and the hoop they attack
-      const dirToHoop = Math.sign(defHoopY - mark.y)||1;
-      tx = mark.x + 20;
-      ty = mark.y + dirToHoop*100;
+      const defHx = attackingHoopX(p.team==='home'?'away':'home');
+      const dirToHoop = Math.sign(defHx - mark.x)||1;
+      tx = mark.x + dirToHoop*100;
+      ty = mark.y + 15;
       const d2m = dist2(p,mark);
       if(Game.phase==='live' && mark.hasBall && d2m<65*65 && p.aiTimer<=0){
         p.aiTimer = 1.4;
@@ -1120,6 +1164,7 @@ function updateAI(dt){
         const dSh = dist2(p,{x:b.shooter.x,y:b.shooter.y});
         if(dSh<70*70 && Math.random()<0.008){
           b.made=false; b.blockedThisShot=true;
+          p.jumping=true; p.jumpVel=200; p.jumpH=Math.max(p.jumpH,1);
           Audio8.block();
           addFloat(p.x, p.y-90, "BLOCKED!", '#ff5577', 16);
         }
@@ -1128,13 +1173,18 @@ function updateAI(dt){
 
     const dx=tx-p.x, dy=ty-p.y;
     const len=Math.hypot(dx,dy)||1;
-    const spd=(150+Game.diff*25)*dt;
+    const step=speed*dt;
     p.moving = len>6;
     if(p.moving){
-      p.x += (dx/len)*Math.min(spd,len);
-      p.y += (dy/len)*Math.min(spd,len);
+      p.x += (dx/len)*Math.min(step,len);
+      p.y += (dy/len)*Math.min(step,len);
       if(Math.abs(dx)>2) p.facing = dx>0?1:-1;
-      p.animT += dt*9;
+      p.animT += dt*10;
+    }
+    if(p.jumping){
+      p.jumpVel -= 720*dt;
+      p.jumpH += p.jumpVel*dt;
+      if(p.jumpH<=0){ p.jumpH=0; p.jumping=false; }
     }
     clampP(p);
   });
@@ -1154,8 +1204,8 @@ function updateFloatTexts(dt){
   Game.floatTexts = Game.floatTexts.filter(f=>f.t<1.4);
 }
 function updateCamera(dt){
-  const target = Math.max(0, Math.min(COURT.H - canvas.height, Game.ball.y - canvas.height/2));
-  Game.camY += (target-Game.camY)*Math.min(1, dt*5);
+  const target = Math.max(0, Math.min(COURT.W - canvas.width, Game.ball.x - canvas.width/2));
+  Game.camX += (target-Game.camX)*Math.min(1, dt*6);
 }
 
 /* =========================================================================
@@ -1165,15 +1215,14 @@ function render(){
   ctx.fillStyle='#0e1524';
   ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.save();
-  ctx.translate(COURT.X, -Math.round(Game.camY));
+  ctx.translate(-Math.round(Game.camX), 0);
 
   drawCourt();
-  drawHoop(COURT.hoopTopY, true);
-  drawHoop(COURT.hoopBotY, false);
+  drawHoop(COURT.hoopLeftX, true);
+  drawHoop(COURT.hoopRightX, false);
 
   const list = Game.all.slice().sort((a,b)=>a.y-b.y);
   if(Game.ball.holder){
-    // draw ball right after its holder so it's beside them, never buried under the sprite
     list.forEach(p=>{
       drawPlayerSpr(p);
       if(p===Game.ball.holder) drawBallSpr();
@@ -1189,110 +1238,115 @@ function render(){
   ctx.restore();
 
   drawScoreboard();
+  drawStamina();
   if(Game.shotMeter.active) drawMeter();
   if(Game.shotPopup) drawPopup();
 
   ctx.fillStyle='rgba(255,255,255,0.5)';
   ctx.font='11px monospace';
   ctx.textAlign='left';
-  ctx.fillText('WASD/Arrows: Move  SPACE: Shoot/Jump  X: Pass/Steal', 10, canvas.height-8);
+  ctx.fillText('WASD/Arrows: Move  SHIFT: Sprint  SPACE: Shoot/Jump  X: Pass/Steal', 10, canvas.height-8);
 }
 
 function drawCourt(){
-  // side aprons
+  // aprons above/below the floor
   ctx.fillStyle='#132441';
-  ctx.fillRect(-COURT.X, -40, COURT.X, COURT.H+80);
-  ctx.fillRect(COURT.W, -40, COURT.X, COURT.H+80);
+  ctx.fillRect(-40, 0, COURT.W+80, COURT.bandTop);
+  ctx.fillRect(-40, COURT.bandBottom, COURT.W+80, canvas.height-COURT.bandBottom);
   // floor
   ctx.fillStyle='#e0b171';
-  ctx.fillRect(0, -40, COURT.W, COURT.H+80);
-  // plank rows (hard-edged alternating tones)
-  for(let y=-40; y<COURT.H+40; y+=16){
-    if((y/16|0)%2===0){ ctx.fillStyle='#dcab68'; ctx.fillRect(0,y,COURT.W,16); }
+  ctx.fillRect(-40, COURT.bandTop, COURT.W+80, COURT.bandBottom-COURT.bandTop);
+  // plank columns (hard-edged alternating tones running along the court)
+  for(let x=-40; x<COURT.W+40; x+=16){
+    if((x/16|0)%2===0){ ctx.fillStyle='#dcab68'; ctx.fillRect(x,COURT.bandTop,16,COURT.bandBottom-COURT.bandTop); }
   }
   // plank seams
   ctx.fillStyle='rgba(120,80,40,0.22)';
-  for(let y=-40; y<COURT.H+40; y+=16){
-    const off = ((y/16|0)%3)*90;
-    for(let x=-90+off; x<COURT.W+90; x+=270) ctx.fillRect(x,y,2,16);
+  for(let x=-40; x<COURT.W+40; x+=16){
+    const off = ((x/16|0)%3)*90;
+    for(let y=COURT.bandTop-90+off; y<COURT.bandBottom+90; y+=270) ctx.fillRect(x,y,16,2);
   }
 
   const W='#f4f0e6';
-  // boundary
   ctx.fillStyle=W;
+  // boundary
   ctx.fillRect(COURT.inLeft-4, COURT.inTop-4, COURT.inRight-COURT.inLeft+8, 4);
   ctx.fillRect(COURT.inLeft-4, COURT.inBottom, COURT.inRight-COURT.inLeft+8, 4);
   ctx.fillRect(COURT.inLeft-4, COURT.inTop-4, 4, COURT.inBottom-COURT.inTop+8);
   ctx.fillRect(COURT.inRight, COURT.inTop-4, 4, COURT.inBottom-COURT.inTop+8);
-
   // half-court line + circle
-  ctx.fillRect(COURT.inLeft, COURT.H/2-2, COURT.inRight-COURT.inLeft, 4);
+  ctx.fillRect(COURT.W/2-2, COURT.inTop, 4, COURT.inBottom-COURT.inTop);
   ctx.strokeStyle=W; ctx.lineWidth=4;
-  ctx.beginPath(); ctx.arc(COURT.hoopX, COURT.H/2, 60, 0, Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(COURT.W/2, COURT.hoopY, 60, 0, Math.PI*2); ctx.stroke();
 
-  // both ends: paint, FT circle, restricted arc, 3pt arc
-  drawEnd(COURT.inTop, 1);
-  drawEnd(COURT.inBottom, -1);
+  drawEnd(COURT.inLeft, 1);
+  drawEnd(COURT.inRight, -1);
 
-  function drawEnd(baseY, dir){
-    const paintW=200, paintH=230;
-    const px = COURT.hoopX - paintW/2;
-    const py = dir>0 ? baseY : baseY - paintH;
+  function drawEnd(baseX, dir){
+    const paintL=240, paintH=240;
+    const py = COURT.hoopY - paintH/2;
+    const px = dir>0 ? baseX : baseX - paintL;
     ctx.fillStyle='#2762c9';
-    ctx.fillRect(px, py, paintW, paintH);
+    ctx.fillRect(px, py, paintL, paintH);
     ctx.fillStyle='#1f55b2';
-    ctx.fillRect(px, dir>0?py:py+paintH-10, paintW, 10);
+    ctx.fillRect(dir>0?px:px+paintL-10, py, 10, paintH);
     ctx.strokeStyle=W; ctx.lineWidth=4;
-    ctx.strokeRect(px, py, paintW, paintH);
-    const ftY = dir>0 ? py+paintH : py;
-    ctx.beginPath(); ctx.arc(COURT.hoopX, ftY, 55, 0, Math.PI*2); ctx.stroke();
-    const hy = dir>0 ? COURT.hoopTopY : COURT.hoopBotY;
-    ctx.beginPath(); ctx.arc(COURT.hoopX, hy, 42, dir>0?0:Math.PI, dir>0?Math.PI:Math.PI*2); ctx.stroke();
-    ctx.beginPath(); ctx.arc(COURT.hoopX, hy, 300, dir>0?0.18:Math.PI+0.18, dir>0?Math.PI-0.18:Math.PI*2-0.18); ctx.stroke();
+    ctx.strokeRect(px, py, paintL, paintH);
+    const ftX = dir>0 ? px+paintL : px;
+    ctx.beginPath(); ctx.arc(ftX, COURT.hoopY, 55, 0, Math.PI*2); ctx.stroke();
+    const hxx = dir>0 ? COURT.hoopLeftX : COURT.hoopRightX;
+    ctx.beginPath(); ctx.arc(hxx, COURT.hoopY, 42, dir>0?-Math.PI/2:Math.PI/2, dir>0?Math.PI/2:Math.PI*1.5); ctx.stroke();
+    ctx.beginPath(); ctx.arc(hxx, COURT.hoopY, 320, dir>0?-Math.PI/2+0.18:Math.PI/2+0.18, dir>0?Math.PI/2-0.18:Math.PI*1.5-0.18); ctx.stroke();
   }
 }
 
-function drawHoop(hy, isTop){
-  const x=COURT.hoopX;
+function drawHoop(hx, isLeft){
   const P=(px,py,w,h,c)=>{ ctx.fillStyle=c; ctx.fillRect(px,py,w,h); };
-  const dir = isTop ? 1 : -1;
-  const baseY = isTop ? COURT.inTop : COURT.inBottom;
-  // pole from the baseline outward past court edge
-  P(x-6, isTop? baseY-58 : baseY+18, 12, 40, '#3d4757');
-  P(x-6, isTop? baseY-58 : baseY+18, 4, 40, '#2b3442');
-  // backboard between baseline and rim
-  const bbY = isTop ? hy-36 : hy+16;
-  P(x-36, bbY, 72, 20, '#241c12');
-  P(x-32, bbY+4, 64, 12, '#eef1f6');
-  P(x-14, bbY+6, 28, 10, '#241c12');
-  P(x-11, bbY+9, 22, 4, '#e8542a');
-  // rim: flat circle ring
-  ctx.fillStyle='#241c12'; ctx.beginPath(); ctx.arc(x,hy,17,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle='#e8542a'; ctx.beginPath(); ctx.arc(x,hy,14,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle='#2762c9'; ctx.beginPath(); ctx.arc(x,hy,9,0,Math.PI*2); ctx.fill();
-  // pixel net lattice on the court side of the rim
+  const y = COURT.hoopY;
+  const dir = isLeft ? 1 : -1;
+  const baseX = isLeft ? COURT.inLeft : COURT.inRight;
+  // mounting arm from beyond the baseline to the backboard
+  P(isLeft? baseX-40 : baseX+4, y-4, 36, 8, '#3d4757');
+  P(isLeft? baseX-40 : baseX+4, y-4, 36, 3, '#2b3442');
+  // backboard: tall panel between baseline and rim
+  const bbX = isLeft ? baseX-6 : baseX-8;
+  P(bbX, y-54, 14, 108, '#241c12');
+  P(bbX+3, y-50, 8, 100, '#eef1f6');
+  P(bbX+3, y-14, 8, 28, '#e8542a');
+  // rim: flat circle ring in front of the board, toward the court
+  const rimX = hx;
+  ctx.fillStyle='#241c12'; ctx.beginPath(); ctx.arc(rimX,y,17,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#e8542a'; ctx.beginPath(); ctx.arc(rimX,y,14,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#2762c9'; ctx.beginPath(); ctx.arc(rimX,y,9,0,Math.PI*2); ctx.fill();
+  // pixel net lattice hanging court-side of the rim
   ctx.fillStyle='#eef1f6';
-  const nY = isTop ? hy+14 : hy-26;
   for(let r=0;r<3;r++){
     for(let i=-2;i<=2;i++){
-      ctx.fillRect(x + i*8 - (r%2?4:0) -1, nY + r*5, 2,2);
+      ctx.fillRect(rimX + dir*(14 + r*5) -1, y + i*7 - (r%2?3:0), 2,2);
     }
   }
 }
 
+function pickGrid(p){
+  if(p.shootPose>0) return p.sprites.shoot;
+  if(p.jumpH>0) return p.hasBall ? p.sprites.shoot : p.sprites.block;
+  if(p.moving) return (Math.floor(p.animT*2)%2===0) ? p.sprites.runA : p.sprites.runB;
+  return p.sprites.stand;
+}
+
 function drawPlayerSpr(p){
   const sc = SC * (p.scale||1);
-  const grid = (p.moving && Math.sin(p.animT*2)>0) ? p.sprites.run : p.sprites.stand;
+  const grid = pickGrid(p);
   const pal = spritePalette(p.team==='home'?Game.teamHome:Game.teamAway, p.skinIdx, p.hairIdx);
   const w = SPRITE_W*sc, h = SPRITE_H*sc;
   const footY = p.y - (p.jumpH||0);
   const ox = Math.round(p.x - w/2), oy = Math.round(footY - h);
 
-  // flat pixel shadow
-  ctx.fillStyle='rgba(30,20,10,0.25)';
-  ctx.fillRect(Math.round(p.x-w*0.32), Math.round(p.y-3), Math.round(w*0.64), 6);
+  // shadow stays on the floor and shrinks with jump height
+  const shrink = 1/(1+(p.jumpH||0)/90);
+  ctx.fillStyle='rgba(30,20,10,'+(0.25*shrink)+')';
+  ctx.fillRect(Math.round(p.x-w*0.32*shrink), Math.round(p.y-3), Math.round(w*0.64*shrink), 6);
 
-  // user ring
   if(p.isUser){
     ctx.strokeStyle='#34d399'; ctx.lineWidth=2;
     ctx.strokeRect(Math.round(p.x-w*0.4), Math.round(p.y-6), Math.round(w*0.8), 10);
@@ -1308,13 +1362,12 @@ function drawPlayerSpr(p){
       const ch=row[c];
       if(ch==='.') continue;
       ctx.fillStyle = pal[ch]||'#f0f';
-      // facing: mirror horizontally by flipping the column
       const cc = p.facing<0 ? (SPRITE_W-1-c) : c;
       ctx.fillRect(ox+cc*sc, oy+r*sc, Math.ceil(sc), Math.ceil(sc));
     }
   }
 
-  // jersey number (2 pixel-digits on chest, rows ~12-14)
+  // jersey number
   const numStr = String(p.jerseyNum).padStart(2,'0');
   const cell = Math.max(1, Math.round(sc*0.7));
   const numY = oy + Math.round(12.2*sc);
@@ -1350,7 +1403,6 @@ function drawBallSpr(){
   const b=Game.ball;
   const sc = 3;
   const sx = Math.round(b.x - 4.5*sc), sy = Math.round(b.y - b.h - 4.5*sc);
-  // ball shadow on floor
   ctx.fillStyle='rgba(30,20,10,0.25)';
   ctx.fillRect(Math.round(b.x-6), Math.round(b.y-2), 12, 4);
   for(let r=0;r<9;r++)for(let c=0;c<9;c++){
@@ -1376,7 +1428,7 @@ function drawFloats(){
   ctx.textAlign='left';
 }
 
-/* segmented scoreboard (approved style) */
+/* segmented scoreboard */
 function drawScoreboard(){
   const bw=380, bx=(canvas.width-bw)/2, bh=44;
   ctx.fillStyle='#0b0f16'; ctx.fillRect(bx,0,bw,bh);
@@ -1398,6 +1450,19 @@ function drawScoreboard(){
   ctx.textAlign='left';
 }
 
+function drawStamina(){
+  const w=120, h=10, x=12, y=canvas.height-34;
+  ctx.fillStyle='rgba(0,0,0,0.6)';
+  ctx.fillRect(x-3,y-3,w+6,h+6);
+  ctx.fillStyle='#1a2438'; ctx.fillRect(x,y,w,h);
+  const f = Game.stamina/100;
+  ctx.fillStyle = f>0.5 ? '#34d399' : f>0.25 ? '#ffd166' : '#f87171';
+  ctx.fillRect(x,y,w*f,h);
+  ctx.fillStyle='rgba(255,255,255,0.7)';
+  ctx.font='bold 9px monospace';
+  ctx.fillText('STAMINA', x, y-6);
+}
+
 function drawMeter(){
   const barW=130, barH=14;
   const bx=canvas.width/2-barW/2, by=canvas.height-64;
@@ -1409,6 +1474,13 @@ function drawMeter(){
   ctx.fillStyle='#ffd166';
   ctx.fillRect(bx+Game.shotMeter.t*barW-2, by-3, 4, barH+6);
   ctx.strokeStyle='#ff7a29'; ctx.lineWidth=2; ctx.strokeRect(bx,by,barW,barH);
+  // live shot chance readout that follows the meter position
+  const { chance } = computeShotChance(Game.home[0], Math.max(0,Math.min(1,Game.shotMeter.t)));
+  ctx.fillStyle = chance>0.6?'#34d399':chance>0.35?'#ffd166':'#f87171';
+  ctx.font='bold 14px monospace';
+  ctx.textAlign='center';
+  ctx.fillText(`${Math.round(chance*100)}%`, canvas.width/2, by-10);
+  ctx.textAlign='left';
 }
 
 function drawPopup(){
