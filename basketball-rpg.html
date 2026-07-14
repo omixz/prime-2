@@ -127,6 +127,28 @@
   .bar{ width:130px; height:11px; background:#16223a; border-radius:6px; position:relative; overflow:hidden; border:1px solid #223252; }
   .bar>div{ height:100%; background:linear-gradient(90deg, var(--accent), var(--accent2)); }
   .jersey{ width:36px; height:36px; margin:0 auto 6px; border-radius:9px; border:2px solid rgba(0,0,0,.35); box-shadow:0 3px 8px rgba(0,0,0,.35); }
+  /* on-screen touch controls — shown only on touch/coarse-pointer devices (phones, Poki mobile) */
+  .touchControls{ display:none; }
+  @media (hover:none) and (pointer:coarse){
+    .touchControls{ display:block; }
+  }
+  .tcJoyBase{
+    position:absolute; left:14px; bottom:14px; width:116px; height:116px; border-radius:50%;
+    background:rgba(255,255,255,.08); border:2px solid rgba(255,255,255,.28); touch-action:none;
+  }
+  .tcJoyStick{
+    position:absolute; left:50%; top:50%; width:50px; height:50px; margin:-25px 0 0 -25px; border-radius:50%;
+    background:rgba(255,190,125,.6); border:2px solid rgba(255,255,255,.55); pointer-events:none;
+  }
+  .tcBtn{
+    position:absolute; border-radius:50%; background:rgba(255,122,41,.55); border:2px solid rgba(255,255,255,.4);
+    color:#fff; font-weight:700; font-size:11px; display:flex; align-items:center; justify-content:center;
+    touch-action:none; -webkit-user-select:none; user-select:none; transition:transform .08s;
+  }
+  .tcBtn.pressed{ transform:scale(0.88); background:rgba(255,122,41,.85); }
+  .tcShoot{ right:14px; bottom:14px; width:76px; height:76px; font-size:13px; background:rgba(46,230,255,.4); }
+  .tcPass{ right:96px; bottom:20px; width:56px; height:56px; }
+  .tcSpecial{ right:20px; bottom:102px; width:56px; height:56px; }
   .swatch{ width:30px; height:30px; border-radius:8px; border:2px solid var(--border); cursor:pointer; transition:border-color .12s, transform .12s; }
   .swatch:hover{ transform:translateY(-2px); }
   .swatch.sel{ border-color:var(--success); box-shadow:0 0 0 2px var(--success) inset; }
@@ -365,6 +387,12 @@
     <div style="position:relative;">
       <canvas id="gameCanvas" width="960" height="540"></canvas>
       <button id="btnPause" title="Pause (Esc)" style="position:absolute;top:10px;right:10px;padding:6px 10px;font-size:12px;">⏸ Pause</button>
+      <div class="touchControls">
+        <div class="tcJoyBase" id="tcJoyBase"><div class="tcJoyStick" id="tcJoyStick"></div></div>
+        <div class="tcBtn tcSpecial" id="tcSpecial">SPECIAL</div>
+        <div class="tcBtn tcPass" id="tcPass">PASS</div>
+        <div class="tcBtn tcShoot" id="tcShoot">SHOOT</div>
+      </div>
       <div id="pauseOverlay" style="display:none;position:absolute;inset:0;background:rgba(6,10,18,.82);border-radius:10px;align-items:center;justify-content:center;flex-direction:column;">
         <h1 style="font-size:34px;">PAUSED</h1>
         <div class="row"><button id="btnResume">Resume ▶</button></div>
@@ -1639,6 +1667,58 @@ window.addEventListener('keydown', e=>{
 });
 window.addEventListener('keyup', e=>{ KEYS[e.code]=false; });
 
+/* on-screen touch controls (phones / Poki mobile) — drive the same KEYS map
+   the keyboard uses so no gameplay code needs to know the difference */
+(function setupTouchControls(){
+  const joyBase = document.getElementById('tcJoyBase');
+  const joyStick = document.getElementById('tcJoyStick');
+  if(!joyBase || !joyStick) return;
+  let joyId = null;
+  const maxR = 44;
+  function resetJoy(){
+    KEYS['KeyW']=KEYS['KeyA']=KEYS['KeyS']=KEYS['KeyD']=false;
+    KEYS['ShiftLeft']=false;
+    joyStick.style.transform = 'translate(0px,0px)';
+  }
+  function updateJoy(clientX, clientY){
+    const rect = joyBase.getBoundingClientRect();
+    const cx = rect.left+rect.width/2, cy = rect.top+rect.height/2;
+    const dx = clientX-cx, dy = clientY-cy;
+    const dist = Math.min(Math.hypot(dx,dy), maxR);
+    const ang = Math.atan2(dy,dx);
+    const sx = Math.cos(ang)*dist, sy = Math.sin(ang)*dist;
+    joyStick.style.transform = `translate(${sx}px,${sy}px)`;
+    const nx = sx/maxR, ny = sy/maxR;
+    KEYS['KeyA'] = nx < -0.3; KEYS['KeyD'] = nx > 0.3;
+    KEYS['KeyW'] = ny < -0.3; KEYS['KeyS'] = ny > 0.3;
+    KEYS['ShiftLeft'] = (dist/maxR) > 0.8;   // push to the edge to sprint
+  }
+  joyBase.addEventListener('pointerdown', e=>{
+    joyId = e.pointerId; joyBase.setPointerCapture(e.pointerId);
+    Audio8.ensureRunning();
+    updateJoy(e.clientX, e.clientY); e.preventDefault();
+  });
+  joyBase.addEventListener('pointermove', e=>{
+    if(e.pointerId!==joyId) return;
+    updateJoy(e.clientX, e.clientY); e.preventDefault();
+  });
+  const endJoy = e=>{ if(e.pointerId!==joyId) return; joyId=null; resetJoy(); };
+  joyBase.addEventListener('pointerup', endJoy);
+  joyBase.addEventListener('pointercancel', endJoy);
+
+  function bindTouchBtn(id, code){
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('pointerdown', e=>{ KEYS[code]=true; el.classList.add('pressed'); Audio8.ensureRunning(); e.preventDefault(); });
+    el.addEventListener('pointerup', e=>{ KEYS[code]=false; el.classList.remove('pressed'); e.preventDefault(); });
+    el.addEventListener('pointercancel', ()=>{ KEYS[code]=false; el.classList.remove('pressed'); });
+    el.addEventListener('pointerleave', ()=>{ KEYS[code]=false; el.classList.remove('pressed'); });
+  }
+  bindTouchBtn('tcShoot','Space');
+  bindTouchBtn('tcPass','KeyX');
+  bindTouchBtn('tcSpecial','KeyC');
+})();
+
 let Game = null;
 
 function togglePause(force){
@@ -1975,6 +2055,7 @@ function updateInput(dt){
         Audio8.block();
         addFloat(user.x, user.y-100, "BLOCKED!", '#4ade80', 18);
         screenShake(8, 0.3);
+        buzz(35);
       }
     }
   }
@@ -2338,17 +2419,19 @@ function resolveShot(){
       Game.stats.points+=pts;
       gainXP(pts*8);
       checkSponsor();
+      buzz(30);
       Game.userStreak = (Game.userStreak||0) + 1;
       if(Game.userStreak===3){
         addFloat(shooter.x, shooter.y-120, "ON FIRE!", '#ff8c00', 22);
         shooter.buffed = true; shooter.buffTimer = 999;   // stays hot until a miss
         Audio8.badge();
+        buzz([40,40,40]);
       } else if(Game.userStreak>3){
         addFloat(shooter.x, shooter.y-110, `${Game.userStreak} STRAIGHT!`, '#ff8c00', 16);
       }
     }
     if(b.layup){ addFloat(b.tx, b.ty-84, "AND-1 LAYUP!", '#34d399', 13); screenShake(7, 0.3); }
-    if(buzzerBeater) screenShake(10, 0.4);
+    if(buzzerBeater){ screenShake(10, 0.4); buzz([60,30,60,30,80]); }
     // build the special meter for the scoring side
     chargeSpecial(shooter.team, b.isThree?26:20);
     if(Game.pendingAssist && shooter.team==='home' && !shooter.isUser){
@@ -2489,6 +2572,7 @@ function attemptSteal(user){
     chargeSpecial(user.team, 22);
     attachBall(user, true);
     addFloat(user.x, user.y-90, "STEAL!", '#4ade80', 18);
+    buzz(25);
   } else if(Math.random()<0.22){
     commitFoul(bh.team, bh, false);   // reach-in foul on a missed swipe
   }
@@ -2684,6 +2768,7 @@ function screenShake(mag, dur){
   Game.shakeMag = mag||6;
   Game.shakeDur = Game.shakeT;
 }
+function buzz(pattern){ try{ if(navigator.vibrate) navigator.vibrate(pattern); }catch(e){} }
 
 /* =========================================================================
    RENDERING
