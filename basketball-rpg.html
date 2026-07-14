@@ -1620,10 +1620,12 @@ function startGame(forcedOpponent){
   requestAnimationFrame(gameLoop);
 }
 
-function attachBall(p){
+function attachBall(p, smooth){
   const b = Game.ball;
   const prev = b.holder;
-  b.holder = p; b.inAir = false; b.loose = false; b.snap = true;
+  b.holder = p; b.inAir = false; b.loose = false; b.rest = false;
+  b.snap = !smooth;            // ground pickups ease in; passes/steals snap to hand
+  b.side = undefined;          // reset the smoothed hand-side offset
   Game.all.forEach(pl=>pl.hasBall=false);
   p.hasBall = true;
   // reset the shot clock whenever possession changes teams
@@ -2056,12 +2058,16 @@ function updateBall(dt){
   if(b.holder){
     const h = b.holder;
     h.dribbleT += dt*(h.moving?10:7);
-    const bounce = Math.abs(Math.sin(h.dribbleT)) * 42;
-    const tx = h.x + h.facing*40;
+    const bounce = Math.abs(Math.sin(h.dribbleT)) * 38;
+    // ease the hand side so a crossover/direction-change slides the ball across
+    // the body instead of teleporting it to the other hand
+    if(b.side===undefined) b.side = h.facing;
+    b.side += (h.facing - b.side) * Math.min(1, dt*9);
+    const tx = h.x + b.side*34;
     const ty = h.y + 4;
-    if(b.snap){ b.x=tx; b.y=ty; b.snap=false; }
+    if(b.snap){ b.x=tx; b.y=ty; b.side=h.facing; b.snap=false; }
     else {
-      const l = 1 - Math.pow(0.0005, dt);
+      const l = Math.min(1, dt*16);   // smooth trail, no per-frame teleport
       b.x += (tx-b.x)*l;
       b.y += (ty-b.y)*l;
     }
@@ -2086,7 +2092,7 @@ function updateBall(dt){
       if(grabber && gd < 34*34){
         b.rest=false;
         const wasHome = grabber.team==='home';
-        attachBall(grabber);
+        attachBall(grabber, true);   // ease into the hand — no teleport
         if(grabber.isUser){ Game.stats.rebounds++; gainXP(5); }
         addFloat(grabber.x, grabber.y-80, "REBOUND!", wasHome?'#34d399':'#ff8c00', 14);
       }
@@ -2371,8 +2377,12 @@ function updateAI(dt){
       const mark = opp[mine.indexOf(p)] || opp[0];
       const defHx = attackingHoopX(p.team==='home'?'away':'home');
       const dirToHoop = Math.sign(defHx - mark.x)||1;
-      tx = mark.x + dirToHoop*100;
-      ty = mark.y + 15;
+      // pressure the ball-handler tightly; sag off your man otherwise (help D).
+      const guardingHandler = b.holder===mark;
+      const cushion = guardingHandler ? 40 : 90;
+      tx = mark.x + dirToHoop*cushion;
+      ty = mark.y + (guardingHandler ? 8 : 24);
+      if(guardingHandler) speed *= 1.12;   // close out with urgency
       const d2m = dist2(p,mark);
       if(Game.phase==='live' && mark.hasBall && d2m<65*65 && p.aiTimer<=0){
         p.aiTimer = 1.4;
