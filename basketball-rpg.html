@@ -127,6 +127,11 @@
   .bar{ width:130px; height:11px; background:#16223a; border-radius:6px; position:relative; overflow:hidden; border:1px solid #223252; }
   .bar>div{ height:100%; background:linear-gradient(90deg, var(--accent), var(--accent2)); }
   .jersey{ width:36px; height:36px; margin:0 auto 6px; border-radius:9px; border:2px solid rgba(0,0,0,.35); box-shadow:0 3px 8px rgba(0,0,0,.35); }
+  .swatch{ width:30px; height:30px; border-radius:8px; border:2px solid var(--border); cursor:pointer; transition:border-color .12s, transform .12s; }
+  .swatch:hover{ transform:translateY(-2px); }
+  .swatch.sel{ border-color:var(--success); box-shadow:0 0 0 2px var(--success) inset; }
+  .styleChip{ border:2px solid var(--border); border-radius:8px; padding:6px 10px; font-size:12px; cursor:pointer; background:#0e1930; color:var(--text-dim); }
+  .styleChip.sel{ border-color:var(--success); color:var(--text); }
   .badgeChip{
     display:inline-block; background:#16233c; border:2px solid var(--accent2); border-radius:20px;
     padding:5px 12px; margin:3px; font-size:11px; color:var(--accent2); font-weight:700;
@@ -204,6 +209,21 @@
 
       <h2>Attributes <span id="ptsLeft" style="color:var(--success)">(10 points left)</span></h2>
       <div id="attrEditor"></div>
+
+      <h2>Your Look</h2>
+      <div class="row" style="align-items:flex-start; gap:20px; flex-wrap:wrap;">
+        <canvas id="lookPreview" width="68" height="100" style="image-rendering:pixelated; border:1px solid var(--border); border-radius:6px; background:#0a1220;"></canvas>
+        <div style="flex:1; min-width:200px;">
+          <p class="small-txt" style="margin:2px 0">Skin Tone</p>
+          <div class="row" id="skinRow" style="justify-content:flex-start; gap:6px;"></div>
+          <p class="small-txt" style="margin:8px 0 2px">Hair Style</p>
+          <div class="row" id="hairStyleRow" style="justify-content:flex-start; gap:6px;"></div>
+          <p class="small-txt" style="margin:8px 0 2px">Hair Color</p>
+          <div class="row" id="hairColorRow" style="justify-content:flex-start; gap:6px;"></div>
+          <p class="small-txt" style="margin:8px 0 2px">Jersey Number</p>
+          <input type="number" id="jerseyNumInput" min="0" max="99" value="23" style="width:70px;" />
+        </div>
+      </div>
 
       <h2>Choose Your Team</h2>
       <div class="row" id="teamRow"></div>
@@ -303,13 +323,18 @@
         <div style="flex:1; min-width:280px;">
           <h2>Your Roster <span class="small-txt" id="rosOvr"></span></h2>
           <div id="rosMine"></div>
+          <h2 style="margin-top:10px;">Your Future Picks</h2>
+          <div id="rosMinePicks"></div>
         </div>
         <div style="flex:1; min-width:280px;">
           <h2>Trade Block <select id="rosTeamSel"></select></h2>
           <div id="rosOther"></div>
+          <h2 style="margin-top:10px;">Their Future Picks</h2>
+          <div id="rosOtherPicks"></div>
         </div>
       </div>
       <div class="row"><button id="btnRosPropose">Propose Trade</button><button id="btnRosBack" class="small ghost">Back to HQ</button></div>
+      <p class="small-txt">Select a player and/or a pick from each side, then propose. Selections are optional on either side.</p>
       <div class="flashMsg" id="rosMsg"></div>
     </div>
   </div>
@@ -518,6 +543,27 @@ const TEAMS = [
   { name:"Phoenix Embers",      abbr:"PHX", primary:"#E56020", secondary:"#5b2a86" }
 ];
 
+// visual customization palettes (used by both the sprite builder and the create-a-player UI)
+const SKINS = [
+  {S:'#e8b482', s:'#c98f5e'},
+  {S:'#c98f5e', s:'#a86f42'},
+  {S:'#9c6238', s:'#7e4c28'},
+  {S:'#6e4526', s:'#553318'}
+];
+const HAIRS = [
+  {H:'#221409', h:'#3a2814'},
+  {H:'#3a2814', h:'#553d20'},
+  {H:'#111111', h:'#2c2c2c'},
+  {H:'#4a3010', h:'#6b4a1e'}
+];
+const HAIR_STYLES = ['plain','afro','headband'];
+function shadeC(hex,pct){
+  const n=parseInt(hex.slice(1),16);
+  let r=(n>>16)+pct,g=(n>>8&0xff)+pct,b=(n&0xff)+pct;
+  r=Math.max(0,Math.min(255,r));g=Math.max(0,Math.min(255,g));b=Math.max(0,Math.min(255,b));
+  return `rgb(${r},${g},${b})`;
+}
+
 const STORY = {
   round: [
     "Quarterfinals. Nobody expected you here — the league's cellar team playing spoiler. Prove them wrong.",
@@ -615,6 +661,7 @@ function renderTeamRow(){
       document.querySelectorAll('.teamPick').forEach(c=>c.classList.remove('sel'));
       card.classList.add('sel');
       chosenTeamIdx = i;
+      if(typeof renderLookPreview==='function') renderLookPreview();
     };
     row.appendChild(card);
   });
@@ -733,7 +780,21 @@ function newFranchise(teamIdx){
     for(let j=0;j<TEAMS.length;j++){ if(j!==teamIdx) sched.push(j); }
   }
   for(let i=sched.length-1;i>0;i--){ const k=Math.floor(Math.random()*(i+1)); [sched[i],sched[k]]=[sched[k],sched[i]]; }
-  return { teamIdx, standings, rosters, sched, gameIdx:0, phase:'season', playoff:null, champion:null, season:1 };
+  // each team owns its own next-2-drafts' 1st round picks to start; these can be traded
+  const picks = [];
+  TEAMS.forEach((t,i)=>{ picks.push({yearsOut:1, ownerIdx:i, origTeamIdx:i}); picks.push({yearsOut:2, ownerIdx:i, origTeamIdx:i}); });
+  return { teamIdx, standings, rosters, sched, gameIdx:0, phase:'season', playoff:null, champion:null, season:1, picks };
+}
+// a pick's trade value tracks how weak the ORIGINAL team currently is (bad teams' picks are worth more),
+// discounted a bit for picks further out
+function pickValue(fr, pk){
+  const ovr = teamOverall(fr.rosters[pk.origTeamIdx]);
+  const base = Math.max(30, 100-ovr);
+  return Math.round(base - (pk.yearsOut-1)*10);
+}
+function pickLabel(fr, pk){
+  const yr = (fr.season||1) + pk.yearsOut;
+  return `Season ${yr} 1st (via ${TEAMS[pk.origTeamIdx].abbr})`;
 }
 
 // rating-based sim using each team's roster overall
@@ -764,6 +825,9 @@ function simOtherGames(st){
 
 function renderFranchise(){
   const fr=S.franchise, myTeam=TEAMS[fr.teamIdx];
+  if(!fr.picks){ // backfill for saves made before tradeable draft picks existed
+    fr.picks=[]; TEAMS.forEach((t,i)=>{ fr.picks.push({yearsOut:1,ownerIdx:i,origTeamIdx:i}); fr.picks.push({yearsOut:2,ownerIdx:i,origTeamIdx:i}); });
+  }
   document.getElementById('frTitle').textContent = `FRANCHISE HQ — ${myTeam.name.toUpperCase()}`;
 
   // standings table sorted by wins
@@ -1033,16 +1097,18 @@ function openLoadMenu(){
 document.getElementById('btnLoadGame').addEventListener('click', ()=>{ Audio8.click(); openLoadMenu(); });
 
 /* ---------------- Franchise: roster, trades, development ---------------- */
-let rosSelMine=null, rosSelOther=null, rosOtherIdx=null;
+let rosSelMine=null, rosSelOther=null, rosOtherIdx=null, rosSelMinePick=null, rosSelOtherPick=null;
 function renderRoster(){
   const fr=S.franchise;
   document.getElementById('rosTitle').textContent = `${TEAMS[fr.teamIdx].name.toUpperCase()} — ROSTER`;
   const mine=fr.rosters[fr.teamIdx];
   document.getElementById('rosOvr').textContent = `(Team OVR ${Math.round(teamOverall(mine))})`;
-  rosSelMine=null; rosSelOther=null;
+  rosSelMine=null; rosSelOther=null; rosSelMinePick=null; rosSelOtherPick=null;
 
-  const listHTML=(roster, which)=> roster.slice().sort((a,b)=>b.ovr-a.ovr).map((p,i)=>{
-    const realIdx=roster.indexOf(p);
+  const POS_RANK = {PG:0,SG:1,SF:2,PF:3,C:4,G:5,F:6};
+  const listHTML=(roster, which)=> roster.map((p,i)=>({p,realIdx:i}))
+    .sort((a,b)=>(POS_RANK[a.p.pos]??9)-(POS_RANK[b.p.pos]??9))
+    .map(({p,realIdx})=>{
     return `<div class="attrRow rosItem" data-which="${which}" data-i="${realIdx}" style="cursor:pointer;border:1px solid var(--border);border-radius:6px;padding:5px 8px;margin:3px 0;">
       <span style="width:26px;color:var(--text-dim)">${p.pos}</span>
       <span style="flex:1;text-align:left">${p.name}</span>
@@ -1050,7 +1116,14 @@ function renderRoster(){
       <span style="width:34px;color:var(--text-dim)">${p.age}y</span></div>`;
   }).join('');
 
+  const pickListHTML=(teamIdx, which)=> fr.picks.map((pk,i)=>({pk,i})).filter(o=>o.pk.ownerIdx===teamIdx)
+    .map(({pk,i})=>`<div class="attrRow rosPickItem" data-which="${which}" data-i="${i}" style="cursor:pointer;border:1px solid var(--border);border-radius:6px;padding:5px 8px;margin:3px 0;">
+      <span style="flex:1;text-align:left">${pickLabel(fr,pk)}</span>
+      <span style="width:34px;color:var(--text-dim);font-weight:700">${pickValue(fr,pk)}</span></div>`).join('')
+      || '<span class="small-txt">No picks owned.</span>';
+
   document.getElementById('rosMine').innerHTML=listHTML(mine,'mine');
+  document.getElementById('rosMinePicks').innerHTML=pickListHTML(fr.teamIdx,'mine');
 
   // opponent selector
   const sel=document.getElementById('rosTeamSel');
@@ -1066,6 +1139,7 @@ function renderRoster(){
 
   function renderOtherRoster(){
     document.getElementById('rosOther').innerHTML=listHTML(fr.rosters[rosOtherIdx],'other');
+    document.getElementById('rosOtherPicks').innerHTML=pickListHTML(rosOtherIdx,'other');
     bindRosItems();
   }
   bindRosItems();
@@ -1078,6 +1152,16 @@ function renderRoster(){
         if(which==='mine') rosSelMine=i; else rosSelOther=i;
       };
     });
+    document.querySelectorAll('.rosPickItem').forEach(el=>{
+      el.onclick=()=>{ Audio8.click();
+        const which=el.dataset.which, i=parseInt(el.dataset.i);
+        document.querySelectorAll(`.rosPickItem[data-which="${which}"]`).forEach(e=>e.style.background='');
+        el.style.background='#12324a';
+        if(which==='mine') rosSelMinePick = (rosSelMinePick===i?null:i); else rosSelOtherPick = (rosSelOtherPick===i?null:i);
+        if(which==='mine' && rosSelMinePick==null) el.style.background='';
+        if(which==='other' && rosSelOtherPick==null) el.style.background='';
+      };
+    });
   }
 }
 document.getElementById('btnFrRoster').addEventListener('click', ()=>{ Audio8.click(); renderRoster(); showScreen('screen-roster'); });
@@ -1085,14 +1169,26 @@ document.getElementById('btnRosBack').addEventListener('click', ()=>{ Audio8.cli
 document.getElementById('btnRosPropose').addEventListener('click', ()=>{
   Audio8.click();
   const fr=S.franchise, msg=document.getElementById('rosMsg');
-  if(rosSelMine==null || rosSelOther==null){ msg.style.color='var(--danger)'; msg.textContent='Select one player from each side.'; return; }
+  if(rosSelMine==null && rosSelMinePick==null){ msg.style.color='var(--danger)'; msg.textContent='Select at least a player or pick to give up.'; return; }
+  if(rosSelOther==null && rosSelOtherPick==null){ msg.style.color='var(--danger)'; msg.textContent='Select at least a player or pick to receive.'; return; }
   const mine=fr.rosters[fr.teamIdx], other=fr.rosters[rosOtherIdx];
-  const give=mine[rosSelMine], get=other[rosSelOther];
-  // other GM accepts if the incoming player is at least as good (within 3 ovr)
-  if(give.ovr + 3 >= get.ovr){
-    mine[rosSelMine]=get; other[rosSelOther]=give;
+  const give=rosSelMine!=null ? mine[rosSelMine] : null;
+  const get=rosSelOther!=null ? other[rosSelOther] : null;
+  const givePick = rosSelMinePick!=null ? fr.picks[rosSelMinePick] : null;
+  const getPick = rosSelOtherPick!=null ? fr.picks[rosSelOtherPick] : null;
+  const giveVal = (give?give.ovr:0) + (givePick?pickValue(fr,givePick):0);
+  const getVal = (get?get.ovr:0) + (getPick?pickValue(fr,getPick):0);
+  // other GM accepts if the incoming value is at least as good (within a small margin)
+  if(giveVal + 3 >= getVal){
+    if(give && get){ mine[rosSelMine]=get; other[rosSelOther]=give; }
+    else if(give && !get){ /* pick-only return: player still moves, no player back */ mine.splice(rosSelMine,1); other.push(give); }
+    else if(!give && get){ other.splice(rosSelOther,1); mine.push(get); }
+    if(givePick) givePick.ownerIdx = rosOtherIdx;
+    if(getPick) getPick.ownerIdx = fr.teamIdx;
+    const giveDesc = [give?give.name:null, givePick?pickLabel(fr,givePick):null].filter(Boolean).join(' + ') || 'nothing';
+    const getDesc = [get?get.name:null, getPick?pickLabel(fr,getPick):null].filter(Boolean).join(' + ') || 'nothing';
     msg.style.color='var(--success)';
-    msg.textContent=`Trade accepted! ${give.name} ↔ ${get.name}.`;
+    msg.textContent=`Trade accepted! ${giveDesc} ↔ ${getDesc}.`;
     Audio8.badge();
     renderRoster();
   } else {
@@ -1125,8 +1221,12 @@ document.getElementById('btnFrMenu').addEventListener('click', ()=>{ Audio8.clic
 let draftSel=null;
 function startDraft(){
   const fr=S.franchise;
-  // draft order = reverse standings (worst record picks first)
-  const order = fr.standings.slice().sort((a,b)=> (a.w-b.w) || ((a.pf-a.pa)-(b.pf-b.pa))).map(s=>s.idx);
+  // draft order = reverse standings (worst record picks first), honoring any traded picks —
+  // whoever now OWNS a team's imminent (yearsOut:1) 1st rounder makes that pick instead
+  const order = fr.standings.slice().sort((a,b)=> (a.w-b.w) || ((a.pf-a.pa)-(b.pf-b.pa))).map(s=>{
+    const pk = fr.picks.find(p=>p.origTeamIdx===s.idx && p.yearsOut===1);
+    return pk ? pk.ownerIdx : s.idx;
+  });
   // generate a rookie class (2 rounds worth)
   const n = TEAMS.length*2;
   const prospects=[];
@@ -1211,8 +1311,11 @@ document.getElementById('btnDraftDone').addEventListener('click', ()=>{
   Audio8.click();
   const fr=S.franchise;
   const keptRosters=fr.rosters, nextSeason=(fr.season||1)+1;
+  // this draft consumed all yearsOut:1 picks; roll the rest forward a year and mint fresh far-future ones
+  const carriedPicks = fr.picks.filter(p=>p.yearsOut>1).map(p=>({...p, yearsOut:p.yearsOut-1}));
+  TEAMS.forEach((t,i)=> carriedPicks.push({yearsOut:2, ownerIdx:i, origTeamIdx:i}));
   S.franchise=newFranchise(fr.teamIdx);
-  S.franchise.rosters=keptRosters; S.franchise.season=nextSeason;
+  S.franchise.rosters=keptRosters; S.franchise.season=nextSeason; S.franchise.picks=carriedPicks;
   renderFranchise();
   showScreen('screen-franchise');
 });
@@ -1401,19 +1504,6 @@ function buildSprite(opts){
   return { stand:g, runA, runB, shoot, block };
 }
 
-const SKINS = [
-  {S:'#e8b482', s:'#c98f5e'},
-  {S:'#c98f5e', s:'#a86f42'},
-  {S:'#9c6238', s:'#7e4c28'},
-  {S:'#6e4526', s:'#553318'}
-];
-const HAIRS = [
-  {H:'#221409', h:'#3a2814'},
-  {H:'#3a2814', h:'#553d20'},
-  {H:'#111111', h:'#2c2c2c'},
-  {H:'#4a3010', h:'#6b4a1e'}
-];
-
 function spritePalette(team, skinIdx, hairIdx){
   const sk = SKINS[skinIdx%SKINS.length], hr = HAIRS[hairIdx%HAIRS.length];
   return {
@@ -1427,12 +1517,77 @@ function spritePalette(team, skinIdx, hairIdx){
     W:'#f2f4f8'
   };
 }
-function shadeC(hex,pct){
-  const n=parseInt(hex.slice(1),16);
-  let r=(n>>16)+pct,g=(n>>8&0xff)+pct,b=(n&0xff)+pct;
-  r=Math.max(0,Math.min(255,r));g=Math.max(0,Math.min(255,g));b=Math.max(0,Math.min(255,b));
-  return `rgb(${r},${g},${b})`;
+
+/* ---------------- create-a-player appearance UI (skin / hair / jersey #) ---------------- */
+S.player.skinIdx = S.player.skinIdx!=null ? S.player.skinIdx : 0;
+S.player.hairIdx = S.player.hairIdx!=null ? S.player.hairIdx : 0;
+S.player.hairStyle = S.player.hairStyle || 'headband';
+S.player.jerseyNum = S.player.jerseyNum!=null ? S.player.jerseyNum : 23;
+
+function renderLookPreview(){
+  const cv = document.getElementById('lookPreview');
+  const c = cv.getContext('2d');
+  c.imageSmoothingEnabled = false;
+  c.clearRect(0,0,cv.width,cv.height);
+  const team = (chosenTeamIdx!=null ? TEAMS[chosenTeamIdx] : TEAMS[0]);
+  const spr = buildSprite({ afro:S.player.hairStyle==='afro', headband:S.player.hairStyle==='headband' });
+  const pal = spritePalette(team, S.player.skinIdx, S.player.hairIdx);
+  const sc = 3.6;
+  const grid = spr.stand;
+  const ox = Math.round((cv.width - SPRITE_W*sc)/2), oy = 6;
+  for(let r=0;r<grid.length;r++){
+    const row = grid[r];
+    for(let col=0;col<row.length;col++){
+      const ch = row[col];
+      if(ch==='.') continue;
+      c.fillStyle = pal[ch]||'#f0f';
+      c.fillRect(ox+col*sc, oy+r*sc, Math.ceil(sc), Math.ceil(sc));
+    }
+  }
 }
+function renderSkinRow(){
+  const row = document.getElementById('skinRow');
+  row.innerHTML='';
+  SKINS.forEach((sk,i)=>{
+    const sw = document.createElement('div');
+    sw.className = 'swatch' + (S.player.skinIdx===i?' sel':'');
+    sw.style.background = sk.S;
+    sw.onclick=()=>{ Audio8.click(); S.player.skinIdx=i; renderSkinRow(); renderLookPreview(); };
+    row.appendChild(sw);
+  });
+}
+function renderHairColorRow(){
+  const row = document.getElementById('hairColorRow');
+  row.innerHTML='';
+  HAIRS.forEach((hr,i)=>{
+    const sw = document.createElement('div');
+    sw.className = 'swatch' + (S.player.hairIdx===i?' sel':'');
+    sw.style.background = hr.H;
+    sw.onclick=()=>{ Audio8.click(); S.player.hairIdx=i; renderHairColorRow(); renderLookPreview(); };
+    row.appendChild(sw);
+  });
+}
+function renderHairStyleRow(){
+  const row = document.getElementById('hairStyleRow');
+  row.innerHTML='';
+  HAIR_STYLES.forEach(style=>{
+    const chip = document.createElement('div');
+    chip.className = 'styleChip' + (S.player.hairStyle===style?' sel':'');
+    chip.textContent = style.charAt(0).toUpperCase()+style.slice(1);
+    chip.onclick=()=>{ Audio8.click(); S.player.hairStyle=style; renderHairStyleRow(); renderLookPreview(); };
+    row.appendChild(chip);
+  });
+}
+document.getElementById('jerseyNumInput').addEventListener('input', (e)=>{
+  let n = parseInt(e.target.value);
+  if(isNaN(n)) n=0;
+  n = Math.max(0, Math.min(99, n));
+  S.player.jerseyNum = n;
+});
+renderSkinRow();
+renderHairColorRow();
+renderHairStyleRow();
+renderLookPreview();
 
 const BALL_SPR = [
 "..OOOOO..",
@@ -1554,7 +1709,11 @@ function startGame(forcedOpponent){
   const user = makePlayer({
     isUser:true, team:'home', role:'PG',
     x: COURT.hoopRightX - SLOTS.PG.dist, y: COURT.hoopY,
-    scale: heightScale(), hairStyle:'headband'
+    scale: heightScale(),
+    hairStyle: S.player.hairStyle || 'headband',
+    skinIdx: S.player.skinIdx!=null ? S.player.skinIdx : 0,
+    hairIdx: S.player.hairIdx!=null ? S.player.hairIdx : 0,
+    jerseyNum: S.player.jerseyNum!=null ? S.player.jerseyNum : 23
   });
   home.push(user);
   for(let i=0;i<4;i++){
@@ -1612,7 +1771,8 @@ function startGame(forcedOpponent){
     over:false,
     xPressed:false, x2Pressed:false, ePressed:false, e2Pressed:false,
     pbPressed:false,
-    lastMoveDirX:0, ankleApplied:false, dirChangeTimer:0
+    lastMoveDirX:0, ankleApplied:false, dirChangeTimer:0,
+    shakeT:0, shakeMag:0, shakeDur:0, userStreak:0
   };
   attachBall(user);
   showScreen('screen-game');
@@ -1630,6 +1790,22 @@ function attachBall(p, smooth){
   p.hasBall = true;
   // reset the shot clock whenever possession changes teams
   if(Game && (!prev || prev.team!==p.team)) Game.shotClock = 24;
+}
+
+/* start a visible ball-in-flight travel between two players (pass / inbound throw) */
+function startPass(from, to, opts){
+  opts = opts || {};
+  const b = Game.ball;
+  b.holder = null; from.hasBall = false;
+  b.inAir = false; b.loose = false; b.rest = false;
+  b.passing = true; b.passDeflected = false;
+  b.passTeam = from.team;
+  b.passFrom = from; b.passTo = to;
+  b.psx = b.x; b.psy = b.y;
+  b.ptx = to.x; b.pty = to.y;
+  const d = Math.hypot(b.ptx-b.psx, b.pty-b.psy);
+  b.passDur = opts.dur || Math.max(0.14, Math.min(0.5, d/900));
+  b.passT = 0;
 }
 
 function dist2(a,b){ const dx=a.x-b.x, dy=a.y-b.y; return dx*dx+dy*dy; }
@@ -1798,6 +1974,7 @@ function updateInput(dt){
         Game.stats.blocks++; gainXP(12);
         Audio8.block();
         addFloat(user.x, user.y-100, "BLOCKED!", '#4ade80', 18);
+        screenShake(8, 0.3);
       }
     }
   }
@@ -1976,7 +2153,7 @@ function attemptStealBy(u, forcedChance){
   Audio8.squeak();
   const chance = forcedChance!=null ? forcedChance : 0.28;
   if(Math.random()<chance){
-    Audio8.steal(); attachBall(u);
+    Audio8.steal(); attachBall(u, true);
     addFloat(u.x,u.y-90,"STEAL!", '#4ade80', 16);
   } else if(Math.random()<0.28){
     // reaching in → foul
@@ -2055,6 +2232,36 @@ function updateShotPopup(dt){
 /* ---------------- ball ---------------- */
 function updateBall(dt){
   const b = Game.ball;
+  if(b.passing){
+    // ball is in flight between two players — a visible travel, not a teleport
+    b.ptx = b.passTo.x; b.pty = b.passTo.y;
+    b.passT += dt/b.passDur;
+    const t = Math.min(1, b.passT);
+    b.x = b.psx + (b.ptx-b.psx)*t;
+    b.y = b.psy + (b.pty-b.psy)*t;
+    b.h = 42 + Math.sin(Math.PI*t)*30;
+    if(!b.passDeflected && t>0.2 && t<0.9){
+      const defenders = b.passTeam==='home' ? Game.away : Game.home;
+      for(const df of defenders){
+        const dd = Math.hypot(df.x-b.x, df.y-b.y);
+        if(dd < 44){
+          const defAttr = df.isUser ? (S.player.attrs.defense+heightDefBonus()) : (5+Game.diff);
+          const stealChance = (0.10 + defAttr*0.02) * (Game.diffCfg?Game.diffCfg.aiSteal:1) * dt*4;
+          if(Math.random() < stealChance){
+            b.passDeflected = true; b.passing = false;
+            b.loose = true; b.rest = false;
+            b.vh = 60+Math.random()*40;
+            b.vx = (Math.random()*2-1)*140; b.vy = (Math.random()*2-1)*140;
+            Audio8.steal();
+            addFloat(df.x, df.y-90, "DEFLECTED!", '#4ade80', 16);
+            return;
+          }
+        }
+      }
+    }
+    if(t>=1){ b.passing=false; attachBall(b.passTo, true); }
+    return;
+  }
   if(b.holder){
     const h = b.holder;
     h.dribbleT += dt*(h.moving?10:7);
@@ -2131,8 +2338,17 @@ function resolveShot(){
       Game.stats.points+=pts;
       gainXP(pts*8);
       checkSponsor();
+      Game.userStreak = (Game.userStreak||0) + 1;
+      if(Game.userStreak===3){
+        addFloat(shooter.x, shooter.y-120, "ON FIRE!", '#ff8c00', 22);
+        shooter.buffed = true; shooter.buffTimer = 999;   // stays hot until a miss
+        Audio8.badge();
+      } else if(Game.userStreak>3){
+        addFloat(shooter.x, shooter.y-110, `${Game.userStreak} STRAIGHT!`, '#ff8c00', 16);
+      }
     }
-    if(b.layup) addFloat(b.tx, b.ty-84, "AND-1 LAYUP!", '#34d399', 13);
+    if(b.layup){ addFloat(b.tx, b.ty-84, "AND-1 LAYUP!", '#34d399', 13); screenShake(7, 0.3); }
+    if(buzzerBeater) screenShake(10, 0.4);
     // build the special meter for the scoring side
     chargeSpecial(shooter.team, b.isThree?26:20);
     if(Game.pendingAssist && shooter.team==='home' && !shooter.isUser){
@@ -2142,6 +2358,10 @@ function resolveShot(){
     startInbound(shooter.team);
   } else {
     Audio8.rimMiss();
+    if(b.shooter && b.shooter.isUser && Game.userStreak){
+      Game.userStreak = 0;
+      b.shooter.buffed = false; b.shooter.buffTimer = 0;
+    }
     b.loose=true;
     b.x = b.tx + (b.tx<COURT.W/2 ? 40+Math.random()*70 : -(40+Math.random()*70));
     b.y = b.ty + (Math.random()*120-60);
@@ -2192,14 +2412,9 @@ function updateInbound(dt){
   }
   Game.inboundTimer -= dt;
   if(Game.inboundTimer<=0){
-    // throw the inbound pass, then resume live play
-    const b=Game.ball, from=Game.inbounder, to=rec||Game.inbounder;
-    b.holder=null; from.hasBall=false;
-    b.inAir=false; b.loose=true;
-    b.x=from.x; b.y=from.y; b.h=40; b.vh=40;
-    const dx=to.x-from.x, dy=to.y-from.y, len=Math.hypot(dx,dy)||1;
-    b.vx=(dx/len)*Math.min(len*2.2, 520);
-    b.vy=(dy/len)*Math.min(len*2.2, 520);
+    // throw the inbound pass as a visible travel, then resume live play
+    const from=Game.inbounder, to=rec||Game.inbounder;
+    startPass(from, to, {dur:0.35});
     from.x += (from.x<COURT.W/2? 40 : -40); // step back inbounds
     Game.phase='live';
     Game.inbounder=null; Game.inboundReceiver=null;
@@ -2239,7 +2454,7 @@ function doPass(passer, prefer){
   if(passer.isUser && S.player.badges.includes('passing')) chance += 0.15;
   Audio8.dribble();
   if(Math.random()<chance){
-    attachBall(best);
+    startPass(passer, best);
     if(passer.isUser){
       gainXP(2);
       Game.pendingAssist = { t:3 };
@@ -2272,7 +2487,7 @@ function attemptSteal(user){
     Audio8.steal();
     Game.stats.steals++; gainXP(10);
     chargeSpecial(user.team, 22);
-    attachBall(user);
+    attachBall(user, true);
     addFloat(user.x, user.y-90, "STEAL!", '#4ade80', 18);
   } else if(Math.random()<0.22){
     commitFoul(bh.team, bh, false);   // reach-in foul on a missed swipe
@@ -2388,7 +2603,7 @@ function updateAI(dt){
         p.aiTimer = 1.4;
         if(Math.random() < (0.05 + Game.diff*0.025)*(Game.diffCfg?Game.diffCfg.aiSteal:1)){
           Audio8.steal();
-          attachBall(p);
+          attachBall(p, true);
           addFloat(p.x, p.y-90, "STEAL!", '#ff8c00', 15);
         }
       }
@@ -2399,6 +2614,7 @@ function updateAI(dt){
           p.jumping=true; p.jumpVel=200; p.jumpH=Math.max(p.jumpH,1);
           Audio8.block();
           addFloat(p.x, p.y-90, "BLOCKED!", '#ff5577', 16);
+          if(b.shooter && b.shooter.isUser){ screenShake(8, 0.3); Game.userStreak=0; b.shooter.buffed=false; b.shooter.buffTimer=0; }
         }
       }
     }
@@ -2461,6 +2677,12 @@ function updateCamera(dt){
   const viewW = canvas.width/ZOOM;   // how much court width is visible after zoom-out
   const target = Math.max(0, Math.min(COURT.W - viewW, Game.ball.x - viewW/2));
   Game.camX += (target-Game.camX)*Math.min(1, dt*6);
+  if(Game.shakeT>0) Game.shakeT = Math.max(0, Game.shakeT-dt);
+}
+function screenShake(mag, dur){
+  Game.shakeT = dur||0.28;
+  Game.shakeMag = mag||6;
+  Game.shakeDur = Game.shakeT;
 }
 
 /* =========================================================================
@@ -2471,7 +2693,13 @@ function render(){
   ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.save();
   ctx.scale(ZOOM, ZOOM);                    // zoom out so sidelines, benches & stands are visible
-  ctx.translate(-Math.round(Game.camX), 0);
+  let shX=0, shY=0;
+  if(Game.shakeT>0){
+    const falloff = Game.shakeT/(Game.shakeDur||0.28);
+    shX = (Math.random()*2-1)*Game.shakeMag*falloff;
+    shY = (Math.random()*2-1)*Game.shakeMag*falloff*0.5;
+  }
+  ctx.translate(-Math.round(Game.camX)+shX, shY);
 
   drawCourt();
   drawHoop(COURT.hoopLeftX, true);
