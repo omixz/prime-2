@@ -105,8 +105,26 @@
 <body>
 <div id="app">
 
+  <!-- ============ MODE SELECT ============ -->
+  <div id="screen-mode" class="screen active">
+    <div class="panel">
+      <h1>HOOP LEGENDS</h1>
+      <p class="story">Two ways to play. Rise from rookie to Finals MVP, or run a franchise to a title.</p>
+      <div class="row" style="gap:16px;">
+        <div class="teamPick" id="modeJourney" style="width:220px;">
+          <h2 style="border:none;text-align:center;margin:6px 0;color:var(--accent-soft)">🏀 MY JOURNEY</h2>
+          <p class="small-txt">Create one baller. Level up, unlock badges, and carry your team through the playoffs.</p>
+        </div>
+        <div class="teamPick" id="modeFranchise" style="width:220px;">
+          <h2 style="border:none;text-align:center;margin:6px 0;color:var(--accent2)">🏆 FRANCHISE HQ</h2>
+          <p class="small-txt">Run a whole team. Play or sim a full season, climb the standings, and win it all.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ============ CHARACTER CREATION ============ -->
-  <div id="screen-create" class="screen active">
+  <div id="screen-create" class="screen">
     <div class="panel">
       <h1>HOOP LEGENDS</h1>
       <p class="story">Every legend starts on a dead-end court with a dream. Build your baller, get drafted by one of seven franchises, and chase a championship — one shot at a time.</p>
@@ -168,6 +186,44 @@
 
       <div class="row"><button id="btnPlayGame">Tip Off Next Game ▶</button></div>
       <div class="flashMsg" id="hubMsg"></div>
+    </div>
+  </div>
+
+  <!-- ============ FRANCHISE SETUP ============ -->
+  <div id="screen-frSetup" class="screen">
+    <div class="panel">
+      <h1>FRANCHISE HQ</h1>
+      <p class="story">Choose the franchise you'll lead. You'll play or sim a full season against the rest of the league, then chase the championship.</p>
+      <h2>Select Your Franchise</h2>
+      <div class="row" id="frTeamRow"></div>
+      <div class="row"><button id="btnFrStart">Begin Season</button></div>
+      <div class="flashMsg" id="frSetupMsg"></div>
+    </div>
+  </div>
+
+  <!-- ============ FRANCHISE DASHBOARD ============ -->
+  <div id="screen-franchise" class="screen">
+    <div class="panel" style="max-width:780px;">
+      <h1 id="frTitle">FRANCHISE HQ</h1>
+      <p class="story" id="frStatus"></p>
+      <div class="row" style="align-items:flex-start; gap:20px; justify-content:space-between;">
+        <div style="flex:1; min-width:300px;">
+          <h2>Standings</h2>
+          <div id="frStandings"></div>
+        </div>
+        <div style="flex:1; min-width:240px;">
+          <h2>Next Up</h2>
+          <div id="frNext"></div>
+          <div class="row" style="justify-content:flex-start;">
+            <button id="btnFrPlay">▶ Play Game</button>
+            <button id="btnFrSim" class="small">Sim Game</button>
+          </div>
+          <div class="row" style="justify-content:flex-start;">
+            <button id="btnFrSimWeek" class="small ghost">Sim Rest of Season</button>
+          </div>
+          <div class="flashMsg" id="frMsg"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -242,7 +298,43 @@ const Audio8 = (function(){
     levelup(){ beep(523,0.1,'square',0.15,1046); setTimeout(()=>beep(659,0.15,'square',0.15,1318),100); },
     badge(){ beep(400,0.1,'sawtooth',0.12,1200); setTimeout(()=>beep(800,0.2,'sine',0.15,1600),120); },
     click(){ beep(300,0.04,'square',0.08); },
-    ensureRunning(){ try{ ac().resume(); }catch(e){} }
+    ensureRunning(){ try{ ac().resume(); }catch(e){} },
+    // ---- original synthesized background loop ----
+    _music:null, _muted:false, _timer:null, _step:0,
+    startMusic(){
+      const self=this;
+      if(self._timer) return;
+      const c=ac();
+      // original chiptune: a I-vi-IV-V-ish loop, bass + arp, nothing copyrighted
+      const bass=[131,131,110,110,147,147,98,98];       // C3 A2 D3 G2 pattern
+      const arp =[[262,330,392],[220,262,330],[294,370,440],[196,247,294]];
+      let step=0;
+      const beat=0.32;
+      function tick(){
+        if(self._muted){ return; }
+        const t=c.currentTime;
+        const bi=step%8;
+        // bass
+        const bo=c.createOscillator(), bg=c.createGain();
+        bo.type='triangle'; bo.frequency.value=bass[bi];
+        bg.gain.setValueAtTime(0.10,t); bg.gain.exponentialRampToValueAtTime(0.001,t+beat*0.9);
+        bo.connect(bg); bg.connect(c.destination); bo.start(t); bo.stop(t+beat);
+        // arp note
+        const chord=arp[(step>>1)%4];
+        const note=chord[step%3];
+        const ao=c.createOscillator(), ag=c.createGain();
+        ao.type='square'; ao.frequency.value=note;
+        ag.gain.setValueAtTime(0.045,t); ag.gain.exponentialRampToValueAtTime(0.001,t+beat*0.7);
+        ao.connect(ag); ag.connect(c.destination); ao.start(t); ao.stop(t+beat*0.8);
+        // light hat every other step
+        if(step%2===0) noise(0.03,0.03,7000);
+        step++;
+      }
+      self._timer=setInterval(tick, beat*1000);
+      tick();
+    },
+    stopMusic(){ if(this._timer){ clearInterval(this._timer); this._timer=null; } },
+    toggleMute(){ this._muted=!this._muted; return this._muted; }
   };
 })();
 
@@ -288,6 +380,7 @@ function freshState(){
   };
 }
 let S = freshState();
+S.mode = 'journey';   // 'journey' | 'franchise'
 const ROUND_NAMES = ["Quarterfinals","Semifinals","Championship","Champion"];
 
 function showScreen(id){
@@ -375,6 +468,7 @@ document.getElementById('posRow').addEventListener('click', (e)=>{
 
 document.getElementById('btnStartCareer').addEventListener('click', ()=>{
   Audio8.ensureRunning();
+  Audio8.startMusic();
   Audio8.click();
   const nm = document.getElementById('playerName').value.trim();
   const msg = document.getElementById('createMsg');
@@ -401,6 +495,248 @@ document.getElementById('btnToHub').addEventListener('click', ()=>{
 
 renderAttrEditor();
 renderTeamRow();
+
+/* =========================================================================
+   MODE SELECT + FRANCHISE HQ
+========================================================================= */
+document.getElementById('modeJourney').addEventListener('click', ()=>{
+  Audio8.ensureRunning(); Audio8.startMusic(); Audio8.click();
+  S.mode='journey';
+  showScreen('screen-create');
+});
+document.getElementById('modeFranchise').addEventListener('click', ()=>{
+  Audio8.ensureRunning(); Audio8.startMusic(); Audio8.click();
+  S.mode='franchise';
+  renderFrTeamRow();
+  showScreen('screen-frSetup');
+});
+
+let frChosenIdx = null;
+function renderFrTeamRow(){
+  const row = document.getElementById('frTeamRow');
+  row.innerHTML='';
+  frChosenIdx=null;
+  TEAMS.forEach((t,i)=>{
+    const card=document.createElement('div');
+    card.className='teamPick';
+    card.innerHTML=`<div class="jersey" style="background:${t.primary};border-color:${t.secondary}"></div>
+      <p style="margin:0;font-size:12px;color:var(--text)"><b>${t.name}</b></p>`;
+    card.onclick=()=>{ Audio8.click(); document.querySelectorAll('#frTeamRow .teamPick').forEach(c=>c.classList.remove('sel')); card.classList.add('sel'); frChosenIdx=i; };
+    row.appendChild(card);
+  });
+}
+
+function newFranchise(teamIdx){
+  const standings = TEAMS.map((t,i)=>({ idx:i, w:0, l:0, pf:0, pa:0 }));
+  // round-robin: each team plays every other team twice → 12 games
+  const order = [0,1,2,3,4,5,6];
+  const sched = [];
+  for(let rep=0; rep<2; rep++){
+    for(let j=0;j<TEAMS.length;j++){
+      if(j!==teamIdx) sched.push(j);
+    }
+  }
+  // shuffle opponent order lightly
+  for(let i=sched.length-1;i>0;i--){ const k=Math.floor(Math.random()*(i+1)); [sched[i],sched[k]]=[sched[k],sched[i]]; }
+  return { teamIdx, standings, sched, gameIdx:0, phase:'season', playoff:null, champion:null };
+}
+
+// power rating for sim purposes
+function teamPower(idx){ return 48 + ((idx*37)%20) + Math.random()*10; }
+function simGame(aIdx,bIdx){
+  const pa=teamPower(aIdx), pb=teamPower(bIdx);
+  const sa=Math.round(70 + pa*0.55 + Math.random()*24);
+  const sb=Math.round(70 + pb*0.55 + Math.random()*24);
+  let A=sa,B=sb; if(A===B){ Math.random()<0.5?A++:B++; }
+  return { a:A, b:B, aWin:A>B };
+}
+function recordResult(st, aIdx, bIdx, aScore, bScore){
+  const A=st.standings.find(s=>s.idx===aIdx), Bo=st.standings.find(s=>s.idx===bIdx);
+  A.pf+=aScore; A.pa+=bScore; Bo.pf+=bScore; Bo.pa+=aScore;
+  if(aScore>bScore){ A.w++; Bo.l++; } else { A.l++; Bo.w++; }
+}
+// sim one game for the other teams each time your team plays, to keep standings live
+function simOtherGames(st){
+  const others = TEAMS.map((t,i)=>i).filter(i=>i!==st.teamIdx && i!==st.sched[st.gameIdx]);
+  for(let i=0;i+1<others.length;i+=2){
+    const r=simGame(others[i],others[i+1]);
+    recordResult(st, others[i], others[i+1], r.a, r.b);
+  }
+}
+
+function renderFranchise(){
+  const fr=S.franchise, myTeam=TEAMS[fr.teamIdx];
+  document.getElementById('frTitle').textContent = `FRANCHISE HQ — ${myTeam.name.toUpperCase()}`;
+
+  // standings table sorted by wins
+  const sorted = fr.standings.slice().sort((a,b)=> (b.w-a.w) || ((b.pf-b.pa)-(a.pf-a.pa)));
+  let html='<table style="width:100%;border-collapse:collapse;font-size:12px;">'+
+    '<tr style="color:var(--text-dim);text-align:left"><th>#</th><th>Team</th><th>W</th><th>L</th><th>Diff</th></tr>';
+  sorted.forEach((s,rank)=>{
+    const t=TEAMS[s.idx];
+    const me = s.idx===fr.teamIdx;
+    const diff=s.pf-s.pa;
+    html+=`<tr style="${me?'background:#12324a;color:var(--accent-soft);font-weight:700':''}">`+
+      `<td>${rank+1}</td><td><span style="display:inline-block;width:10px;height:10px;background:${t.primary};border-radius:2px;margin-right:5px"></span>${t.abbr}</td>`+
+      `<td>${s.w}</td><td>${s.l}</td><td>${diff>0?'+':''}${diff}</td></tr>`;
+  });
+  html+='</table>';
+  document.getElementById('frStandings').innerHTML=html;
+
+  const nextBox=document.getElementById('frNext');
+  const playBtn=document.getElementById('btnFrPlay'), simBtn=document.getElementById('btnFrSim'), weekBtn=document.getElementById('btnFrSimWeek');
+  if(fr.phase==='season'){
+    const oppIdx=fr.sched[fr.gameIdx];
+    document.getElementById('frStatus').textContent = `Regular season — game ${fr.gameIdx+1} of ${fr.sched.length}. Play your games or sim to the playoffs.`;
+    nextBox.innerHTML = `<p><b>Game ${fr.gameIdx+1}/${fr.sched.length}</b></p>
+      <p style="font-size:14px"><span style="color:${myTeam.primary}">${myTeam.abbr}</span> vs <span style="color:${TEAMS[oppIdx].primary}">${TEAMS[oppIdx].name}</span></p>`;
+    playBtn.style.display=''; simBtn.style.display=''; weekBtn.style.display='';
+  } else if(fr.phase==='playoffs'){
+    const rd=fr.playoff;
+    document.getElementById('frStatus').textContent = `Playoffs — ${rd.roundName}. Win to advance.`;
+    if(rd.userOut){
+      nextBox.innerHTML=`<p style="color:var(--danger)">Your season is over — eliminated in the ${rd.roundName}.</p>`;
+      playBtn.style.display='none'; simBtn.style.display='none'; weekBtn.style.display='none';
+    } else if(fr.champion!==null){
+      // handled below
+    } else {
+      nextBox.innerHTML = `<p><b>${rd.roundName}</b></p>
+        <p style="font-size:14px"><span style="color:${myTeam.primary}">${myTeam.abbr}</span> vs <span style="color:${TEAMS[rd.oppIdx].primary}">${TEAMS[rd.oppIdx].name}</span></p>`;
+      playBtn.style.display=''; simBtn.style.display=''; weekBtn.style.display='none';
+    }
+  }
+  if(fr.champion!==null){
+    document.getElementById('frStatus').textContent = fr.champion===fr.teamIdx
+      ? `🏆 The ${myTeam.name} are CHAMPIONS! What a season.`
+      : `Season over. ${TEAMS[fr.champion].name} took the title. There's always next year.`;
+    nextBox.innerHTML = `<div class="row"><button id="btnFrNewSeason">Start New Season</button></div>`;
+    document.getElementById('btnFrNewSeason').onclick=()=>{ Audio8.click(); S.franchise=newFranchise(fr.teamIdx); renderFranchise(); };
+    playBtn.style.display='none'; simBtn.style.display='none'; weekBtn.style.display='none';
+  }
+}
+
+function frAdvanceAfterGame(userWon, myScore, oppScore){
+  const fr=S.franchise;
+  if(fr.phase==='season'){
+    const oppIdx=fr.sched[fr.gameIdx];
+    recordResult(fr, fr.teamIdx, oppIdx, myScore, oppScore);
+    simOtherGames(fr);
+    fr.gameIdx++;
+    if(fr.gameIdx>=fr.sched.length) startFrPlayoffs();
+  } else if(fr.phase==='playoffs'){
+    const rd=fr.playoff;
+    if(userWon){
+      rd.wins=(rd.wins||0)+1;
+      advancePlayoffRound(true);
+    } else {
+      rd.userOut=true;
+      // sim remaining bracket to a champion (someone else)
+      finishBracketWithoutUser();
+    }
+  }
+}
+
+function seedPlayoffs(){
+  const fr=S.franchise;
+  const sorted=fr.standings.slice().sort((a,b)=>(b.w-a.w)||((b.pf-b.pa)-(a.pf-a.pa)));
+  return sorted.slice(0,4).map(s=>s.idx); // top 4 seeds
+}
+function startFrPlayoffs(){
+  const fr=S.franchise;
+  const seeds=seedPlayoffs();
+  fr.phase='playoffs';
+  const userSeed = seeds.indexOf(fr.teamIdx);
+  if(userSeed<0){
+    // missed the playoffs — sim a champion
+    fr.playoff={ roundName:'Playoffs', userOut:true };
+    const champ=simBracket(seeds);
+    fr.champion=champ;
+    return;
+  }
+  fr.bracket=seeds;
+  fr.roundName='Semifinals';
+  // opponent = the other semi pairing partner: seeds[0]v[3], [1]v[2]
+  setupUserPlayoffMatch();
+}
+function setupUserPlayoffMatch(){
+  const fr=S.franchise, seeds=fr.bracket;
+  const us=fr.teamIdx;
+  let oppIdx;
+  if(fr.roundName==='Semifinals'){
+    const pairA=[seeds[0],seeds[3]], pairB=[seeds[1],seeds[2]];
+    oppIdx = pairA.includes(us) ? pairA.find(i=>i!==us) : pairB.find(i=>i!==us);
+  } else { // Championship: opponent is the winner of the other semi (sim it)
+    oppIdx = fr.otherFinalist;
+  }
+  fr.playoff={ roundName:fr.roundName, oppIdx, wins:0 };
+}
+function advancePlayoffRound(){
+  const fr=S.franchise;
+  if(fr.roundName==='Semifinals'){
+    // sim the other semi to get the finalist
+    const seeds=fr.bracket, us=fr.teamIdx;
+    const pairA=[seeds[0],seeds[3]], pairB=[seeds[1],seeds[2]];
+    const otherPair = pairA.includes(us) ? pairB : pairA;
+    const r=simGame(otherPair[0], otherPair[1]);
+    fr.otherFinalist = r.aWin ? otherPair[0] : otherPair[1];
+    fr.roundName='Championship';
+    setupUserPlayoffMatch();
+  } else {
+    // won the championship!
+    fr.champion=fr.teamIdx;
+  }
+}
+function simBracket(seeds){
+  const r1=simGame(seeds[0],seeds[3]).aWin?seeds[0]:seeds[3];
+  const r2=simGame(seeds[1],seeds[2]).aWin?seeds[1]:seeds[2];
+  return simGame(r1,r2).aWin?r1:r2;
+}
+function finishBracketWithoutUser(){
+  const fr=S.franchise;
+  const seeds=fr.bracket||seedPlayoffs();
+  fr.champion=simBracket(seeds);
+}
+
+document.getElementById('btnFrStart').addEventListener('click', ()=>{
+  Audio8.click();
+  if(frChosenIdx===null){ document.getElementById('frSetupMsg').textContent='Pick a franchise first!'; return; }
+  S.team=TEAMS[frChosenIdx];
+  // franchise uses a generated star player you control (team's floor general)
+  S.player = { name:'Your Star', position:'Guard', heightIn:76,
+    attrs:{ shooting:7, passing:7, speed:7, defense:6 }, level:1, xp:0, xpToNext:100, sp:0, badges:[] };
+  S.franchise=newFranchise(frChosenIdx);
+  renderFranchise();
+  showScreen('screen-franchise');
+});
+
+function frOpponentTeam(){
+  const fr=S.franchise;
+  const oppIdx = fr.phase==='season' ? fr.sched[fr.gameIdx] : fr.playoff.oppIdx;
+  return TEAMS[oppIdx];
+}
+
+document.getElementById('btnFrPlay').addEventListener('click', ()=>{
+  Audio8.ensureRunning(); Audio8.startMusic(); Audio8.click();
+  startGame(frOpponentTeam());
+});
+document.getElementById('btnFrSim').addEventListener('click', ()=>{
+  Audio8.click();
+  const opp=frOpponentTeam();
+  const r=simGame(S.franchise.teamIdx, TEAMS.indexOf(opp));
+  document.getElementById('frMsg').textContent = `Sim result: ${S.team.abbr} ${r.a} — ${r.b} ${opp.abbr} (${r.aWin?'W':'L'})`;
+  frAdvanceAfterGame(r.aWin, r.a, r.b);
+  renderFranchise();
+});
+document.getElementById('btnFrSimWeek').addEventListener('click', ()=>{
+  Audio8.click();
+  const fr=S.franchise;
+  while(fr.phase==='season'){
+    const opp=fr.sched[fr.gameIdx];
+    const r=simGame(fr.teamIdx, opp);
+    frAdvanceAfterGame(r.aWin, r.a, r.b);
+  }
+  renderFranchise();
+});
 
 /* =========================================================================
    MY JOURNEY HUB
@@ -645,17 +981,20 @@ ctx.imageSmoothingEnabled = false;
 
 const COURT = {
   W: 2000,               // court length (horizontal)
-  bandTop: 30, bandBottom: 510,   // floor band on screen
+  bandTop: 96, bandBottom: 508,   // hardwood floor band (world y)
   inLeft: 50, inRight: 1950,
-  inTop: 62, inBottom: 478,
+  inTop: 130, inBottom: 474,
   hoopLeftX: 95, hoopRightX: 1905,
-  hoopY: 270
+  hoopY: 302
 };
+const WORLD_H = 676;   // total vertical world drawn (stands + floor + bench)
+const ZOOM = 540/WORLD_H;  // scale so the whole vertical composition fits & we see sidelines
 const SC = 4; // sprite pixel scale
 
 const KEYS = {};
 window.addEventListener('keydown', e=>{
   KEYS[e.code]=true;
+  if(e.code==='KeyM'){ const m=Audio8.toggleMute(); if(Game) Game.muted=m; }
   if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
 });
 window.addEventListener('keyup', e=>{ KEYS[e.code]=false; });
@@ -681,24 +1020,31 @@ function makePlayer(opts){
     shootPose:0,
     stunTimer:0, aiTimer:0, animT:0, dribbleT:0,
     buffed:false, buffTimer:0,
-    scale:1,
+    scale: 0.9 + Math.random()*0.28,   // varied heights so the roster isn't all clones
+    sprintT:0,
     jerseyNum: 10+Math.floor(Math.random()*90),
     skinIdx: Math.floor(Math.random()*SKINS.length),
     hairIdx: Math.floor(Math.random()*HAIRS.length),
     hairStyle: ['plain','afro','headband'][Math.floor(Math.random()*3)]
   }, opts);
+  // taller players are a touch slower but grab boards; shorter are quicker
+  e.baseSpeed = 210 - (e.scale-1)*70;
   e.sprites = buildSprite({ afro:e.hairStyle==='afro', headband:e.hairStyle==='headband' });
   return e;
 }
 
 function attackingHoopX(team){ return team==='home' ? COURT.hoopRightX : COURT.hoopLeftX; }
 
-function startGame(){
+function startGame(forcedOpponent){
   Audio8.ensureRunning();
   const round = S.season.round;
-  const oppTeams = TEAMS.filter(t=>t.name!==S.team.name);
-  const opponent = oppTeams[Math.floor(Math.random()*oppTeams.length)];
-  const diff = 1 + round*0.18;
+  let opponent;
+  if(forcedOpponent){ opponent = forcedOpponent; }
+  else {
+    const oppTeams = TEAMS.filter(t=>t.name!==S.team.name);
+    opponent = oppTeams[Math.floor(Math.random()*oppTeams.length)];
+  }
+  const diff = S.mode==='franchise' ? 1.15 : 1 + round*0.18;
 
   const home=[], away=[];
   // home attacks the RIGHT hoop; away attacks the LEFT hoop
@@ -901,18 +1247,30 @@ function updateInput(dt){
 /* ---------------- shooting ---------------- */
 function computeShotChance(shooter, meterT){
   const hx = attackingHoopX(shooter.team);
-  const peak = 1 - Math.abs(meterT-0.55)*2.2;
+  const peak = 1 - Math.abs(meterT-0.5)*2.3;
   const timing = Math.max(0, Math.min(1, peak));
   const shootAttr = shooter.isUser ? S.player.attrs.shooting : (5+Game.diff*2);
-  let chance = 0.28 + shootAttr*0.055 + timing*0.45;
+
+  // TRUE distance falloff: right at the rim is a near-automatic layup, and the
+  // odds drop off steeply with distance so a wing/corner shot is NOT a gimme.
   const d = Math.hypot(shooter.x-hx, shooter.y-COURT.hoopY);
-  const isThree = d > 320;
-  if(isThree){
-    chance -= 0.16;
-    if(shooter.isUser && S.player.badges.includes('shooting')) chance += 0.22;
-  }
-  if(shooter.buffed) chance += 0.08;
-  chance = Math.max(0.03, Math.min(0.97, chance));
+  const isThree = d > 330;
+  let distFactor;
+  if(d < 85) distFactor = 1.0;                       // point-blank / layup
+  else distFactor = Math.max(0, 1 - (d-85)/380);     // fades to 0 by ~mid-range+
+
+  let chance = 0.05 + shootAttr*0.030 + timing*0.24 + distFactor*0.50;
+
+  if(isThree && shooter.isUser && S.player.badges.includes('shooting')) chance += 0.16;
+
+  // defensive contest: a defender right in your face tanks the shot
+  const defenders = shooter.team==='home' ? Game.away : Game.home;
+  let nearest = Infinity;
+  defenders.forEach(df=>{ const dd = Math.hypot(df.x-shooter.x, df.y-shooter.y); if(dd<nearest) nearest=dd; });
+  if(nearest < 75) chance -= (1 - nearest/75) * 0.28;
+
+  if(shooter.buffed) chance += 0.06;
+  chance = Math.max(0.02, Math.min(0.98, chance));
   return { chance, isThree, hx };
 }
 
@@ -1005,31 +1363,59 @@ function resolveShot(){
   }
 }
 
-/* walk-in inbound: no teleporting — the inbounder starts behind the baseline
-   and visibly carries the ball onto the floor before play resumes */
+/* Real inbound after a made basket: the inbounder steps out of bounds behind
+   the baseline the OTHER team just scored on, a teammate steps to receive, and
+   after a short beat the inbounder passes it in. Then play goes live — the ball
+   travels as a visible pass instead of teleporting up the floor. */
 function startInbound(scoringTeam){
-  const other = scoringTeam==='home' ? Game.away : Game.home;
-  const inb = other[0];
-  const scoredLeft = attackingHoopX(scoringTeam)===COURT.hoopLeftX;
-  inb.y = COURT.hoopY + 90;
-  inb.x = scoredLeft ? COURT.inLeft - 55 : COURT.inRight + 55;
+  // the team that was scored ON inbounds the ball
+  const inbTeam = scoringTeam==='home' ? Game.away : Game.home;
+  const inb = inbTeam[0];
+  // they inbound from under the basket the scoring team attacked
+  const baselineX = attackingHoopX(scoringTeam);
+  const outSign = baselineX < COURT.W/2 ? -1 : 1; // which way is out of bounds
+  inb.x = baselineX + outSign*45;                 // just past the baseline (OOB)
+  inb.y = COURT.hoopY + 80;
+  inb.moving = false; inb.facing = -outSign;
   attachBall(inb);
+
+  // pick a receiver (their PG/next player) and send them to a catch spot inbounds
+  const receiver = inbTeam[1] || inbTeam[0];
+  receiver.inboundSpot = { x: baselineX - outSign*140, y: COURT.hoopY + 40 };
+
   Game.phase='inbound';
   Game.inbounder=inb;
-  Game.inboundTargetX = scoredLeft ? COURT.inLeft + 70 : COURT.inRight - 70;
+  Game.inboundReceiver=receiver;
+  Game.inboundTimer=1.1;      // beat before the pass
 }
 function updateInbound(dt){
   if(Game.phase!=='inbound' || !Game.inbounder) return;
-  const p = Game.inbounder;
-  if(!p.isUser){
-    const dir = Math.sign(Game.inboundTargetX - p.x) || 1;
-    p.x += dir*180*dt;
-    p.facing = dir;
-    p.moving = true; p.animT += dt*10;
+  const rec = Game.inboundReceiver;
+  // receiver jogs to the catch spot
+  if(rec && rec.inboundSpot && rec!==Game.inbounder){
+    const dx=rec.inboundSpot.x-rec.x, dy=rec.inboundSpot.y-rec.y;
+    const len=Math.hypot(dx,dy)||1;
+    if(len>6){
+      rec.x += (dx/len)*Math.min(200*dt,len);
+      rec.y += (dy/len)*Math.min(200*dt,len);
+      if(Math.abs(dx)>2) rec.facing = dx>0?1:-1;
+      rec.moving=true; rec.animT += dt*10;
+    } else rec.moving=false;
   }
-  if(p.x>=COURT.inLeft && p.x<=COURT.inRight){
+  Game.inboundTimer -= dt;
+  if(Game.inboundTimer<=0){
+    // throw the inbound pass, then resume live play
+    const b=Game.ball, from=Game.inbounder, to=rec||Game.inbounder;
+    b.holder=null; from.hasBall=false;
+    b.inAir=false; b.loose=true;
+    b.x=from.x; b.y=from.y; b.h=40; b.vh=40;
+    const dx=to.x-from.x, dy=to.y-from.y, len=Math.hypot(dx,dy)||1;
+    b.vx=(dx/len)*Math.min(len*2.2, 520);
+    b.vy=(dy/len)*Math.min(len*2.2, 520);
+    from.x += (from.x<COURT.W/2? 40 : -40); // step back inbounds
     Game.phase='live';
-    Game.inbounder=null;
+    Game.inbounder=null; Game.inboundReceiver=null;
+    Audio8.dribble();
   }
 }
 
@@ -1124,14 +1510,14 @@ function updateAI(dt){
     const hx = attackingHoopX(p.team);
 
     let tx=p.x, ty=p.y;
-    let speed = 200 + Game.diff*25;
+    let speed = (p.baseSpeed||200) + Game.diff*22;
 
     if(p.hasBall){
       const dHoop = Math.hypot(p.x-hx, p.y-COURT.hoopY);
       const dirX = Math.sign(hx - p.x)||1;
       tx = p.x + dirX*80;
       ty = COURT.hoopY + Math.sin(performance.now()/700 + p.x)*110;
-      speed = 240 + Game.diff*25;
+      speed = (p.baseSpeed||200)*1.15 + Game.diff*22;
       if(dHoop<260 && p.aiTimer<=0){
         p.aiTimer = 1.1 + Math.random();
         releaseShot(p, 0.4+Math.random()*0.35);
@@ -1171,15 +1557,34 @@ function updateAI(dt){
       }
     }
 
-    const dx=tx-p.x, dy=ty-p.y;
-    const len=Math.hypot(dx,dy)||1;
+    let dx=tx-p.x, dy=ty-p.y;
+    let len=Math.hypot(dx,dy)||1;
+
+    // SPRINT in transition: the farther a player is from where they need to be,
+    // the faster they move (and their legs cycle faster), so the AI actually
+    // runs the floor instead of drifting.
+    let sprinting = false;
+    if(len>150){ speed *= 1.5; sprinting = true; p.sprintT = 0.2; }
+    else if(p.sprintT>0){ p.sprintT-=dt; speed *= 1.25; }
+
+    // SEPARATION: push away from nearby players so they stop clumping together.
+    let sepx=0, sepy=0;
+    Game.all.forEach(o=>{
+      if(o===p) return;
+      const ox=p.x-o.x, oy=p.y-o.y;
+      const dd=ox*ox+oy*oy;
+      if(dd>1 && dd<62*62){ const inv=1/Math.sqrt(dd); sepx+=ox*inv; sepy+=oy*inv; }
+    });
+    dx += sepx*46; dy += sepy*46;
+    len = Math.hypot(dx,dy)||1;
+
     const step=speed*dt;
-    p.moving = len>6;
+    p.moving = Math.hypot(tx-p.x,ty-p.y)>8 || (sepx||sepy);
     if(p.moving){
       p.x += (dx/len)*Math.min(step,len);
       p.y += (dy/len)*Math.min(step,len);
       if(Math.abs(dx)>2) p.facing = dx>0?1:-1;
-      p.animT += dt*10;
+      p.animT += dt*(sprinting?14:10);
     }
     if(p.jumping){
       p.jumpVel -= 720*dt;
@@ -1204,7 +1609,8 @@ function updateFloatTexts(dt){
   Game.floatTexts = Game.floatTexts.filter(f=>f.t<1.4);
 }
 function updateCamera(dt){
-  const target = Math.max(0, Math.min(COURT.W - canvas.width, Game.ball.x - canvas.width/2));
+  const viewW = canvas.width/ZOOM;   // how much court width is visible after zoom-out
+  const target = Math.max(0, Math.min(COURT.W - viewW, Game.ball.x - viewW/2));
   Game.camX += (target-Game.camX)*Math.min(1, dt*6);
 }
 
@@ -1215,6 +1621,7 @@ function render(){
   ctx.fillStyle='#0e1524';
   ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.save();
+  ctx.scale(ZOOM, ZOOM);                    // zoom out so sidelines, benches & stands are visible
   ctx.translate(-Math.round(Game.camX), 0);
 
   drawCourt();
@@ -1245,14 +1652,19 @@ function render(){
   ctx.fillStyle='rgba(255,255,255,0.5)';
   ctx.font='11px monospace';
   ctx.textAlign='left';
-  ctx.fillText('WASD/Arrows: Move  SHIFT: Sprint  SPACE: Shoot/Jump  X: Pass/Steal', 10, canvas.height-8);
+  ctx.fillText('WASD: Move  SHIFT: Sprint  SPACE: Shoot/Jump  X: Pass/Steal  M: '+(Audio8._muted?'Unmute':'Mute'), 10, canvas.height-8);
 }
 
 function drawCourt(){
-  // aprons above/below the floor
-  ctx.fillStyle='#132441';
+  // ---- upper stands (far crowd) ----
+  ctx.fillStyle='#101b31';
   ctx.fillRect(-40, 0, COURT.W+80, COURT.bandTop);
-  ctx.fillRect(-40, COURT.bandBottom, COURT.W+80, canvas.height-COURT.bandBottom);
+  drawCrowd(0, COURT.bandTop-30, 3);
+  // ---- lower apron: sideline seats, scorer's table, benches ----
+  ctx.fillStyle='#101b31';
+  ctx.fillRect(-40, COURT.bandBottom, COURT.W+80, WORLD_H-COURT.bandBottom);
+  drawCrowd(COURT.bandBottom+34, WORLD_H-8, 3);
+  drawBenchesAndTable();
   // floor
   ctx.fillStyle='#e0b171';
   ctx.fillRect(-40, COURT.bandTop, COURT.W+80, COURT.bandBottom-COURT.bandTop);
@@ -1298,6 +1710,44 @@ function drawCourt(){
     ctx.beginPath(); ctx.arc(hxx, COURT.hoopY, 42, dir>0?-Math.PI/2:Math.PI/2, dir>0?Math.PI/2:Math.PI*1.5); ctx.stroke();
     ctx.beginPath(); ctx.arc(hxx, COURT.hoopY, 320, dir>0?-Math.PI/2+0.18:Math.PI/2+0.18, dir>0?Math.PI/2-0.18:Math.PI*1.5-0.18); ctx.stroke();
   }
+}
+
+// deterministic pseudo-random so the crowd doesn't shimmer while the camera pans
+function crowdRand(i){ const s=Math.sin(i*12.9898)*43758.5453; return s-Math.floor(s); }
+const CROWD_COLORS=['#2b3a55','#7a3b3b','#3b6b52','#6b5a2f','#4a3b66','#8a8f9c','#a05a3a'];
+function drawCrowd(y0, y1, rows){
+  const seatW=18;
+  for(let r=0;r<rows;r++){
+    const y = y0 + r*((y1-y0)/rows);
+    for(let x=-40; x<COURT.W+40; x+=seatW){
+      const idx = (x*7 + r*131);
+      // head
+      ctx.fillStyle = CROWD_COLORS[Math.floor(crowdRand(idx)*CROWD_COLORS.length)];
+      ctx.fillRect(x+4, y+3, 10, 8);
+      // body
+      ctx.fillStyle = CROWD_COLORS[Math.floor(crowdRand(idx+3)*CROWD_COLORS.length)];
+      ctx.fillRect(x+2, y+11, 14, 9);
+    }
+  }
+}
+function drawBenchesAndTable(){
+  const y = COURT.bandBottom + 4;
+  // team benches near each end
+  [[COURT.inLeft+30, Game.teamAway.primary],[COURT.inRight-250, Game.teamHome.primary]].forEach(([bx,col])=>{
+    ctx.fillStyle='#20140c'; ctx.fillRect(bx, y+18, 220, 8);   // bench plank
+    for(let i=0;i<5;i++){
+      const sx=bx+10+i*42;
+      ctx.fillStyle='#d7a56b'; ctx.fillRect(sx, y+2, 12, 8);   // seated head
+      ctx.fillStyle=col; ctx.fillRect(sx-2, y+10, 16, 9);       // jersey
+    }
+  });
+  // scorer's table at center
+  const tx=COURT.W/2-120;
+  ctx.fillStyle='#0c1424'; ctx.fillRect(tx, y+6, 240, 16);
+  ctx.fillStyle='#22314a'; ctx.fillRect(tx, y+6, 240, 4);
+  ctx.fillStyle='#ffd166'; ctx.font='bold 9px monospace'; ctx.textAlign='center';
+  ctx.fillText('★ ★ ★  COURTSIDE  ★ ★ ★', COURT.W/2, y+18);
+  ctx.textAlign='left';
 }
 
 function drawHoop(hx, isLeft){
@@ -1512,6 +1962,17 @@ function endGame(){
   Game.over=true;
   Audio8.buzzer();
   const won = Game.scoreHome > Game.scoreAway;
+
+  // FRANCHISE MODE: report to the dashboard, no MVP career progression
+  if(S.mode==='franchise'){
+    frAdvanceAfterGame(won, Game.scoreHome, Game.scoreAway);
+    renderFranchise();
+    document.getElementById('frMsg').textContent =
+      `Final: ${S.team.abbr} ${Game.scoreHome} — ${Game.scoreAway} ${Game.teamAway.abbr} (${won?'WIN':'LOSS'})`;
+    showScreen('screen-franchise');
+    return;
+  }
+
   if(won) S.season.wins++; else S.season.losses++;
   gainXP(Game.stats.points*2 + Game.stats.assists*3 + Game.stats.rebounds*2 + Game.stats.steals*5 + Game.stats.blocks*5 + (won?30:5));
   S.spMultiplierNextGame = (S.sponsor && S.sponsor.done) ? S.sponsor.mult : 1;
