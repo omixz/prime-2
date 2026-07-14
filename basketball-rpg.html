@@ -6,25 +6,41 @@
 <title>Hoop Legends: My Journey</title>
 <style>
   :root{
-    --bg-deep:#0b1220;
-    --bg-panel:#131c2e;
-    --bg-panel2:#0f1728;
+    --bg-deep:#070d18;
+    --bg-panel:#141f36;
+    --bg-panel2:#0d1526;
     --accent:#ff7a29;
-    --accent-soft:#ffb37a;
-    --accent2:#22d3ee;
-    --text:#eaf0f8;
-    --text-dim:#8fa0b8;
-    --success:#34d399;
-    --danger:#f87171;
-    --border:#22314a;
+    --accent-soft:#ffbe7d;
+    --accent2:#2ee6ff;
+    --text:#eef4fc;
+    --text-dim:#93a6c2;
+    --success:#3ce68a;
+    --danger:#ff6b6b;
+    --border:#2a3c5e;
   }
   *{ box-sizing:border-box; }
+  @keyframes bgpan{ 0%{background-position:0 0;} 100%{background-position:120px 120px;} }
+  @keyframes popIn{ 0%{transform:translateY(14px) scale(.98);opacity:0;} 100%{transform:none;opacity:1;} }
+  @keyframes glowPulse{ 0%,100%{box-shadow:0 0 0 1px rgba(255,122,41,.25), 0 26px 80px rgba(0,0,0,.6);} 50%{box-shadow:0 0 0 1px rgba(46,230,255,.35), 0 26px 90px rgba(0,0,0,.6);} }
   html,body{
     margin:0; padding:0; height:100%;
-    background: radial-gradient(circle at 50% 0%, #16233d 0%, var(--bg-deep) 60%);
     color:var(--text);
     font-family:'Segoe UI', system-ui, -apple-system, Helvetica, Arial, sans-serif;
     overflow:hidden; -webkit-user-select:none; user-select:none;
+    background:
+      radial-gradient(circle at 50% -10%, #1d3a63 0%, rgba(29,58,99,0) 55%),
+      radial-gradient(circle at 12% 100%, rgba(255,122,41,.16) 0%, rgba(255,122,41,0) 42%),
+      radial-gradient(circle at 88% 90%, rgba(46,230,255,.14) 0%, rgba(46,230,255,0) 42%),
+      var(--bg-deep);
+  }
+  /* subtle animated court-line texture behind everything */
+  #app::before{
+    content:''; position:absolute; inset:0; pointer-events:none; opacity:.5;
+    background-image:
+      repeating-linear-gradient(45deg, rgba(255,255,255,.025) 0 2px, transparent 2px 26px),
+      repeating-linear-gradient(-45deg, rgba(255,255,255,.02) 0 2px, transparent 2px 26px);
+    background-size:120px 120px;
+    animation:bgpan 8s linear infinite;
   }
   #app{
     position:relative; width:100vw; height:100vh;
@@ -32,9 +48,9 @@
   }
   #gameCanvas{
     image-rendering:pixelated; image-rendering:crisp-edges;
-    border-radius:10px;
-    border:1px solid var(--border);
-    box-shadow: 0 20px 60px rgba(0,0,0,.55);
+    border-radius:12px;
+    border:2px solid var(--border);
+    box-shadow: 0 24px 70px rgba(0,0,0,.6), 0 0 0 1px rgba(46,230,255,.1);
     background:#0e1524;
     max-width:100vw; max-height:100vh;
   }
@@ -45,61 +61,80 @@
   }
   .screen.active{ display:flex; }
   .panel{
+    position:relative;
     background: linear-gradient(160deg, var(--bg-panel), var(--bg-panel2));
-    border:1px solid var(--border); border-radius:18px; padding:28px 34px;
-    box-shadow: 0 24px 70px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.03);
-    max-width:680px; width:94%;
+    border:1px solid var(--border); border-radius:22px; padding:34px 40px;
+    box-shadow: 0 26px 80px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.05);
+    max-width:720px; width:94%;
+    animation:popIn .28s cubic-bezier(.2,.8,.2,1);
+  }
+  /* accent bar across the top of every panel */
+  .panel::before{
+    content:''; position:absolute; top:0; left:26px; right:26px; height:4px; border-radius:0 0 4px 4px;
+    background:linear-gradient(90deg, var(--accent), var(--accent2));
+    box-shadow:0 0 16px rgba(255,122,41,.5);
   }
   h1{
-    font-size:30px; font-weight:800; letter-spacing:-0.5px; margin:0 0 6px;
-    background:linear-gradient(90deg, var(--accent-soft), var(--accent));
+    font-size:40px; font-weight:900; letter-spacing:-1px; margin:6px 0 8px; line-height:1;
+    text-transform:uppercase;
+    background:linear-gradient(92deg, var(--accent-soft), var(--accent) 55%, var(--accent2));
     -webkit-background-clip:text; background-clip:text; color:transparent;
+    text-shadow:0 2px 0 rgba(0,0,0,.25);
   }
   h2{
-    color:var(--text); margin:22px 0 12px; font-size:15px; font-weight:700;
-    letter-spacing:.3px; text-align:left; border-bottom:1px solid var(--border); padding-bottom:6px;
+    color:var(--text); margin:22px 0 12px; font-size:15px; font-weight:800;
+    letter-spacing:1.2px; text-align:left; text-transform:uppercase;
+    border-bottom:2px solid var(--border); padding-bottom:7px;
   }
-  p, label{ font-size:13.5px; line-height:1.65; color:var(--text-dim); }
+  p, label{ font-size:14px; line-height:1.7; color:var(--text-dim); }
   .story{
-    font-size:13px; color:var(--accent-soft); font-style:italic; margin:2px 0 18px;
-    border-left:3px solid var(--accent); padding-left:12px; text-align:left;
+    font-size:13.5px; color:var(--accent-soft); font-style:italic; margin:2px 0 20px;
+    border-left:3px solid var(--accent); padding-left:14px; text-align:left;
   }
   input[type=text]{
-    font-family:inherit; font-size:16px; padding:10px 12px; width:100%;
-    background:#0a1220; color:var(--text); border:1px solid var(--border); border-radius:8px;
-    text-align:center; margin-bottom:4px; outline:none;
+    font-family:inherit; font-size:17px; padding:12px 14px; width:100%;
+    background:#0a1220; color:var(--text); border:2px solid var(--border); border-radius:10px;
+    text-align:center; margin-bottom:4px; outline:none; transition:border-color .15s;
   }
-  input[type=text]:focus{ border-color:var(--accent); }
+  input[type=text]:focus{ border-color:var(--accent2); box-shadow:0 0 0 3px rgba(46,230,255,.12); }
   input[type=range]{ width:100%; accent-color:var(--accent); }
-  .row{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:10px 0; }
+  .row{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin:12px 0; }
   button{
     font-family:inherit; cursor:pointer; background:linear-gradient(160deg, var(--accent-soft), var(--accent));
-    color:#1a1204; border:none; padding:11px 18px; font-size:13px; font-weight:700;
-    border-radius:9px; letter-spacing:.2px; box-shadow:0 4px 14px rgba(255,122,41,.28);
-    transition:transform .08s, box-shadow .08s;
+    color:#1a1204; border:none; padding:13px 22px; font-size:14px; font-weight:800;
+    border-radius:11px; letter-spacing:.4px; text-transform:uppercase;
+    box-shadow:0 5px 0 #a8551c, 0 8px 18px rgba(255,122,41,.3);
+    transition:transform .07s, box-shadow .07s, filter .12s;
   }
-  button:hover{ transform:translateY(-1px); }
-  button:active{ transform:translateY(1px); }
-  button.sel{ background:linear-gradient(160deg, #6ee7b7, var(--success)); }
-  button:disabled{ background:#28324a; color:#5c6c85; box-shadow:none; cursor:not-allowed; }
-  button.small{ padding:7px 11px; font-size:11.5px; }
+  button:hover{ filter:brightness(1.08); transform:translateY(-1px); }
+  button:active{ transform:translateY(4px); box-shadow:0 1px 0 #a8551c, 0 3px 10px rgba(255,122,41,.3); }
+  button.sel{ background:linear-gradient(160deg, #7dffc0, var(--success)); box-shadow:0 5px 0 #1c8f56, 0 8px 18px rgba(60,230,138,.3); }
+  button:disabled{ background:#28324a; color:#5c6c85; box-shadow:0 5px 0 #1a2236; cursor:not-allowed; filter:none; }
+  button.small{ padding:8px 13px; font-size:12px; box-shadow:0 4px 0 #a8551c; }
+  button.small:active{ transform:translateY(3px); box-shadow:0 1px 0 #a8551c; }
+  button.ghost{ background:transparent; border:2px solid var(--border); color:var(--text-dim); box-shadow:none; }
+  button.ghost:hover{ color:var(--text); border-color:var(--accent2); filter:none; }
+  button.ghost:active{ transform:translateY(2px); box-shadow:none; }
+  .diffBtn{ min-width:110px; background:#16233c; color:var(--text-dim); box-shadow:0 4px 0 #0c1526; border:2px solid var(--border); }
+  .diffBtn.sel{ background:linear-gradient(160deg, var(--accent-soft), var(--accent)); color:#1a1204; border-color:transparent; box-shadow:0 4px 0 #a8551c; }
   .posCard, .teamPick{
-    border:1px solid var(--border); border-radius:12px; padding:12px; width:150px; background:#0e1727;
-    cursor:pointer; transition:border-color .12s, transform .12s;
+    border:2px solid var(--border); border-radius:14px; padding:14px; width:158px; background:#0e1930;
+    cursor:pointer; transition:border-color .14s, transform .14s, box-shadow .14s;
   }
-  .posCard:hover, .teamPick:hover{ border-color:var(--accent2); transform:translateY(-2px); }
-  .posCard.sel, .teamPick.sel{ border-color:var(--success); box-shadow:0 0 0 1px var(--success) inset; }
-  .attrRow{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin:6px 0; font-size:12.5px; }
-  .bar{ width:130px; height:9px; background:#1a2438; border-radius:5px; position:relative; overflow:hidden; }
+  .posCard:hover, .teamPick:hover{ border-color:var(--accent2); transform:translateY(-3px); box-shadow:0 10px 24px rgba(0,0,0,.4); }
+  .posCard.sel, .teamPick.sel{ border-color:var(--success); box-shadow:0 0 0 2px var(--success) inset, 0 8px 22px rgba(60,230,138,.2); }
+  .attrRow{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin:7px 0; font-size:13px; }
+  .bar{ width:130px; height:11px; background:#16223a; border-radius:6px; position:relative; overflow:hidden; border:1px solid #223252; }
   .bar>div{ height:100%; background:linear-gradient(90deg, var(--accent), var(--accent2)); }
-  .jersey{ width:34px; height:34px; margin:0 auto 6px; border-radius:8px; border:2px solid rgba(0,0,0,.35); }
+  .jersey{ width:36px; height:36px; margin:0 auto 6px; border-radius:9px; border:2px solid rgba(0,0,0,.35); box-shadow:0 3px 8px rgba(0,0,0,.35); }
   .badgeChip{
-    display:inline-block; background:#1a2438; border:1px solid var(--accent2); border-radius:20px;
-    padding:5px 11px; margin:3px; font-size:11px; color:var(--accent2); font-weight:600;
+    display:inline-block; background:#16233c; border:2px solid var(--accent2); border-radius:20px;
+    padding:5px 12px; margin:3px; font-size:11px; color:var(--accent2); font-weight:700;
   }
-  .small-txt{ font-size:11.5px; color:var(--text-dim); }
-  .flashMsg{ color:var(--success); font-weight:600; min-height:18px; font-size:12.5px; margin-top:8px; }
-  .heightVal{ color:var(--accent2); font-weight:700; }
+  .small-txt{ font-size:12px; color:var(--text-dim); }
+  .flashMsg{ color:var(--success); font-weight:700; min-height:18px; font-size:13px; margin-top:10px; }
+  .heightVal{ color:var(--accent2); font-weight:800; }
+  select{ font-family:inherit; }
 </style>
 </head>
 <body>
@@ -123,6 +158,12 @@
           <h2 style="border:none;text-align:center;margin:6px 0;color:var(--success)">🎮 LOCAL VERSUS</h2>
           <p class="small-txt">Two players, one keyboard. Pick both teams and battle head-to-head.</p>
         </div>
+      </div>
+      <h2 style="text-align:center;border:none;">Difficulty</h2>
+      <div class="row" id="diffRow">
+        <button class="diffBtn" data-d="easy">EASY</button>
+        <button class="diffBtn sel" data-d="medium">MEDIUM</button>
+        <button class="diffBtn" data-d="hard">HARD</button>
       </div>
       <div class="row"><button id="btnLoadGame" class="small ghost">Load Saved Game</button></div>
     </div>
@@ -296,7 +337,15 @@
 
   <!-- ============ GAMEPLAY ============ -->
   <div id="screen-game" class="screen">
-    <canvas id="gameCanvas" width="960" height="540"></canvas>
+    <div style="position:relative;">
+      <canvas id="gameCanvas" width="960" height="540"></canvas>
+      <button id="btnPause" title="Pause (Esc)" style="position:absolute;top:10px;right:10px;padding:6px 10px;font-size:12px;">⏸ Pause</button>
+      <div id="pauseOverlay" style="display:none;position:absolute;inset:0;background:rgba(6,10,18,.82);border-radius:10px;align-items:center;justify-content:center;flex-direction:column;">
+        <h1 style="font-size:34px;">PAUSED</h1>
+        <div class="row"><button id="btnResume">Resume ▶</button></div>
+        <div class="row"><button id="btnQuitMenu" class="ghost">Quit to Menu</button></div>
+      </div>
+    </div>
   </div>
 
   <!-- ============ TROPHY / MVP SCREEN ============ -->
@@ -365,6 +414,23 @@ const Audio8 = (function(){
     levelup(){ beep(523,0.1,'square',0.15,1046); setTimeout(()=>beep(659,0.15,'square',0.15,1318),100); },
     badge(){ beep(400,0.1,'sawtooth',0.12,1200); setTimeout(()=>beep(800,0.2,'sine',0.15,1600),120); },
     click(){ beep(300,0.04,'square',0.08); },
+    layup(){ beep(520,0.09,'sine',0.1,720); },
+    // crowd swell — filtered noise rising then falling, like a reaction from the stands
+    cheer(big){
+      try{
+        const c=ac(); const dur=big?1.1:0.6;
+        const bufferSize=c.sampleRate*dur;
+        const buffer=c.createBuffer(1,bufferSize,c.sampleRate);
+        const data=buffer.getChannelData(0);
+        for(let i=0;i<bufferSize;i++){ const env=Math.sin(Math.PI*i/bufferSize); data[i]=(Math.random()*2-1)*env; }
+        const src=c.createBufferSource(); src.buffer=buffer;
+        const filt=c.createBiquadFilter(); filt.type='bandpass'; filt.frequency.value=big?1100:900; filt.Q.value=0.6;
+        const g=c.createGain(); g.gain.value=big?0.22:0.13;
+        src.connect(filt); filt.connect(g); g.connect(c.destination);
+        src.start(); src.stop(c.currentTime+dur);
+      }catch(e){}
+    },
+    buzzerBeater(){ this.cheer(true); this.buzzer(); setTimeout(()=>this.badge(),150); },
     ensureRunning(){ try{ ac().resume(); }catch(e){} },
     // ---- original synthesized background loop ----
     _music:null, _muted:false, _timer:null, _step:0,
@@ -404,6 +470,40 @@ const Audio8 = (function(){
     toggleMute(){ this._muted=!this._muted; return this._muted; }
   };
 })();
+
+/* =========================================================================
+   PLATFORM HOOKS (Poki / CrazyGames web-portal SDKs)
+   All calls no-op unless the host page has loaded the portal's SDK, so the
+   game runs identically offline / on itch.io. On Poki or CrazyGames you add
+   their <script> SDK tag and these fire the required gameplay + ad events.
+========================================================================= */
+const Platform = (function(){
+  let poki = (typeof window!=='undefined') && window.PokiSDK;
+  let crazy = (typeof window!=='undefined') && window.CrazyGames && window.CrazyGames.SDK;
+  return {
+    init(){
+      try{ if(poki && poki.init) poki.init().catch(()=>{}); }catch(e){}
+      try{ if(crazy && crazy.init) crazy.init(); }catch(e){}
+    },
+    gameplayStart(){
+      try{ if(poki && poki.gameplayStart) poki.gameplayStart(); }catch(e){}
+      try{ if(crazy && crazy.game && crazy.game.gameplayStart) crazy.game.gameplayStart(); }catch(e){}
+    },
+    gameplayStop(){
+      try{ if(poki && poki.gameplayStop) poki.gameplayStop(); }catch(e){}
+      try{ if(crazy && crazy.game && crazy.game.gameplayStop) crazy.game.gameplayStop(); }catch(e){}
+    },
+    // show a commercial break, then run `done` (always runs, even with no SDK)
+    commercialBreak(done){
+      try{
+        if(poki && poki.commercialBreak){ poki.commercialBreak().then(done, done); return; }
+        if(crazy && crazy.ad && crazy.ad.requestAd){ crazy.ad.requestAd('midgame', { adFinished:done, adError:done }); return; }
+      }catch(e){}
+      done();
+    }
+  };
+})();
+try{ Platform.init(); }catch(e){}
 
 /* =========================================================================
    GLOBAL STATE
@@ -447,7 +547,16 @@ function freshState(){
   };
 }
 let S = freshState();
-S.mode = 'journey';   // 'journey' | 'franchise'
+S.mode = 'journey';   // 'journey' | 'franchise' | 'versus'
+S.difficulty = 'medium';
+// difficulty tuning: aiSkill scales AI shooting, aiSpeed their movement,
+// aiSteal their strip/block rate, timingWin your shot-timing window (bigger =
+// more forgiving), playerSteal your steal success.
+const DIFF = {
+  easy:   { aiSkill:0.70, aiSpeed:0.92, aiSteal:0.6, timingWin:1.6, playerSteal:1.35 },
+  medium: { aiSkill:1.00, aiSpeed:1.00, aiSteal:1.0, timingWin:1.0, playerSteal:1.0 },
+  hard:   { aiSkill:1.28, aiSpeed:1.10, aiSteal:1.5, timingWin:0.62, playerSteal:0.85 }
+};
 const ROUND_NAMES = ["Quarterfinals","Semifinals","Championship","Champion"];
 
 function showScreen(id){
@@ -833,6 +942,13 @@ document.getElementById('btnFrSimWeek').addEventListener('click', ()=>{
 
 /* ---------------- LOCAL VERSUS setup ---------------- */
 let vsP1Idx=null, vsP2Idx=null;
+document.getElementById('diffRow').addEventListener('click', (e)=>{
+  const b=e.target.closest('.diffBtn'); if(!b) return;
+  Audio8.click();
+  S.difficulty=b.dataset.d;
+  document.querySelectorAll('.diffBtn').forEach(x=>x.classList.remove('sel'));
+  b.classList.add('sel');
+});
 document.getElementById('modeVersus').addEventListener('click', ()=>{
   Audio8.ensureRunning(); Audio8.startMusic(); Audio8.click();
   S.mode='versus';
@@ -1363,11 +1479,28 @@ const KEYS = {};
 window.addEventListener('keydown', e=>{
   KEYS[e.code]=true;
   if(e.code==='KeyM'){ const m=Audio8.toggleMute(); if(Game) Game.muted=m; }
+  if((e.code==='Escape'||e.code==='KeyP') && Game && !Game.over){ togglePause(); }
   if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
 });
 window.addEventListener('keyup', e=>{ KEYS[e.code]=false; });
 
 let Game = null;
+
+function togglePause(force){
+  if(!Game) return;
+  Game.paused = force!=null ? force : !Game.paused;
+  document.getElementById('pauseOverlay').style.display = Game.paused ? 'flex' : 'none';
+  if(Game.paused){ Platform.gameplayStop(); }
+  else { Platform.gameplayStart(); Game.lastFrame = performance.now(); }  // avoid a dt jump on resume
+}
+document.getElementById('btnPause').addEventListener('click', ()=>{ Audio8.click(); togglePause(true); });
+document.getElementById('btnResume').addEventListener('click', ()=>{ Audio8.click(); togglePause(false); });
+document.getElementById('btnQuitMenu').addEventListener('click', ()=>{
+  Audio8.click();
+  if(Game) Game.over = true;   // stop the loop
+  togglePause(false);
+  showScreen('screen-mode');
+});
 
 const ROLES = ['PG','SG','SF','PF','C'];
 // slots: horizontal distance back from the attacking hoop + vertical offset from hoop line
@@ -1463,6 +1596,8 @@ function startGame(forcedOpponent){
     scoreHome:0, scoreAway:0,
     foulsHome:0, foulsAway:0,
     diff,
+    diffCfg: DIFF[S.difficulty] || DIFF.medium,
+    paused:false,
     stats:{ points:0, rebounds:0, assists:0, steals:0, blocks:0 },
     shotMeter:{ active:false, t:0, holding:false },
     shotMeter2:{ active:false, t:0, holding:false },
@@ -1481,6 +1616,7 @@ function startGame(forcedOpponent){
   };
   attachBall(user);
   showScreen('screen-game');
+  Platform.gameplayStart();
   requestAnimationFrame(gameLoop);
 }
 
@@ -1513,6 +1649,7 @@ function gameLoop(now){
 }
 
 function update(dt){
+  if(Game.paused) return;   // frozen while the pause menu is open
   if(Game.banner){ Game.banner.t-=dt; if(Game.banner.t<=0) Game.banner=null; }
   // free throws freeze normal play
   if(Game.freeThrow){ updateFreeThrow(dt); updateFloatTexts(dt); return; }
@@ -1666,6 +1803,12 @@ function updateInput(dt){
   if(KEYS['KeyX'] && !Game.xPressed){
     Game.xPressed=true;
     if(user.hasBall) doPass(user);
+    else if(Game.ball.holder && Game.ball.holder.team===user.team){
+      // off-ball: call for the pass — the AI handler swings it to you
+      Game.ball.holder.aiTimer = 0;
+      doPass(Game.ball.holder, user);
+      addFloat(user.x, user.y-88, "GIVE IT!", '#22d3ee', 13);
+    }
     else attemptSteal(user);
   }
   if(!KEYS['KeyX']) Game.xPressed=false;
@@ -1842,45 +1985,62 @@ function attemptStealBy(u, forcedChance){
 /* ---------------- shooting ---------------- */
 function computeShotChance(shooter, meterT){
   const hx = attackingHoopX(shooter.team);
-  const peak = 1 - Math.abs(meterT-0.5)*2.3;
+  // timing window scales with difficulty (Easy = forgiving, Hard = tight)
+  const winMul = (Game.diffCfg ? Game.diffCfg.timingWin : 1);
+  const peak = 1 - Math.abs(meterT-0.5)*(2.3/winMul);
   const timing = Math.max(0, Math.min(1, peak));
-  const shootAttr = shooter.isUser ? S.player.attrs.shooting : (5+Game.diff*2);
+  const shootAttr = shooter.isUser ? S.player.attrs.shooting
+                                   : (5 + Game.diff*2) * (Game.diffCfg?Game.diffCfg.aiSkill:1);
 
-  // TRUE distance falloff: right at the rim is a near-automatic layup, and the
-  // odds drop off steeply with distance so a wing/corner shot is NOT a gimme.
   const d = Math.hypot(shooter.x-hx, shooter.y-COURT.hoopY);
   const isThree = d > 330;
-  let distFactor;
-  if(d < 85) distFactor = 1.0;                       // point-blank / layup
-  else distFactor = Math.max(0, 1 - (d-85)/380);     // fades to 0 by ~mid-range+
 
-  let chance = 0.05 + shootAttr*0.030 + timing*0.24 + distFactor*0.50;
+  // Distance is the dominant factor and gates the WHOLE shot: a layup is a
+  // near-lock, a three is a real gamble, and a half-court heave is nearly zero.
+  // Curve: 1 at the rim, ~0.55 at the arc, ~0.03 at half court, 0 full court.
+  const distNorm = Math.min(1, Math.max(0, (d-55)/500));
+  const distFactor = Math.max(0, 1 - Math.pow(distNorm, 1.4));
 
-  if(isThree && shooter.isUser && S.player.badges.includes('shooting')) chance += 0.16;
+  // the makeable portion is multiplied by distance, so skill+timing can't
+  // rescue a shot from way downtown.
+  let chance = distFactor * (0.42 + shootAttr*0.035 + timing*0.30);
 
-  // defensive contest: a defender right in your face tanks the shot
+  if(isThree && shooter.isUser && S.player.badges.includes('shooting')) chance += 0.10*distFactor;
+
+  // defensive contest: a defender in your face tanks the shot
   const defenders = shooter.team==='home' ? Game.away : Game.home;
   let nearest = Infinity;
   defenders.forEach(df=>{ const dd = Math.hypot(df.x-shooter.x, df.y-shooter.y); if(dd<nearest) nearest=dd; });
-  if(nearest < 75) chance -= (1 - nearest/75) * 0.28;
+  if(nearest < 78) chance -= (1 - nearest/78) * 0.30;
 
-  if(shooter.buffed) chance += 0.06;
-  chance = Math.max(0.02, Math.min(0.98, chance));
+  if(shooter.buffed) chance += 0.05;
+  chance = Math.max(0.02, Math.min(0.97, chance));
   return { chance, isThree, hx };
 }
 
 function releaseShot(shooter, meterT){
   const { chance, isThree, hx } = computeShotChance(shooter, meterT);
   const b = Game.ball;
+  const dRim = Math.hypot(shooter.x-hx, shooter.y-COURT.hoopY);
+  const isLayup = dRim < 150;
   b.inAir=true; b.loose=false; b.holder=null; b.blockedThisShot=false;
   shooter.hasBall=false;
-  shooter.shootPose = 0.55;
   b.shooter=shooter;
   b.made = Math.random()<chance;
   b.isThree = isThree;
+  b.layup = isLayup;
   b.sx=shooter.x; b.sy=shooter.y;
   b.tx=hx; b.ty=COURT.hoopY;
-  b.arcT=0; b.arcDur=0.85;
+  if(isLayup){
+    // LAYUP/DUNK: the shooter drives up off the floor and finishes quick & low
+    shooter.jumping = true; shooter.jumpVel = 240; shooter.jumpH = Math.max(shooter.jumpH,1);
+    shooter.shootPose = 0.45;
+    b.arcT=0; b.arcDur=0.42;
+    Audio8.squeak();
+  } else {
+    shooter.shootPose = 0.55;
+    b.arcT=0; b.arcDur=0.85;
+  }
   if(shooter.isUser) showPopup(`${Math.round(chance*100)}% Chance!`, chance>0.6?'#34d399':chance>0.35?'#ffd166':'#f87171');
   Audio8.shotRelease();
 }
@@ -1913,7 +2073,8 @@ function updateBall(dt){
     const t = Math.min(1,b.arcT);
     b.x = b.sx + (b.tx-b.sx)*t;
     b.y = b.sy + (b.ty-b.sy)*t;
-    b.h = 30 + Math.sin(Math.PI*t)*150;
+    // layups rise straight up to the rim (low, quick); jumpers get a tall arc
+    b.h = b.layup ? (40 + t*90) : (30 + Math.sin(Math.PI*t)*150);
     if(t>=1){ b.inAir=false; resolveShot(); }
     return;
   }
@@ -1954,6 +2115,10 @@ function resolveShot(){
   const shooter = b.shooter;
   if(b.made){
     Audio8.swish();
+    // crowd reacts — bigger for threes; a buzzer-beater gets the full treatment
+    const buzzerBeater = Game.quarterTime < 1.2;
+    if(buzzerBeater) Audio8.buzzerBeater();
+    else Audio8.cheer(b.isThree);
     const pts = b.isThree?3:2;
     if(shooter.team==='home') Game.scoreHome+=pts; else Game.scoreAway+=pts;
     if(shooter.isUser){
@@ -1961,6 +2126,7 @@ function resolveShot(){
       gainXP(pts*8);
       checkSponsor();
     }
+    if(b.layup) addFloat(b.tx, b.ty-84, "AND-1 LAYUP!", '#34d399', 13);
     // build the special meter for the scoring side
     chargeSpecial(shooter.team, b.isThree?26:20);
     if(Game.pendingAssist && shooter.team==='home' && !shooter.isUser){
@@ -2045,10 +2211,22 @@ function giveLooseBall(){
 }
 
 /* ---------------- pass / steal ---------------- */
-function doPass(passer){
+function doPass(passer, prefer){
   const mates = (passer.team==='home'?Game.home:Game.away).filter(p=>p!==passer);
-  let best=null,bd=Infinity;
-  mates.forEach(t=>{ const d=dist2(t,passer); if(d<bd){bd=d;best=t;} });
+  if(!mates.length) return;
+  const defenders = passer.team==='home'?Game.away:Game.home;
+  let best=null,bestScore=-Infinity;
+  // pick the most OPEN teammate: reward distance from the nearest defender,
+  // lightly penalize very long cross-court passes. A "prefer" target (a human
+  // calling for the ball) gets a big bonus.
+  mates.forEach(t=>{
+    let nd=Infinity; defenders.forEach(df=>{ const dd=dist2(df,t); if(dd<nd) nd=dd; });
+    const openness = Math.sqrt(nd);
+    const passLen = Math.sqrt(dist2(t,passer));
+    let score = openness - passLen*0.25;
+    if(prefer && t===prefer) score += 400;
+    if(score>bestScore){ bestScore=score; best=t; }
+  });
   if(!best) return;
   const passAttr = passer.isUser ? S.player.attrs.passing : (5+Game.diff);
   let chance = 0.55 + passAttr*0.045;
@@ -2081,7 +2259,7 @@ function attemptSteal(user){
   if(S.player.badges.includes('defense')) radius = 95;
   if(d>radius) return;
   const defAttr = S.player.attrs.defense + heightDefBonus();
-  let chance = 0.15 + defAttr*0.05;
+  let chance = (0.15 + defAttr*0.05) * (Game.diffCfg?Game.diffCfg.playerSteal:1);
   if(S.player.badges.includes('defense')) chance += 0.2;
   Audio8.squeak();
   if(Math.random()<chance){
@@ -2198,7 +2376,7 @@ function updateAI(dt){
       const d2m = dist2(p,mark);
       if(Game.phase==='live' && mark.hasBall && d2m<65*65 && p.aiTimer<=0){
         p.aiTimer = 1.4;
-        if(Math.random() < 0.05 + Game.diff*0.025){
+        if(Math.random() < (0.05 + Game.diff*0.025)*(Game.diffCfg?Game.diffCfg.aiSteal:1)){
           Audio8.steal();
           attachBall(p);
           addFloat(p.x, p.y-90, "STEAL!", '#ff8c00', 15);
@@ -2206,7 +2384,7 @@ function updateAI(dt){
       }
       if(b.inAir && b.shooter && b.shooter.team!==p.team && !b.blockedThisShot){
         const dSh = dist2(p,{x:b.shooter.x,y:b.shooter.y});
-        if(dSh<70*70 && Math.random()<0.008){
+        if(dSh<70*70 && Math.random()<0.008*(Game.diffCfg?Game.diffCfg.aiSteal:1)){
           b.made=false; b.blockedThisShot=true;
           p.jumping=true; p.jumpVel=200; p.jumpH=Math.max(p.jumpH,1);
           Audio8.block();
@@ -2240,7 +2418,7 @@ function updateAI(dt){
     if(baseDist < 16 && sepMag < 0.5){
       p.moving = false;
     } else {
-      const step = speed*dt;
+      const step = speed*(Game.diffCfg?Game.diffCfg.aiSpeed:1)*dt;
       p.x += (dx/len)*Math.min(step,len);
       p.y += (dy/len)*Math.min(step,len);
       if(Math.abs(dx) > 6) p.facing = dx>0?1:-1;   // only flip on clear horizontal intent
@@ -2709,6 +2887,7 @@ function drawPopup(){
 ========================================================================= */
 function endGame(){
   Game.over=true;
+  Platform.gameplayStop();
   Audio8.buzzer();
   const won = Game.scoreHome > Game.scoreAway;
 
