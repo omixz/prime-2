@@ -817,8 +817,10 @@ function newFranchise(teamIdx){
 // discounted a bit for picks further out
 function pickValue(fr, pk){
   const ovr = teamOverall(fr.rosters[pk.origTeamIdx]);
-  const base = Math.max(30, 100-ovr);
-  return Math.round(base - (pk.yearsOut-1)*10);
+  // picks are real trade chips, not throwaways — worth roughly a solid rotation player,
+  // more if the original team is bad (their pick is more likely to land a star)
+  const base = Math.max(48, 130-ovr);
+  return Math.round(base - (pk.yearsOut-1)*8);
 }
 function pickLabel(fr, pk){
   const yr = (fr.season||1) + pk.yearsOut;
@@ -1202,6 +1204,14 @@ document.getElementById('btnRosPropose').addEventListener('click', ()=>{
   const mine=fr.rosters[fr.teamIdx], other=fr.rosters[rosOtherIdx];
   const give=rosSelMine!=null ? mine[rosSelMine] : null;
   const get=rosSelOther!=null ? other[rosSelOther] : null;
+  // both rosters must stay big enough to field a starting 5, and small enough to stay a real bench
+  const mineCountAfter = mine.length + (!give&&get?1:0) - (give&&!get?1:0);
+  const otherCountAfter = other.length + (give&&!get?1:0) - (!give&&get?1:0);
+  if(mineCountAfter<5 || mineCountAfter>8 || otherCountAfter<5 || otherCountAfter>8){
+    msg.style.color='var(--danger)';
+    msg.textContent='That trade leaves a roster with too few or too many players — rosters must stay between 5 and 8.';
+    return;
+  }
   const givePick = rosSelMinePick!=null ? fr.picks[rosSelMinePick] : null;
   const getPick = rosSelOtherPick!=null ? fr.picks[rosSelOtherPick] : null;
   const giveVal = (give?give.ovr:0) + (givePick?pickValue(fr,givePick):0);
@@ -2411,13 +2421,18 @@ function resolveShot(){
     Audio8.swish();
     // crowd reacts — bigger for threes; a buzzer-beater gets the full treatment
     const buzzerBeater = Game.quarterTime < 1.2;
+    // a CLUTCH shot: final quarter, under 15s, a one-possession game before this basket
+    const marginBefore = Math.abs(Game.scoreHome-Game.scoreAway);
+    const clutch = !buzzerBeater && Game.quarter>=4 && Game.quarterTime<15 && marginBefore<=3;
     if(buzzerBeater) Audio8.buzzerBeater();
     else Audio8.cheer(b.isThree);
     const pts = b.isThree?3:2;
     if(shooter.team==='home') Game.scoreHome+=pts; else Game.scoreAway+=pts;
+    if(clutch){ addFloat(shooter.x, shooter.y-100, "CLUTCH!", '#2ee6ff', 20); screenShake(6, 0.25); }
     if(shooter.isUser){
       Game.stats.points+=pts;
-      gainXP(pts*8);
+      gainXP(clutch ? pts*14 : pts*8);
+      if(clutch) buzz([50,30,50]);
       checkSponsor();
       buzz(30);
       Game.userStreak = (Game.userStreak||0) + 1;
@@ -2720,18 +2735,26 @@ function updateAI(dt){
       if(dd>1 && dd<50*50){ const inv=1/Math.sqrt(dd); sepx+=ox*inv; sepy+=oy*inv; }
     });
     const sepMag = Math.hypot(sepx,sepy);
-    dx += sepx*28; dy += sepy*28;
+    dx += sepx*18; dy += sepy*18;   // gentler push so crowded players don't tug-of-war
     const len = Math.hypot(dx,dy)||1;
 
     // DEADZONE: if essentially in position and not being crowded, hold still.
     // This is what kills the twitchy back-and-forth vibration.
-    if(baseDist < 16 && sepMag < 0.5){
+    if(baseDist < 16 && sepMag < 0.9){
       p.moving = false;
     } else {
-      const step = speed*(Game.diffCfg?Game.diffCfg.aiSpeed:1)*dt;
-      p.x += (dx/len)*Math.min(step,len);
-      p.y += (dy/len)*Math.min(step,len);
-      if(Math.abs(dx) > 6) p.facing = dx>0?1:-1;   // only flip on clear horizontal intent
+      // smooth the intended direction across frames — in a crowd the raw
+      // separation vector can flip sign frame-to-frame, which otherwise
+      // shows up as visible jitter/vibration when several players cluster
+      const dirX = dx/len, dirY = dy/len;
+      if(p.moveDirX==null){ p.moveDirX=dirX; p.moveDirY=dirY; }
+      const smoothT = Math.min(1, dt*8);
+      p.moveDirX += (dirX-p.moveDirX)*smoothT;
+      p.moveDirY += (dirY-p.moveDirY)*smoothT;
+      const step = Math.min(speed*(Game.diffCfg?Game.diffCfg.aiSpeed:1)*dt, len);
+      p.x += p.moveDirX*step;
+      p.y += p.moveDirY*step;
+      if(Math.abs(p.moveDirX) > 0.35) p.facing = p.moveDirX>0?1:-1;   // only flip on clear horizontal intent
       p.moving = true;
       p.animT += dt*(sprinting?14:10);
     }
