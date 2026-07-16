@@ -53,18 +53,18 @@ export function Navbar({ onOpenCart }: { onOpenCart: () => void }) {
         <div className="flex items-center gap-2 md:hidden">
           <button
             onClick={onOpenCart}
-            className="relative rounded-full p-2 text-cream hover:bg-white/5"
+            className="relative grid h-11 w-11 place-items-center rounded-full text-cream hover:bg-white/5"
             aria-label={`Open cart, ${totalCount} items`}
           >
             <ShoppingBag size={22} />
             {totalCount > 0 && (
-              <span className="absolute top-0 right-0 grid h-4 w-4 place-items-center rounded-full bg-gold text-[10px] font-black text-charcoal">
+              <span className="absolute top-1 right-1 grid h-4 w-4 place-items-center rounded-full bg-gold text-[10px] font-black text-charcoal">
                 {totalCount}
               </span>
             )}
           </button>
           <button
-            className="rounded-full p-2 text-cream hover:bg-white/5"
+            className="grid h-11 w-11 place-items-center rounded-full text-cream hover:bg-white/5"
             onClick={() => setOpen(!open)}
             aria-label="Toggle menu"
           >

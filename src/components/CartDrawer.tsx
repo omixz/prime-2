@@ -89,7 +89,7 @@ export function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () =
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between border-b border-charcoal/10 px-6 py-5">
             <h2 className="font-display text-2xl font-black uppercase">Your Cart</h2>
-            <button onClick={onClose} className="rounded-full p-2 hover:bg-charcoal/5" aria-label="Close cart">
+            <button onClick={onClose} className="grid h-11 w-11 place-items-center rounded-full hover:bg-charcoal/5" aria-label="Close cart">
               <X size={22} />
             </button>
           </div>
@@ -113,7 +113,7 @@ export function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                       <div className="mt-2.5 flex items-center gap-2">
                         <button
                           onClick={() => updateQuantity(line.id, line.quantity - 1)}
-                          className="grid h-7 w-7 place-items-center rounded-full bg-charcoal/5 transition-colors hover:bg-flame hover:text-cream"
+                          className="grid h-10 w-10 place-items-center rounded-full bg-charcoal/5 transition-colors hover:bg-flame hover:text-cream"
                           aria-label={`Decrease quantity of ${line.name}`}
                         >
                           <Minus size={14} />
@@ -121,7 +121,7 @@ export function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                         <span className="w-6 text-center text-sm font-bold">{line.quantity}</span>
                         <button
                           onClick={() => updateQuantity(line.id, line.quantity + 1)}
-                          className="grid h-7 w-7 place-items-center rounded-full bg-charcoal/5 transition-colors hover:bg-flame hover:text-cream"
+                          className="grid h-10 w-10 place-items-center rounded-full bg-charcoal/5 transition-colors hover:bg-flame hover:text-cream"
                           aria-label={`Increase quantity of ${line.name}`}
                         >
                           <Plus size={14} />
@@ -134,7 +134,7 @@ export function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                       </span>
                       <button
                         onClick={() => removeItem(line.id)}
-                        className="rounded-full p-1 text-charcoal/40 transition-colors hover:bg-flame/10 hover:text-flame"
+                        className="grid h-10 w-10 place-items-center rounded-full text-charcoal/40 transition-colors hover:bg-flame/10 hover:text-flame"
                         aria-label={`Remove ${line.name} from cart`}
                       >
                         <Trash2 size={16} />

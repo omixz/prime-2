@@ -117,7 +117,7 @@ export function Home() {
                 </div>
                 <button
                   onClick={() => handleAdd(item)}
-                  className="mt-4 rounded-full bg-charcoal/5 px-4 py-2 text-sm font-display font-bold uppercase text-charcoal transition-colors hover:bg-flame hover:text-cream"
+                  className="mt-4 min-h-11 rounded-full bg-charcoal/5 px-4 text-sm font-display font-bold uppercase text-charcoal transition-colors hover:bg-flame hover:text-cream"
                 >
                   Add to cart
                 </button>

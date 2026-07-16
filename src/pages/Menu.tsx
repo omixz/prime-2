@@ -102,7 +102,7 @@ export function Menu() {
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <button
                           onClick={() => handleAdd(item)}
-                          className="inline-flex items-center gap-1.5 rounded-full bg-charcoal/5 px-4 py-1.5 text-sm font-display font-bold uppercase text-charcoal transition-colors hover:bg-flame hover:text-cream"
+                          className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-charcoal/5 px-4 text-sm font-display font-bold uppercase text-charcoal transition-colors hover:bg-flame hover:text-cream"
                         >
                           {justAdded === item.id ? <Check size={15} /> : <Plus size={15} />}
                           {justAdded === item.id ? "Added" : "Add to cart"}
