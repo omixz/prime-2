@@ -120,7 +120,17 @@ export const menuSections: MenuSection[] = [
   },
 ];
 
-export const allItems: MenuItem[] = menuSections.flatMap((s) => s.items);
+// Hidden $1 item used only via the /test-order page to verify the real Square
+// checkout path (payment + POS fulfillment) end-to-end without a full order.
+// $1.00 is Square's minimum charge — a true 1-cent order is rejected by their API.
+export const testItem: MenuItem = {
+  id: "test-order-pos-check",
+  name: "Test Order (POS Check)",
+  desc: "Internal — confirms a paid order reaches the POS terminal.",
+  priceCents: 100,
+};
+
+export const allItems: MenuItem[] = [...menuSections.flatMap((s) => s.items), testItem];
 
 export const smallDrinks: MenuItem[] = menuSections.find((s) => s.title === "Small Drinks")!.items;
 export const bottleDrinks: MenuItem[] = menuSections.find((s) => s.title === "Bottles")!.items;

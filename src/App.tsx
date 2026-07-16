@@ -8,6 +8,7 @@ import { Home } from "./pages/Home";
 import { Menu } from "./pages/Menu";
 import { Visit } from "./pages/Visit";
 import { CheckoutSuccess } from "./pages/CheckoutSuccess";
+import { TestOrder } from "./pages/TestOrder";
 
 export default function App() {
   const [cartOpen, setCartOpen] = useState(false);
@@ -23,6 +24,7 @@ export default function App() {
               <Route path="/menu" element={<Menu />} />
               <Route path="/visit" element={<Visit />} />
               <Route path="/checkout/success" element={<CheckoutSuccess />} />
+              <Route path="/test-order" element={<TestOrder />} />
             </Routes>
           </main>
           <Footer />
