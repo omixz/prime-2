@@ -1,8 +1,11 @@
 import { useState } from "react";
-import { Plus, Check, Beef, Drumstick, UtensilsCrossed, Sparkles, CupSoda, Wine, type LucideIcon } from "lucide-react";
+import { Plus, Check, Beef, Drumstick, UtensilsCrossed, Sparkles, CupSoda, Wine, Flame, type LucideIcon } from "lucide-react";
 import { menuSections, formatPrice, type MenuItem } from "../data/menu";
 import { useCart } from "../context/CartContext";
 import { ComboModal } from "../components/ComboModal";
+import { getItemArt } from "../components/itemArt";
+
+const POPULAR_IDS = new Set(["beef-juicy-prime", "beef-cheesy-prime", "chk-mushroom-prime", "fries-chicken-mushroom"]);
 
 function slug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -80,8 +83,16 @@ export function Menu() {
                 {section.items.map((item) => (
                   <div
                     key={item.id}
-                    className="group flex items-start gap-4 rounded-2xl bg-white p-5 shadow-soft ring-1 ring-charcoal/5 transition-all hover:-translate-y-0.5 hover:shadow-glow"
+                    className="group relative flex items-start gap-4 rounded-2xl bg-white p-5 shadow-soft ring-1 ring-charcoal/5 transition-all hover:-translate-y-0.5 hover:shadow-glow"
                   >
+                    {POPULAR_IDS.has(item.id) ? (
+                      <span className="absolute -top-2.5 left-4 inline-flex items-center gap-1 rounded-full bg-flame px-2.5 py-1 text-[10px] font-display font-bold uppercase tracking-wide text-cream shadow-soft">
+                        <Flame size={11} /> Bestseller
+                      </span>
+                    ) : null}
+                    <div className="grid h-16 w-16 shrink-0 place-items-center rounded-xl bg-cream ring-1 ring-charcoal/5">
+                      <div className="h-11 w-11">{getItemArt(section.title, item)}</div>
+                    </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline justify-between gap-3">
                         <h3 className="font-display text-lg font-bold text-charcoal">{item.name}</h3>
