@@ -785,6 +785,9 @@ function makeRosterPlayer(role, baseline, age){
   const ovr = Math.max(38, Math.min(96, Math.round(baseline + (Math.random()*12-6))));
   return { name:randName(), pos:role, ovr, age: age!=null?age : 19+Math.floor(Math.random()*15) };
 }
+// roster size bounds for trades/drafts: MIN keeps a real starting 5 + bench,
+// MAX leaves headroom above the starting 8 so uneven trades (e.g. player-for-pick) are possible
+const MIN_ROSTER = 5, MAX_ROSTER = 12;
 // believable rosters: one clear star, a starting core, then role players off the bench
 function makeRoster(teamBaseline){
   const spec = [
@@ -1204,12 +1207,14 @@ document.getElementById('btnRosPropose').addEventListener('click', ()=>{
   const mine=fr.rosters[fr.teamIdx], other=fr.rosters[rosOtherIdx];
   const give=rosSelMine!=null ? mine[rosSelMine] : null;
   const get=rosSelOther!=null ? other[rosSelOther] : null;
-  // both rosters must stay big enough to field a starting 5, and small enough to stay a real bench
+  // both rosters must stay big enough to field a starting 5, and small enough to stay a real bench.
+  // rosters start at MAX_ROSTER (full), so a cap equal to the starting size would make any
+  // uneven trade (e.g. a player for a pick) impossible from turn one — MAX_ROSTER leaves headroom.
   const mineCountAfter = mine.length + (!give&&get?1:0) - (give&&!get?1:0);
   const otherCountAfter = other.length + (give&&!get?1:0) - (!give&&get?1:0);
-  if(mineCountAfter<5 || mineCountAfter>8 || otherCountAfter<5 || otherCountAfter>8){
+  if(mineCountAfter<MIN_ROSTER || mineCountAfter>MAX_ROSTER || otherCountAfter<MIN_ROSTER || otherCountAfter>MAX_ROSTER){
     msg.style.color='var(--danger)';
-    msg.textContent='That trade leaves a roster with too few or too many players — rosters must stay between 5 and 8.';
+    msg.textContent=`That trade leaves a roster with too few or too many players — rosters must stay between ${MIN_ROSTER} and ${MAX_ROSTER}.`;
     return;
   }
   const givePick = rosSelMinePick!=null ? fr.picks[rosSelMinePick] : null;
@@ -1314,9 +1319,9 @@ function assignRookie(teamIdx, prospectIdx){
   const fr=S.franchise, d=fr.draft;
   const player = d.prospects.splice(prospectIdx,1)[0];
   d.picks.push({ n:d.pick+1, team:teamIdx, player });
-  // add rookie: replace the team's weakest player if roster is full (8)
+  // add rookie: replace the team's weakest player if roster is full
   const roster=fr.rosters[teamIdx];
-  if(roster.length>=8){
+  if(roster.length>=MAX_ROSTER){
     let wi=0; roster.forEach((p,i)=>{ if(p.ovr<roster[wi].ovr) wi=i; });
     if(player.ovr>roster[wi].ovr) roster[wi]=player; // only if the rookie is an upgrade
   } else roster.push(player);
@@ -1771,13 +1776,18 @@ function makePlayer(opts){
     jerseyNum: 10+Math.floor(Math.random()*90),
     skinIdx: Math.floor(Math.random()*SKINS.length),
     hairIdx: Math.floor(Math.random()*HAIRS.length),
-    hairStyle: ['plain','afro','headband'][Math.floor(Math.random()*3)]
+    hairStyle: ['plain','afro','headband'][Math.floor(Math.random()*3)],
+    ovr: 58 + Math.floor(Math.random()*24)   // journey/versus games have no roster to draw from
   }, opts);
   // taller players are a touch slower but grab boards; shorter are quicker
-  e.baseSpeed = 210 - (e.scale-1)*70;
+  // higher-OVR players also move a bit sharper, so a stacked roster feels faster on both ends
+  e.baseSpeed = 210 - (e.scale-1)*70 + (e.ovr-70)*0.5;
   e.sprites = buildSprite({ afro:e.hairStyle==='afro', headband:e.hairStyle==='headband' });
   return e;
 }
+// converts a 38-96 OVR into the same 0-10ish attribute scale the user's own attrs use,
+// so a star player's rating actually shows up in shot/defense/pass math, not just the roster screen
+function ovrAttr(p){ return 5 + ((p.ovr!=null?p.ovr:70)-70)/5; }
 
 function attackingHoopX(team){ return team==='home' ? COURT.hoopRightX : COURT.hoopLeftX; }
 
@@ -1794,6 +1804,24 @@ function startGame(forcedOpponent){
   }
   const diff = versus ? 1.0 : S.mode==='franchise' ? 1.15 : 1 + round*0.18;
 
+  // in Franchise, pull each on-court player's real OVR from the roster so a team you built
+  // through trades/drafts actually plays better — not just a nicer number on the roster screen
+  const franchiseRoster = S.mode==='franchise' ? S.franchise.rosters[S.franchise.teamIdx] : null;
+  const oppIdx = TEAMS.indexOf(opponent);
+  const franchiseOppRoster = (S.mode==='franchise' && oppIdx>=0) ? S.franchise.rosters[oppIdx] : null;
+  const usedMine=new Set(), usedOpp=new Set();
+  function rosterOvrForRole(roster, role, used){
+    if(!roster) return null;
+    let pool = roster.filter((p,i)=>!used.has(i) && p.pos===role);
+    if(!pool.length) pool = roster.filter((p,i)=>!used.has(i));
+    if(!pool.length) return null;
+    const best = pool.reduce((a,b)=>b.ovr>a.ovr?b:a);
+    used.add(roster.indexOf(best));
+    return best.ovr;
+  }
+  // the user's own rating for display, derived from their build (gameplay still runs off S.player.attrs)
+  const userOvr = Math.round(40 + ((S.player.attrs.shooting+S.player.attrs.passing+S.player.attrs.speed+S.player.attrs.defense)/4)*6);
+
   const home=[], away=[];
   // home attacks the RIGHT hoop; away attacks the LEFT hoop
   const user = makePlayer({
@@ -1803,24 +1831,28 @@ function startGame(forcedOpponent){
     hairStyle: S.player.hairStyle || 'headband',
     skinIdx: S.player.skinIdx!=null ? S.player.skinIdx : 0,
     hairIdx: S.player.hairIdx!=null ? S.player.hairIdx : 0,
-    jerseyNum: S.player.jerseyNum!=null ? S.player.jerseyNum : 23
+    jerseyNum: S.player.jerseyNum!=null ? S.player.jerseyNum : 23,
+    ovr: Math.max(38, Math.min(96, userOvr))
   });
+  if(franchiseRoster) rosterOvrForRole(franchiseRoster, 'PG', usedMine); // reserve the user's own slot
   home.push(user);
   for(let i=0;i<4;i++){
     const slot = SLOTS[ROLES[i+1]] || SLOTS.SG;
-    home.push(makePlayer({
+    const teamOvr = rosterOvrForRole(franchiseRoster, ROLES[i+1], usedMine);
+    home.push(makePlayer(Object.assign({
       team:'home', role:ROLES[i+1],
       x: COURT.hoopRightX - slot.dist, y: COURT.hoopY + slot.yOff
-    }));
+    }, teamOvr!=null ? {ovr:teamOvr} : {})));
   }
   // away starts on defense, matched to home players, spaced off them
   for(let i=0;i<5;i++){
     const mark = home[i];
-    away.push(makePlayer({
+    const teamOvr = rosterOvrForRole(franchiseOppRoster, ROLES[i], usedOpp);
+    away.push(makePlayer(Object.assign({
       team:'away', role:ROLES[i],
       x: mark.x + 130, y: mark.y + 25,
       aiTimer: 2 // no instant steal rolls at tip-off
-    }));
+    }, teamOvr!=null ? {ovr:teamOvr} : {})));
   }
   // in local versus, Player 2 controls the away team's point guard
   let user2 = null;
@@ -2207,7 +2239,7 @@ function updateFreeThrow(dt){
     ft.timer+=dt;
     if((shooterIsHuman && fire) || (!shooterIsHuman && ft.timer>0.8)){
       const timing = shooterIsHuman ? (1-Math.abs(ft.meter-0.5)*2) : (0.55+Math.random()*0.3);
-      const ftAttr = ft.shooter.isUser? S.player.attrs.shooting : 6;
+      const ftAttr = ft.shooter.isUser? S.player.attrs.shooting : ovrAttr(ft.shooter);
       const made = Math.random() < (0.45 + ftAttr*0.03 + Math.max(0,timing)*0.30);
       ft.made=made; ft.state='shot'; ft.timer=0;
       Audio8.shotRelease();
@@ -2260,7 +2292,7 @@ function computeShotChance(shooter, meterT){
   const peak = 1 - Math.abs(meterT-0.5)*(2.3/winMul);
   const timing = Math.max(0, Math.min(1, peak));
   const shootAttr = shooter.isUser ? S.player.attrs.shooting
-                                   : (5 + Game.diff*2) * (Game.diffCfg?Game.diffCfg.aiSkill:1);
+                                   : (ovrAttr(shooter) + Game.diff*2) * (Game.diffCfg?Game.diffCfg.aiSkill:1);
 
   const d = Math.hypot(shooter.x-hx, shooter.y-COURT.hoopY);
   const isThree = d > 330;
@@ -2277,11 +2309,14 @@ function computeShotChance(shooter, meterT){
 
   if(isThree && shooter.isUser && S.player.badges.includes('shooting')) chance += 0.10*distFactor;
 
-  // defensive contest: a defender in your face tanks the shot
+  // defensive contest: a defender in your face tanks the shot — a better defender contests harder
   const defenders = shooter.team==='home' ? Game.away : Game.home;
-  let nearest = Infinity;
-  defenders.forEach(df=>{ const dd = Math.hypot(df.x-shooter.x, df.y-shooter.y); if(dd<nearest) nearest=dd; });
-  if(nearest < 78) chance -= (1 - nearest/78) * 0.30;
+  let nearest = Infinity, nearestDf = null;
+  defenders.forEach(df=>{ const dd = Math.hypot(df.x-shooter.x, df.y-shooter.y); if(dd<nearest){ nearest=dd; nearestDf=df; } });
+  if(nearest < 78){
+    const defSkill = nearestDf.isUser ? (S.player.attrs.defense+heightDefBonus()) : ovrAttr(nearestDf);
+    chance -= (1 - nearest/78) * 0.30 * (defSkill/5);
+  }
 
   if(shooter.buffed) chance += 0.05;
   chance = Math.max(0.02, Math.min(0.97, chance));
@@ -2336,7 +2371,7 @@ function updateBall(dt){
       for(const df of defenders){
         const dd = Math.hypot(df.x-b.x, df.y-b.y);
         if(dd < 44){
-          const defAttr = df.isUser ? (S.player.attrs.defense+heightDefBonus()) : (5+Game.diff);
+          const defAttr = df.isUser ? (S.player.attrs.defense+heightDefBonus()) : (ovrAttr(df)+Game.diff);
           const stealChance = (0.10 + defAttr*0.02) * (Game.diffCfg?Game.diffCfg.aiSteal:1) * dt*4;
           if(Math.random() < stealChance){
             b.passDeflected = true; b.passing = false;
@@ -2547,7 +2582,7 @@ function doPass(passer, prefer){
     if(score>bestScore){ bestScore=score; best=t; }
   });
   if(!best) return;
-  const passAttr = passer.isUser ? S.player.attrs.passing : (5+Game.diff);
+  const passAttr = passer.isUser ? S.player.attrs.passing : (ovrAttr(passer)+Game.diff);
   let chance = 0.55 + passAttr*0.045;
   if(passer.isUser && S.player.badges.includes('passing')) chance += 0.15;
   Audio8.dribble();
@@ -2700,7 +2735,9 @@ function updateAI(dt){
       const d2m = dist2(p,mark);
       if(Game.phase==='live' && mark.hasBall && d2m<65*65 && p.aiTimer<=0){
         p.aiTimer = 1.4;
-        if(Math.random() < (0.05 + Game.diff*0.025)*(Game.diffCfg?Game.diffCfg.aiSteal:1)){
+        // a better defender (higher OVR) strips the ball more often; a better ball-handler protects it better
+        const stealSkill = (ovrAttr(p)/5) / (ovrAttr(mark)/5);
+        if(Math.random() < (0.05 + Game.diff*0.025)*(Game.diffCfg?Game.diffCfg.aiSteal:1)*stealSkill){
           Audio8.steal();
           attachBall(p, true);
           addFloat(p.x, p.y-90, "STEAL!", '#ff8c00', 15);
@@ -2708,7 +2745,7 @@ function updateAI(dt){
       }
       if(b.inAir && b.shooter && b.shooter.team!==p.team && !b.blockedThisShot){
         const dSh = dist2(p,{x:b.shooter.x,y:b.shooter.y});
-        if(dSh<70*70 && Math.random()<0.008*(Game.diffCfg?Game.diffCfg.aiSteal:1)){
+        if(dSh<70*70 && Math.random()<0.008*(Game.diffCfg?Game.diffCfg.aiSteal:1)*(ovrAttr(p)/5)){
           b.made=false; b.blockedThisShot=true;
           p.jumping=true; p.jumpVel=200; p.jumpH=Math.max(p.jumpH,1);
           Audio8.block();
@@ -3101,6 +3138,19 @@ function drawPlayerSpr(p){
     ctx.font='14px monospace';
     ctx.textAlign='center';
     ctx.fillText('★ ★', p.x, oy-6);
+    ctx.textAlign='left';
+  }
+  // position + OVR tag above every head, in every mode — lets you read team strength at a glance mid-game
+  if(p.ovr!=null && p.role){
+    const tagY = (p.isUser||p.isUser2) ? oy-20 : oy-8;
+    const tagColor = p.ovr>=80?'#34d399':p.ovr>=68?'#ffd166':'#8fa0b8';
+    ctx.font='bold 10px monospace';
+    ctx.textAlign='center';
+    const tag = `${p.role} ${p.ovr}`;
+    ctx.strokeStyle='rgba(0,0,0,0.7)'; ctx.lineWidth=3;
+    ctx.strokeText(tag, p.x, tagY);
+    ctx.fillStyle=tagColor;
+    ctx.fillText(tag, p.x, tagY);
     ctx.textAlign='left';
   }
   if(p.isUser){
