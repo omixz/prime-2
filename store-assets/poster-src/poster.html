@@ -1,0 +1,320 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<title>Hoop Legends — poster generator (internal tool, not shipped)</title>
+<style>
+  html,body{ margin:0; padding:0; background:#000; }
+  canvas{ display:block; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+/* ---------------------------------------------------------------------------
+   Internal marketing-asset generator. Copies the exact sprite constants from
+   basketball-rpg.html (same team colors, same pixel-art bodies) so key art
+   stays visually consistent with the actual game. Not linked from the game
+   and not shipped in any build — render with Playwright, then delete/ignore.
+--------------------------------------------------------------------------- */
+
+const TEAMS = [
+  { name:"Los Angeles Lakes",   abbr:"LAL", primary:"#552583", secondary:"#FDB927" },
+  { name:"Chicago Bisons",      abbr:"CHI", primary:"#CE1141", secondary:"#1a1a1a" },
+  { name:"Boston Greens",       abbr:"BOS", primary:"#007A33", secondary:"#BA9653" },
+  { name:"Miami Heats",         abbr:"MIA", primary:"#98002E", secondary:"#F9A01B" },
+  { name:"New York Knights",    abbr:"NYK", primary:"#1d5fd6", secondary:"#F58426" },
+  { name:"Golden Bay Warlocks", abbr:"GBW", primary:"#1d4289", secondary:"#FFC72C" },
+  { name:"Phoenix Embers",      abbr:"PHX", primary:"#E56020", secondary:"#5b2a86" }
+];
+const SKINS = [
+  {S:'#e8b482', s:'#c98f5e'},
+  {S:'#c98f5e', s:'#a86f42'},
+  {S:'#9c6238', s:'#7e4c28'},
+  {S:'#6e4526', s:'#553318'}
+];
+const HAIRS = [
+  {H:'#221409', h:'#3a2814'},
+  {H:'#3a2814', h:'#553d20'},
+  {H:'#111111', h:'#2c2c2c'},
+  {H:'#4a3010', h:'#6b4a1e'}
+];
+function shadeC(hex,pct){
+  const n=parseInt(hex.slice(1),16);
+  let r=(n>>16)+pct,g=(n>>8&0xff)+pct,b=(n&0xff)+pct;
+  r=Math.max(0,Math.min(255,r));g=Math.max(0,Math.min(255,g));b=Math.max(0,Math.min(255,b));
+  return `rgb(${r},${g},${b})`;
+}
+
+const SPRITE_W = 17, SPRITE_H = 25;
+const BODY_STAND = [
+"......OOOOO......",
+"....OOHHHHHOO....",
+"...OHhhHHHHHHO...",
+"...OHhHHHHHHHO...",
+"...OHHHHHHHHHO...",
+"...OHSHSSSHSHO...",
+"...OSSESSSESSO...",
+"...OSSSSSSSSSO...",
+"...OsSSSSMSSsO...",
+"....OsssssssO....",
+".....OOsssOO.....",
+"...OOJJJJJJJOO...",
+"..OJJjJJJJJjJJO..",
+"..OJJjJJJJJjJJO..",
+"..OJJjJJJJJjJJO..",
+"..OssOJJJJJOssO..",
+"....OJJJJJJJO....",
+"....OjjjjjjjO....",
+"....OKKKKKKKO....",
+"....OKKKOKKKO....",
+"....OkkO.OkkO....",
+"....OSSO.OSSO....",
+"....OssO.OssO....",
+"...OWWWO.OWWWO...",
+"...OOOOO.OOOOO...",
+];
+const HAIR_AFRO = [
+".....OOOOOOO.....",
+"...OOHHHHHHHOO...",
+"..OHHhhHHHHHHHO..",
+"..OHHhHHHHHHHHO..",
+"..OHHHHHHHHHHHO..",
+];
+const ROW_HEADBAND = "...OTTTTTTTTTO...";
+const TORSO_SHOOT = [
+"..OSOJJJJJJJOSO..",
+"..OSOJjJJJjJOSO..",
+"..OSOJJJJJJJOSO..",
+"..OOOJJJJJJJOOO..",
+"....OJJJJJJJO....",
+];
+function raiseArms(grid, both){
+  const g = grid.map(r=>r.split(''));
+  const sides = both ? [[1,2],[15,14]] : [[15,14]];
+  sides.forEach(([oc,sc])=>{
+    for(let r=4;r<=10;r++){ g[r][oc]='O'; g[r][sc]='S'; }
+    g[3][oc]='O'; g[3][sc]='S';
+    g[2][sc]='O';
+  });
+  return g.map(r=>r.join(''));
+}
+function buildSprite(opts){
+  let g = BODY_STAND.slice();
+  if(opts.afro){ g = HAIR_AFRO.concat(g.slice(5)); }
+  if(opts.headband){ g = g.slice(); g[5] = ROW_HEADBAND; }
+  const armsBase = g.slice(0,11).concat(TORSO_SHOOT, g.slice(16));
+  const shoot = raiseArms(armsBase, true);
+  return { stand:g, shoot };
+}
+function spritePalette(team, skinIdx, hairIdx){
+  const sk = SKINS[skinIdx%SKINS.length], hr = HAIRS[hairIdx%HAIRS.length];
+  return {
+    O:'#241c12', H:hr.H, h:hr.h, S:sk.S, s:sk.s,
+    E:'#241c12', M:'#b06a42',
+    J:team.primary, j:shadeC(team.primary,-32),
+    K:team.secondary, k:shadeC(team.secondary,-32),
+    T:team.secondary, W:'#f2f4f8'
+  };
+}
+const BALL_SPR = [
+"..OOOOO..",
+".OBBOBBO.",
+"OBBBOBBBO",
+"OBbBObBbO",
+"OOOOOOOOO",
+"OBbBObBbO",
+"OBBBOBBBO",
+".OBBOBBO.",
+"..OOOOO..",
+];
+const BALL_PAL = {O:'#241c12',B:'#e87c30',b:'#c9601d'};
+
+function drawGrid(ctx, grid, pal, ox, oy, sc, flip){
+  for(let r=0;r<grid.length;r++){
+    const row = grid[r];
+    for(let c=0;c<row.length;c++){
+      const ch = row[c];
+      if(ch==='.') continue;
+      ctx.fillStyle = pal[ch] || '#f0f';
+      const cc = flip ? (row.length-1-c) : c;
+      ctx.fillRect(Math.round(ox+cc*sc), Math.round(oy+r*sc), Math.ceil(sc), Math.ceil(sc));
+    }
+  }
+}
+function drawBall(ctx, x, y, sc){
+  for(let r=0;r<9;r++)for(let c=0;c<9;c++){
+    const ch = BALL_SPR[r][c]; if(ch==='.') continue;
+    ctx.fillStyle = BALL_PAL[ch];
+    ctx.fillRect(Math.round(x+c*sc), Math.round(y+r*sc), Math.ceil(sc), Math.ceil(sc));
+  }
+}
+
+/* crowd-texture strip, echoing the game's own UI chrome */
+function drawCrowd(ctx, x, y, w, h, seed){
+  const palette = ['#2a3550','#3a2a3a','#2a3a30','#3a3020','#252d40'];
+  const cell = h;
+  let rnd = seed;
+  const rand = ()=>{ rnd = (rnd*9301+49297)%233280; return rnd/233280; };
+  for(let cx=x; cx<x+w; cx+=cell){
+    ctx.fillStyle = palette[Math.floor(rand()*palette.length)];
+    ctx.fillRect(cx, y, cell-1, h);
+  }
+}
+
+function drawHoop(ctx, x, y, sc){
+  // backboard
+  ctx.fillStyle = 'rgba(242,244,248,0.92)';
+  ctx.fillRect(x-2*sc, y-16*sc, 4*sc, 16*sc);
+  ctx.strokeStyle = '#0a1220'; ctx.lineWidth = Math.max(1, sc*0.4);
+  ctx.strokeRect(x-2*sc, y-16*sc, 4*sc, 16*sc);
+  ctx.strokeStyle = '#e8455a'; ctx.lineWidth = Math.max(1, sc*0.35);
+  ctx.strokeRect(x-1.2*sc, y-12*sc, 2.4*sc, 5*sc);
+  // rim
+  ctx.fillStyle = '#ff7a29';
+  ctx.fillRect(x-4*sc, y-1.2*sc, 8*sc, 1.2*sc);
+  // net
+  ctx.strokeStyle = 'rgba(242,244,248,0.55)'; ctx.lineWidth = Math.max(1, sc*0.25);
+  for(let i=-3;i<=3;i++){
+    ctx.beginPath();
+    ctx.moveTo(x+i*sc, y);
+    ctx.lineTo(x+i*0.5*sc, y+6*sc);
+    ctx.stroke();
+  }
+}
+
+function drawCourtScene(ctx, W, H, opts){
+  opts = opts||{};
+  // sky/arena gradient background
+  const bg = ctx.createLinearGradient(0,0,0,H);
+  bg.addColorStop(0, '#0a1220');
+  bg.addColorStop(0.55, '#101c30');
+  bg.addColorStop(1, '#182640');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0,0,W,H);
+
+  // crowd strip near the top
+  drawCrowd(ctx, 0, H*0.06, W, H*0.05, 7);
+  drawCrowd(ctx, 0, H*0.86, W, H*0.05, 42);
+
+  // hardwood floor
+  const floorY = H*0.62, floorH = H*0.30;
+  const floor = ctx.createLinearGradient(0,floorY,0,floorY+floorH);
+  floor.addColorStop(0,'#caa06a'); floor.addColorStop(1,'#a97c46');
+  ctx.fillStyle = floor;
+  ctx.fillRect(0, floorY, W, floorH);
+  ctx.strokeStyle = 'rgba(60,35,10,0.35)'; ctx.lineWidth = Math.max(1, W*0.0015);
+  for(let i=0;i<24;i++){ const lx = (W/24)*i; ctx.beginPath(); ctx.moveTo(lx,floorY); ctx.lineTo(lx,floorY+floorH); ctx.stroke(); }
+
+  // soft contact shadow where the lineup stands, instead of a literal court diagram
+  // (a full key+arc reads as a confusing shape once players/vignette cover most of it)
+  if(opts.showKey!==false){
+    const shW = W*0.34, shH = floorH*0.18, shX = W/2-shW/2, shY = floorY+floorH*0.12;
+    const shGrad = ctx.createRadialGradient(W/2, shY+shH/2, 2, W/2, shY+shH/2, shW/2);
+    shGrad.addColorStop(0, 'rgba(10,10,10,0.35)');
+    shGrad.addColorStop(1, 'rgba(10,10,10,0)');
+    ctx.fillStyle = shGrad;
+    ctx.beginPath();
+    ctx.ellipse(W/2, shY+shH/2, shW/2, shH/2, 0, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // warm center glow
+  const glow = ctx.createRadialGradient(W/2, floorY*0.75, W*0.05, W/2, floorY*0.75, W*0.55);
+  glow.addColorStop(0, 'rgba(255,180,80,0.16)');
+  glow.addColorStop(1, 'rgba(255,180,80,0)');
+  ctx.fillStyle = glow; ctx.fillRect(0,0,W,H);
+
+  if(opts.hoop) drawHoop(ctx, opts.hoop.x, opts.hoop.y, opts.hoop.sc);
+
+  if(opts.players){
+    opts.players.forEach(p=>{
+      const spr = buildSprite({ afro:p.hair==='afro', headband:p.hair==='headband' });
+      const pal = spritePalette(TEAMS[p.teamIdx], p.skin, p.hairIdx);
+      const grid = p.pose==='shoot' ? spr.shoot : spr.stand;
+      const sc = p.scale;
+      const w = SPRITE_W*sc;
+      drawGrid(ctx, grid, pal, p.x-w/2, p.y-SPRITE_H*sc, sc, p.flip);
+    });
+  }
+  if(opts.ball){ drawBall(ctx, opts.ball.x, opts.ball.y, opts.ball.sc); }
+
+  // vignette
+  const vg = ctx.createRadialGradient(W/2,H/2,H*0.35, W/2,H/2, H*0.9);
+  vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,0.45)');
+  ctx.fillStyle = vg; ctx.fillRect(0,0,W,H);
+}
+
+function pixelTitle(ctx, text, cx, cy, size, color, strokeColor){
+  ctx.save();
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.font = `900 ${size}px "Arial Black", Impact, sans-serif`;
+  ctx.lineJoin='round';
+  ctx.strokeStyle = strokeColor || '#0a1220';
+  ctx.lineWidth = size*0.16;
+  ctx.strokeText(text, cx, cy);
+  ctx.fillStyle = color;
+  ctx.fillText(text, cx, cy);
+  ctx.restore();
+}
+
+const params = new URLSearchParams(location.search);
+const W = parseInt(params.get('w')||'1920');
+const H = parseInt(params.get('h')||'1080');
+const withText = params.get('text')==='1';
+const layout = params.get('layout')||'landscape'; // landscape | portrait | square
+
+const canvas = document.getElementById('c');
+canvas.width = W; canvas.height = H;
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+// a five-player lineup drawn from the game's own fictional rosters/colors
+const lineupTeams = [1,4,0,2,3]; // CHI, NYK, LAL, BOS, MIA
+function buildPlayers(W,H, count, baseY, baseScale, spread, centerX){
+  const players=[];
+  const cx = centerX!=null ? centerX : W/2;
+  for(let i=0;i<count;i++){
+    const t = lineupTeams[i%lineupTeams.length];
+    const centered = i - (count-1)/2;
+    players.push({
+      teamIdx:t, skin:i%SKINS.length, hairIdx:(i+1)%HAIRS.length,
+      hair:['plain','afro','headband'][i%3],
+      pose: i===Math.floor(count/2) ? 'shoot' : 'stand',
+      scale: baseScale * (i===Math.floor(count/2) ? 1.12 : 0.94),
+      x: cx + centered*spread,
+      y: baseY + (i===Math.floor(count/2) ? -baseScale*1.5 : 0),
+      flip: centered>0
+    });
+  }
+  return players;
+}
+
+if(layout==='square'){
+  const players = buildPlayers(W,H, 3, H*0.90, W*0.0135, W*0.19);
+  drawCourtScene(ctx, W, H, { players, ball:{ x:W/2+W*0.06, y:H*0.52, sc:W*0.012 }, hoop:{ x:W*0.78, y:H*0.40, sc:W*0.013 } });
+  // Poki's static thumbnail must stay textless — only add the title when explicitly asked
+  // (itch.io's cover and the CrazyGames square cover both want the logo on it)
+  if(withText){
+    pixelTitle(ctx, 'HOOP LEGENDS', W/2, H*0.145, W*0.072, '#ffd166');
+    pixelTitle(ctx, 'RISE TO LEGEND STATUS', W/2, H*0.235, W*0.021, '#8fd9ff', '#0a1220');
+  }
+} else if(layout==='portrait'){
+  const players = buildPlayers(W,H, 3, H*0.80, W*0.028, W*0.16);
+  drawCourtScene(ctx, W, H, { players, ball:{ x:W/2+W*0.10, y:H*0.5, sc:W*0.02 }, hoop:{ x:W*0.80, y:H*0.60, sc:W*0.019 } });
+  if(withText){
+    pixelTitle(ctx, 'HOOP', W/2, H*0.14, W*0.13, '#ffd166');
+    pixelTitle(ctx, 'LEGENDS', W/2, H*0.14+W*0.115, W*0.13, '#ffffff');
+    pixelTitle(ctx, 'RISE TO LEGEND STATUS', W/2, H*0.955, W*0.032, '#8fd9ff', '#0a1220');
+  }
+} else { // landscape
+  const players = buildPlayers(W,H, 5, H*0.86, W*0.0105, W*0.115, W*0.66);
+  drawCourtScene(ctx, W, H, { players, ball:{ x:W*0.735, y:H*0.50, sc:W*0.0095 }, hoop:{ x:W*0.90, y:H*0.46, sc:W*0.0085 } });
+  if(withText){
+    pixelTitle(ctx, 'HOOP LEGENDS', W*0.27, H*0.20, W*0.052, '#ffd166');
+    pixelTitle(ctx, 'RISE FROM THE STREETS TO FINALS MVP', W*0.27, H*0.30, W*0.016, '#8fd9ff', '#0a1220');
+  }
+}
+</script>
+</body>
+</html>
