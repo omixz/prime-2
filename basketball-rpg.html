@@ -4,6 +4,18 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Hoop Legends: My Journey</title>
+<!--
+  PORTAL SDK — uncomment exactly ONE of these depending on where this build is hosted.
+  Leave both commented out for itch.io / a plain web host / the Tauri desktop build —
+  the Platform hooks in the game code no-op safely when neither SDK is present.
+
+  Poki (https://developers.poki.com/):
+  <script src="https://game-cdn.poki.com/scripts/v2/poki-sdk.js"></script>
+
+  CrazyGames (https://docs.crazygames.com/sdk/html5/):
+  <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
+-->
+
 <style>
   :root{
     --bg-deep:#070d18;
@@ -546,13 +558,15 @@ const Platform = (function(){
       try{ if(poki && poki.gameplayStop) poki.gameplayStop(); }catch(e){}
       try{ if(crazy && crazy.game && crazy.game.gameplayStop) crazy.game.gameplayStop(); }catch(e){}
     },
-    // show a commercial break, then run `done` (always runs, even with no SDK)
+    // show a commercial break, then run `done` (always runs, even with no SDK) —
+    // wrapped so whatever the SDK's promise/callback resolves with never leaks into `done`'s caller
     commercialBreak(done){
+      const finish=()=>done();
       try{
-        if(poki && poki.commercialBreak){ poki.commercialBreak().then(done, done); return; }
-        if(crazy && crazy.ad && crazy.ad.requestAd){ crazy.ad.requestAd('midgame', { adFinished:done, adError:done }); return; }
+        if(poki && poki.commercialBreak){ poki.commercialBreak().then(finish, finish); return; }
+        if(crazy && crazy.ad && crazy.ad.requestAd){ crazy.ad.requestAd('midgame', { adFinished:finish, adError:finish }); return; }
       }catch(e){}
-      done();
+      finish();
     }
   };
 })();
@@ -1016,7 +1030,8 @@ function frOpponentTeam(){
 
 document.getElementById('btnFrPlay').addEventListener('click', ()=>{
   Audio8.ensureRunning(); Audio8.startMusic(); Audio8.click();
-  startGame(frOpponentTeam());
+  const opp = frOpponentTeam();
+  Platform.commercialBreak(()=> startGame(opp));
 });
 document.getElementById('btnFrSim').addEventListener('click', ()=>{
   Audio8.click();
@@ -1074,7 +1089,7 @@ document.getElementById('btnVsStart').addEventListener('click', ()=>{
   S.team=TEAMS[vsP1Idx];
   S.versusP2Idx=vsP2Idx;
   S.player={ name:'P1', position:'Guard', heightIn:75, attrs:{shooting:6,passing:6,speed:6,defense:6}, level:1, xp:0, xpToNext:100, sp:0, badges:[] };
-  startGame();
+  Platform.commercialBreak(()=> startGame());
 });
 
 /* ---------------- SAVE / LOAD (manual slots in localStorage) ---------------- */
@@ -1448,7 +1463,7 @@ function rebuildSponsor(id, done){
 document.getElementById('btnPlayGame').addEventListener('click', ()=>{
   Audio8.ensureRunning();
   Audio8.click();
-  startGame();
+  Platform.commercialBreak(()=> startGame());
 });
 document.getElementById('btnPostChamp').addEventListener('click', ()=>{
   Audio8.click();
