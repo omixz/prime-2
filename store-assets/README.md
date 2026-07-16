@@ -20,6 +20,15 @@ guaranteed to look on-brand and never depends on external art.
   (mode select, character creation, live play with the OVR/position labels,
   Franchise HQ, and the roster/trade screen) — not staged mockups. itch.io
   and both portals want real screenshots, not just key art.
+- **`video/`** — ~18s real gameplay capture (Franchise mode: movement, shots,
+  passes/steals), in both `hoop-legends-trailer-landscape-1280x720.webm`
+  (16:9) and `hoop-legends-trailer-portrait-720x1280.webm` (9:16, cropped
+  to fill the frame rather than letterboxed, since the game itself only
+  renders in landscape). WebM/VP8, not MP4 — this environment's ffmpeg build
+  has no H.264 encoder. WebM plays natively in every modern browser and
+  uploads fine to YouTube/Discord/Twitter; if a specific target insists on
+  MP4 (e.g. Instagram/TikTok), convert locally with a full ffmpeg install:
+  `ffmpeg -i in.webm -c:v libx264 -pix_fmt yuv420p -crf 18 out.mp4`.
 
 ## Regenerating
 
