@@ -167,6 +167,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(502).json({ error: "Couldn't start checkout right now. Please try again shortly." });
     }
 
+    // Log the Square order id so any "didn't reach the POS" report can be
+    // matched to the exact order in the Square Dashboard's Orders section.
+    console.log(
+      "Checkout created — square order_id:",
+      data.payment_link?.order_id,
+      "items:",
+      lineItems.length,
+      "pickup name:",
+      pickupName
+    );
+
     return res.status(200).json({ url: data.payment_link?.url });
   } catch (err) {
     console.error("Checkout error:", err);

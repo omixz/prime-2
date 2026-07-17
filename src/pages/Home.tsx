@@ -55,7 +55,7 @@ export function Home() {
               Smashed <span className="text-flame">prime</span> burgers.
             </h1>
             <p className="mt-5 max-w-md text-lg text-cream/70">
-              Wagyu smash patties, loaded fries and shakes — order ahead online and skip the queue for pickup.
+              Wagyu smash patties, loaded fries and chunky tenders — order ahead online and skip the queue for pickup.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link

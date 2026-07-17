@@ -1,4 +1,4 @@
-import { MapPin, Clock, Phone, Instagram } from "lucide-react";
+import { MapPin, Clock, Instagram } from "lucide-react";
 
 const hours = [
   ["Monday", "6:00 PM – 2:00 AM"],
@@ -83,11 +83,7 @@ export function Visit() {
 
           <div className="rounded-3xl bg-white p-6 shadow-soft">
             <h2 className="font-display text-xl font-bold">Get in Touch</h2>
-            <div className="mt-4 space-y-3 text-sm">
-              <a href="tel:+61200000000" className="flex items-center gap-3 hover:text-flame">
-                <Phone size={18} className="text-flame" /> (02) 0000 0000
-              </a>
-            </div>
+            <p className="mt-2 text-sm text-charcoal/60">DM us on Instagram — we're quick to reply.</p>
             <div className="mt-5 flex gap-3">
               <a href="https://www.instagram.com/primeburgerco/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="grid h-11 w-11 place-items-center rounded-full bg-charcoal/5 text-charcoal hover:bg-flame hover:text-cream transition-colors">
                 <Instagram size={18} />

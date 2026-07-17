@@ -12,7 +12,7 @@ export function Footer() {
             <span className="font-display text-xl font-black uppercase">Prime Burger Co</span>
           </div>
           <p className="mt-4 max-w-xs text-sm opacity-80">
-            Smashed prime cut wagyu burgers, loaded fries and shakes. 100% halal. Order ahead for pickup in Yagoona.
+            Smashed prime cut wagyu burgers, loaded fries and chunky tenders. 100% halal. Order ahead for pickup in Yagoona.
           </p>
         </div>
 

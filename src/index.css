@@ -14,6 +14,13 @@ h1, h2, h3, h4 {
   @apply font-display uppercase tracking-tight;
 }
 
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 :focus-visible {
   outline: 3px solid theme("colors.flame");
   outline-offset: 2px;

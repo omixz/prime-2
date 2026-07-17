@@ -65,7 +65,7 @@ export const menuSections: MenuSection[] = [
     items: [
       { id: "extra-patty", name: "Extra Patty", desc: "Add another smashed wagyu patty.", priceCents: 400 },
       { id: "extra-cheese", name: "Extra Cheese", desc: "Extra slice of American cheddar.", priceCents: 150 },
-      { id: "extra-bacon", name: "Bacon Rasher", desc: "Add a beef rasher.", priceCents: 250 },
+      { id: "extra-bacon", name: "Beef Bacon Rasher", desc: "Add a smoked beef rasher — 100% halal.", priceCents: 250 },
       { id: "extra-egg", name: "Fried Egg", desc: "Add a fried egg.", priceCents: 200 },
       { id: "extra-onion", name: "Extra Minced Onion", desc: "", priceCents: 100 },
       { id: "extra-pickles", name: "Extra Pickles", desc: "", priceCents: 100 },
