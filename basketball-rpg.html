@@ -1927,6 +1927,23 @@ function attachBall(p, smooth){
   p.hasBall = true;
   // reset the shot clock whenever possession changes teams
   if(Game && (!prev || prev.team!==p.team)) Game.shotClock = 24;
+  // control always follows the ball: whoever just got it (pass, steal, rebound,
+  // inbound) becomes the human-controlled player on their side, and the player
+  // who had control reverts to AI. This is the single choke point every
+  // possession change already runs through, so it covers every case uniformly.
+  switchControlToBallHolder(p);
+}
+function switchControlToBallHolder(p){
+  if(!Game) return;
+  if(p.team==='home' && Game.user && p!==Game.user){
+    Game.user.isUser = false;
+    p.isUser = true;
+    Game.user = p;
+  } else if(p.team==='away' && Game.versus && Game.user2 && p!==Game.user2){
+    Game.user2.isUser2 = false;
+    p.isUser2 = true;
+    Game.user2 = p;
+  }
 }
 
 /* start a visible ball-in-flight travel between two players (pass / inbound throw) */
@@ -2021,7 +2038,7 @@ function updateClock(dt){
 
 /* ---------------- input (sprint + stamina) ---------------- */
 function updateInput(dt){
-  const user = Game.home[0];
+  const user = Game.user;   // control follows the ball — this is whoever on home currently has it
   if(user.stunTimer>0){ user.stunTimer-=dt; return; }
 
   // playbook calls (offense only) — 1 iso, 2 pick & roll, 3 fast break
@@ -2499,7 +2516,10 @@ function resolveShot(){
     if(buzzerBeater){ screenShake(10, 0.4); buzz([60,30,60,30,80]); }
     // build the special meter for the scoring side
     chargeSpecial(shooter.team, b.isThree?26:20);
-    if(Game.pendingAssist && shooter.team==='home' && !shooter.isUser){
+    // control follows the ball, so the receiver of your pass becomes "you" the instant
+    // they catch it — credit the assist off who actually threw the pass, not isUser,
+    // or this stat would go permanently unreachable under the new control mechanic
+    if(Game.pendingAssist && shooter.team==='home' && shooter!==Game.pendingAssist.passer){
       Game.stats.assists++; gainXP(6); Game.pendingAssist=null;
     }
     addFloat(b.tx, b.ty-60, `+${pts}`, '#ffd166', 20);
@@ -2605,7 +2625,7 @@ function doPass(passer, prefer){
     startPass(passer, best);
     if(passer.isUser){
       gainXP(2);
-      Game.pendingAssist = { t:3 };
+      Game.pendingAssist = { t:3, passer };
       if(S.player.badges.includes('passing')){ best.buffed=true; best.buffTimer=5; }
     }
   } else {
@@ -2653,13 +2673,13 @@ function gainXP(n){
     const sp = Math.round(3*S.spMultiplierNextGame);
     S.player.sp += sp;
     Audio8.levelup();
-    addFloat(Game.home[0].x, Game.home[0].y-130, `LEVEL UP! +${sp} SP`, '#ffd166', 20);
+    addFloat(Game.user.x, Game.user.y-130, `LEVEL UP! +${sp} SP`, '#ffd166', 20);
   }
 }
 function checkSponsor(){
   if(S.sponsor && !S.sponsor.done && S.sponsor.check(Game.stats)){
     S.sponsor.done=true;
-    addFloat(Game.home[0].x, Game.home[0].y-160, "SPONSOR GOAL MET!", '#4ade80', 18);
+    addFloat(Game.user.x, Game.user.y-160, "SPONSOR GOAL MET!", '#4ade80', 18);
   }
 }
 
