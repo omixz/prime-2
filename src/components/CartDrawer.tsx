@@ -56,6 +56,14 @@ export function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () =
         return;
       }
 
+      // Lets the success page tell a real post-payment redirect apart from
+      // someone landing on /checkout/success via back-button/bookmark/direct
+      // URL — without it, that page unconditionally wiped the cart on mount.
+      try {
+        sessionStorage.setItem("checkout-pending", "1");
+      } catch {
+        // sessionStorage unavailable — success page just won't auto-clear
+      }
       window.location.href = data.url;
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {

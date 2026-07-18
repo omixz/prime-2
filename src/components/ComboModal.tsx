@@ -55,7 +55,7 @@ export function ComboModal({ item, onClose }: { item: MenuItem; onClose: () => v
             <span className="float-right font-display font-bold text-charcoal/60">{formatPrice(item.priceCents)}</span>
           </button>
 
-          {item.comboUpchargeCents ? (
+          {item.comboUpchargeCents != null ? (
             <button
               onClick={() => {
                 setSize("regular");
@@ -73,7 +73,7 @@ export function ComboModal({ item, onClose }: { item: MenuItem; onClose: () => v
             </button>
           ) : null}
 
-          {item.largeComboUpchargeCents ? (
+          {item.largeComboUpchargeCents != null ? (
             <button
               onClick={() => {
                 setSize("large");

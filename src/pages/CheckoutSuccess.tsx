@@ -7,7 +7,19 @@ export function CheckoutSuccess() {
   const { clear } = useCart();
 
   useEffect(() => {
-    clear();
+    // Only clear the cart if we actually redirected out to Square for
+    // payment — otherwise a bookmark, crawler, or hitting "back" past an
+    // abandoned Square payment page lands here and silently wipes the cart.
+    let cameFromCheckout = false;
+    try {
+      cameFromCheckout = sessionStorage.getItem("checkout-pending") === "1";
+      sessionStorage.removeItem("checkout-pending");
+    } catch {
+      cameFromCheckout = true;
+    }
+    if (cameFromCheckout) {
+      clear();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

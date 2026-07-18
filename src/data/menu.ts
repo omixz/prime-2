@@ -132,19 +132,37 @@ export const testItem: MenuItem = {
 
 export const allItems: MenuItem[] = [...menuSections.flatMap((s) => s.items), testItem];
 
-export const smallDrinks: MenuItem[] = menuSections.find((s) => s.title === "Small Drinks")!.items;
-export const bottleDrinks: MenuItem[] = menuSections.find((s) => s.title === "Bottles")!.items;
-export const extraItems: MenuItem[] = menuSections.find((s) => s.title === "Extras")!.items;
+// Single lookup point for "items in section X" — a typo'd/renamed title
+// throws a clear error here at module load instead of a bare
+// "Cannot read properties of undefined" crash from a scattered `.find()!`.
+const sectionsByTitle = new Map(menuSections.map((s) => [s.title, s]));
+function itemsInSection(title: string): MenuItem[] {
+  const section = sectionsByTitle.get(title);
+  if (!section) throw new Error(`menu.ts: no section titled "${title}"`);
+  return section.items;
+}
+
+export const smallDrinks: MenuItem[] = itemsInSection("Small Drinks");
+export const bottleDrinks: MenuItem[] = itemsInSection("Bottles");
+export const extraItems: MenuItem[] = itemsInSection("Extras");
 
 // Grouped quick-adds shown in the cart drawer's "Want to add extras?" panel —
 // fries/tenders/sides alongside the topping & sauce extras, so people can top
 // up an order at checkout without going back to the menu.
 export type ExtraGroup = { title: string; items: MenuItem[] };
 
+const [fillings, sauces] = extraItems.reduce<[MenuItem[], MenuItem[]]>(
+  (acc, item) => {
+    acc[item.id.startsWith("sauce-") ? 1 : 0].push(item);
+    return acc;
+  },
+  [[], []]
+);
+
 export const checkoutExtraGroups: ExtraGroup[] = [
-  { title: "Fries & Sides", items: [...menuSections.find((s) => s.title === "Loaded Fries")!.items, ...menuSections.find((s) => s.title === "Sides & Tenders")!.items] },
-  { title: "Extra Fillings", items: extraItems.filter((i) => !i.id.startsWith("sauce-")) },
-  { title: "Sauces", items: extraItems.filter((i) => i.id.startsWith("sauce-")) },
+  { title: "Fries & Sides", items: [...itemsInSection("Loaded Fries"), ...itemsInSection("Sides & Tenders")] },
+  { title: "Extra Fillings", items: fillings },
+  { title: "Sauces", items: sauces },
   { title: "Drinks", items: [...smallDrinks, ...bottleDrinks] },
 ];
 

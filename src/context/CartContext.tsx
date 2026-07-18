@@ -57,11 +57,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     let name = item.name;
     let lineId = item.id;
 
-    if (comboSize === "regular" && item.comboUpchargeCents) {
+    if (comboSize === "regular" && item.comboUpchargeCents != null) {
       priceCents += item.comboUpchargeCents;
       name = `${item.name} — Combo${options?.drink ? ` w/ ${options.drink.name}` : ""}`;
       lineId = `${item.id}:combo:${options?.drink?.id ?? ""}`;
-    } else if (comboSize === "large" && item.largeComboUpchargeCents) {
+    } else if (comboSize === "large" && item.largeComboUpchargeCents != null) {
       priceCents += item.largeComboUpchargeCents;
       name = `${item.name} — Large Combo${options?.drink ? ` w/ ${options.drink.name}` : ""}`;
       lineId = `${item.id}:large:${options?.drink?.id ?? ""}`;

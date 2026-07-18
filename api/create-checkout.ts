@@ -23,8 +23,23 @@ const requestLog = new Map<string, number[]>();
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 10;
 
+// Requests from IPs that stop sending (a one-off visitor, not an abuser)
+// otherwise sit in the Map forever on a warm instance. Sweep out fully-expired
+// entries periodically instead of only ever trimming the IP being checked.
+let lastSweep = Date.now();
+function sweepExpiredIps(now: number) {
+  if (now - lastSweep < RATE_LIMIT_WINDOW_MS) return;
+  lastSweep = now;
+  for (const [ip, timestamps] of requestLog) {
+    if (!timestamps.some((t) => now - t < RATE_LIMIT_WINDOW_MS)) {
+      requestLog.delete(ip);
+    }
+  }
+}
+
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
+  sweepExpiredIps(now);
   const timestamps = (requestLog.get(ip) ?? []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
   timestamps.push(now);
   requestLog.set(ip, timestamps);
@@ -55,6 +70,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const accessToken = (process.env.SQUARE_ACCESS_TOKEN || process.env.SquareToken)?.trim();
   const locationId = (process.env.SQUARE_LOCATION_ID || process.env.SquareLocation)?.trim();
   const environment = (process.env.SQUARE_ENVIRONMENT || process.env.SquareEnviorment)?.trim();
+  if (environment !== "production" && environment !== "sandbox") {
+    // Falling back to sandbox silently would mean real customers get payment
+    // links that never actually charge them or reach the POS, with nothing
+    // in the response to indicate why — surface it in logs at minimum.
+    console.warn(`SQUARE_ENVIRONMENT is "${environment}", not "production" or "sandbox" — defaulting to sandbox.`);
+  }
   const squareApiBase = environment === "production"
     ? "https://connect.squareup.com"
     : "https://connect.squareupsandbox.com";
@@ -101,11 +122,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let priceCents = menuItem.priceCents;
     let name = menuItem.name;
 
-    if (comboSize === "regular" && menuItem.comboUpchargeCents) {
+    // `!= null` (not a truthy check) so a legitimate free combo upgrade
+    // (comboUpchargeCents: 0) still gets applied instead of silently dropped.
+    if (comboSize === "regular" && menuItem.comboUpchargeCents != null) {
       const drink = drinkId ? SMALL_DRINK_BY_ID.get(drinkId) : null;
       priceCents += menuItem.comboUpchargeCents;
       name = `${menuItem.name} — Combo${drink ? ` w/ ${drink.name}` : ""}`;
-    } else if (comboSize === "large" && menuItem.largeComboUpchargeCents) {
+    } else if (comboSize === "large" && menuItem.largeComboUpchargeCents != null) {
       const drink = drinkId ? BOTTLE_DRINK_BY_ID.get(drinkId) : null;
       priceCents += menuItem.largeComboUpchargeCents;
       name = `${menuItem.name} — Large Combo${drink ? ` w/ ${drink.name}` : ""}`;
@@ -167,16 +190,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(502).json({ error: "Couldn't start checkout right now. Please try again shortly." });
     }
 
-    // Log the Square order id so any "didn't reach the POS" report can be
-    // matched to the exact order in the Square Dashboard's Orders section.
-    console.log(
-      "Checkout created — square order_id:",
-      data.payment_link?.order_id,
-      "items:",
-      lineItems.length,
-      "pickup name:",
-      pickupName
-    );
+    // Log the Square order id (not the customer's name/phone) so any
+    // "didn't reach the POS" report can be matched to the exact order in
+    // the Square Dashboard's Orders section without putting PII in logs.
+    console.log("Checkout created — square order_id:", data.payment_link?.order_id, "items:", lineItems.length);
 
     return res.status(200).json({ url: data.payment_link?.url });
   } catch (err) {

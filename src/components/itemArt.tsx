@@ -50,6 +50,11 @@ const DRINK_KEYWORD_COLORS: [string, { cup: string; cap: string }][] = [
   ["fanta-berry", { cup: "#8C2F5A", cap: "#5C1A3A" }],
   ["blue-lemonade", { cup: "#3E8FD0", cap: "#1E5C99" }],
   ["watermelon", { cup: "#E8607A", cap: "#3E9A4F" }],
+  // More specific "*-mango" keywords must be checked before the generic
+  // "mango" fallback below, since .find() matches on first substring hit —
+  // otherwise "banana-mango"/"orange-mango" ids never reach their own entries.
+  ["banana-mango", { cup: "#F2C23C", cap: "#E08B1A" }],
+  ["orange-mango", { cup: "#F2A93B", cap: "#D5451B" }],
   ["mango", { cup: "#F2B23C", cap: "#E08B1A" }],
   ["blueberry", { cup: "#4B4A8C", cap: "#2E2D5C" }],
   ["pomegranate", { cup: "#9C2B3E", cap: "#6B1626" }],
@@ -59,9 +64,7 @@ const DRINK_KEYWORD_COLORS: [string, { cup: string; cap: string }][] = [
   ["lemon-lime", { cup: "#B7D93C", cap: "#5C8A1A" }],
   ["mandarin", { cup: "#F2913C", cap: "#D5451B" }],
   ["7-fruits", { cup: "#C0392B", cap: "#7A1F17" }],
-  ["banana-mango", { cup: "#F2C23C", cap: "#E08B1A" }],
   ["apple-juice", { cup: "#D8C93C", cap: "#8A7A1A" }],
-  ["orange-mango", { cup: "#F2A93B", cap: "#D5451B" }],
   ["v-original", { cup: "#2E9E4F", cap: "#1B5E20" }],
   ["v-strawberry", { cup: "#D9436B", cap: "#8A1F3A" }],
 ];
