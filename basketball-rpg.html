@@ -2036,6 +2036,20 @@ function startGame(forcedOpponent){
   requestAnimationFrame(gameLoop);
 }
 
+// one-time onboarding nudge: control-follows-the-ball is a real departure from the
+// "you always play the same guy" convention most sports games use, so the very first
+// time it happens, call it out explicitly instead of leaving the player to notice the
+// name tag jumped to someone else on their own. Never shown again after that.
+let controlHintShownThisSession = false;
+function showControlSwitchHintOnce(p){
+  if(controlHintShownThisSession) return;
+  let seen = false;
+  try{ seen = localStorage.getItem('hoopLegendsSeenControlHint')==='1'; }catch(e){}
+  if(seen) return;
+  controlHintShownThisSession = true;
+  try{ localStorage.setItem('hoopLegendsSeenControlHint','1'); }catch(e){}
+  addFloat(p.x, p.y-110, "YOU'RE NOW " + p.role + "!", '#2ee6ff', 15);
+}
 function attachBall(p, smooth){
   const b = Game.ball;
   const prev = b.holder;
@@ -2058,6 +2072,7 @@ function switchControlToBallHolder(p){
     Game.user.isUser = false;
     p.isUser = true;
     Game.user = p;
+    showControlSwitchHintOnce(p);
   } else if(p.team==='away' && Game.versus && Game.user2 && p!==Game.user2){
     Game.user2.isUser2 = false;
     p.isUser2 = true;
