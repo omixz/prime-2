@@ -179,6 +179,17 @@
 <body>
 <div id="app">
 
+  <!-- ============ SAVE / LOAD (in-page modal — no native prompt()/alert(),
+       which portal iframes like Poki/CrazyGames commonly block) ============ -->
+  <div id="saveLoadModal" style="display:none;position:fixed;inset:0;z-index:999;align-items:center;justify-content:center;background:rgba(6,10,18,.82);">
+    <div class="panel" style="max-width:480px;">
+      <h1 id="slModalTitle" style="font-size:26px;">SAVE / LOAD</h1>
+      <div id="slSlots"></div>
+      <div class="row"><button id="slCancel" class="small ghost">Close</button></div>
+      <div class="flashMsg" id="slMsg"></div>
+    </div>
+  </div>
+
   <!-- ============ MODE SELECT ============ -->
   <div id="screen-mode" class="screen active">
     <div class="panel">
@@ -1068,13 +1079,22 @@ document.getElementById('modeVersus').addEventListener('click', ()=>{
   renderVsTeams();
   showScreen('screen-vsSetup');
 });
+// scouting-report OVR per team for the versus team-select screen — same baseline
+// formula Franchise mode seeds its rosters with, so the number means the same
+// thing in both modes. Rolled once per visit to this screen (not per row) so
+// both players see the identical rating for a given team.
+let vsTeamOvrs = null;
 function renderVsTeams(){
+  vsTeamOvrs = TEAMS.map((t,i)=> Math.round(teamOverall(makeRoster(62 + ((i*11)%15)))));
   [['vsTeamRow1',1],['vsTeamRow2',2]].forEach(([rowId,pnum])=>{
     const row=document.getElementById(rowId); row.innerHTML='';
     TEAMS.forEach((t,i)=>{
+      const ovr = vsTeamOvrs[i];
+      const ovrColor = ovr>=76?'#34d399':ovr>=68?'#ffd166':'#8fa0b8';
       const card=document.createElement('div'); card.className='teamPick'; card.style.width='120px';
       card.innerHTML=`<div class="jersey" style="background:${t.primary};border-color:${t.secondary}"></div>
-        <p style="margin:0;font-size:11px;color:var(--text)"><b>${t.abbr}</b></p>`;
+        <p style="margin:0;font-size:11px;color:var(--text)"><b>${t.abbr}</b></p>
+        <p style="margin:2px 0 0;font-size:11px;font-weight:700;color:${ovrColor}">OVR ${ovr}</p>`;
       card.onclick=()=>{ Audio8.click();
         row.querySelectorAll('.teamPick').forEach(c=>c.classList.remove('sel')); card.classList.add('sel');
         if(pnum===1) vsP1Idx=i; else vsP2Idx=i; };
@@ -1127,22 +1147,52 @@ function slotSummary(slot){
   return `${s.label} · ${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`;
 }
 
-// simple prompt-based save/load UI so it stays a single file with no extra screens
-function openSaveMenu(){
-  const which = prompt(`SAVE — choose a slot (1-3):\n 1) ${slotSummary(1)}\n 2) ${slotSummary(2)}\n 3) ${slotSummary(3)}`, '1');
-  const n=parseInt(which); if(n>=1&&n<=3){ doSave(n); document.getElementById('hubMsg') && (document.getElementById('hubMsg').textContent=`Saved to slot ${n}.`); if(document.getElementById('frMsg')) document.getElementById('frMsg').textContent=`Saved to slot ${n}.`; }
+// in-page save/load modal — deliberately avoids window.prompt()/alert()/confirm(),
+// which are commonly blocked (silently, with a console warning) inside the sandboxed
+// iframes that Poki/CrazyGames embed games in, which would otherwise brick Save/Load
+// entirely on those platforms without any visible error to the player.
+function renderSaveLoadModal(mode){
+  document.getElementById('slModalTitle').textContent = mode==='save' ? 'SAVE GAME' : 'LOAD GAME';
+  const box = document.getElementById('slSlots');
+  box.innerHTML='';
+  for(let n=1;n<=3;n++){
+    const s = readSaves()['slot'+n];
+    const row = document.createElement('div');
+    row.className='attrRow';
+    row.style.cssText='border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin:6px 0;';
+    const label = document.createElement('span');
+    label.style.cssText='flex:1;text-align:left;font-size:12px;';
+    label.textContent = `Slot ${n}: ${slotSummary(n)}`;
+    row.appendChild(label);
+    const btn=document.createElement('button'); btn.className='small';
+    if(mode==='save'){
+      btn.textContent = s ? 'Overwrite' : 'Save';
+      btn.onclick=()=>{
+        Audio8.click(); doSave(n);
+        const msg=document.getElementById('slMsg'); msg.style.color='var(--success)'; msg.textContent=`Saved to slot ${n}.`;
+        renderSaveLoadModal('save');
+      };
+    } else {
+      btn.textContent='Load';
+      btn.disabled = !s;
+      btn.onclick=()=>{
+        Audio8.click();
+        deserializeState(s.data);
+        Audio8.ensureRunning(); Audio8.startMusic();
+        closeSaveLoadModal();
+        if(S.mode==='franchise'){ renderFranchise(); showScreen('screen-franchise'); }
+        else { renderHub(); showScreen('screen-hub'); }
+      };
+    }
+    row.appendChild(btn);
+    box.appendChild(row);
+  }
+  document.getElementById('slMsg').textContent='';
+  document.getElementById('saveLoadModal').style.display='flex';
 }
-function openLoadMenu(){
-  const which = prompt(`LOAD — choose a slot (1-3):\n 1) ${slotSummary(1)}\n 2) ${slotSummary(2)}\n 3) ${slotSummary(3)}`, '1');
-  const n=parseInt(which); if(!(n>=1&&n<=3)) return;
-  const s=readSaves()['slot'+n];
-  if(!s){ alert('That slot is empty.'); return; }
-  deserializeState(s.data);
-  Audio8.ensureRunning(); Audio8.startMusic();
-  if(S.mode==='franchise'){ renderFranchise(); showScreen('screen-franchise'); }
-  else { renderHub(); showScreen('screen-hub'); }
-}
-document.getElementById('btnLoadGame').addEventListener('click', ()=>{ Audio8.click(); openLoadMenu(); });
+function closeSaveLoadModal(){ document.getElementById('saveLoadModal').style.display='none'; }
+document.getElementById('slCancel').addEventListener('click', ()=>{ Audio8.click(); closeSaveLoadModal(); });
+document.getElementById('btnLoadGame').addEventListener('click', ()=>{ Audio8.click(); renderSaveLoadModal('load'); });
 
 /* ---------------- Franchise: roster, trades, development ---------------- */
 let rosSelMine=null, rosSelOther=null, rosOtherIdx=null, rosSelMinePick=null, rosSelOtherPick=null;
@@ -1270,9 +1320,9 @@ function developRosters(){
 }
 
 // hub + franchise menu/save buttons
-document.getElementById('btnHubSave').addEventListener('click', ()=>{ Audio8.click(); openSaveMenu(); });
+document.getElementById('btnHubSave').addEventListener('click', ()=>{ Audio8.click(); renderSaveLoadModal('save'); });
 document.getElementById('btnHubMenu').addEventListener('click', ()=>{ Audio8.click(); showScreen('screen-mode'); });
-document.getElementById('btnFrSave').addEventListener('click', ()=>{ Audio8.click(); openSaveMenu(); });
+document.getElementById('btnFrSave').addEventListener('click', ()=>{ Audio8.click(); renderSaveLoadModal('save'); });
 document.getElementById('btnFrMenu').addEventListener('click', ()=>{ Audio8.click(); showScreen('screen-mode'); });
 
 /* ---------------- Franchise: end-of-season ROOKIE DRAFT (worst picks first) ---------------- */
