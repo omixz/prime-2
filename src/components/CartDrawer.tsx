@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { X, Minus, Plus, Trash2, Loader2 } from "lucide-react";
+import { X, Minus, Plus, Trash2, Loader2, Mail, Phone } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { formatPrice } from "../data/menu";
 
 export function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const { lines, updateQuantity, removeItem, totalCents } = useCart();
+  const { lines, updateQuantity, removeItem, totalCents, email, setEmail, phone, setPhone } = useCart();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,6 +17,8 @@ export function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () =
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items: lines.map((l) => ({ id: l.id, name: l.name, priceCents: l.priceCents, quantity: l.quantity })),
+          email,
+          phone,
         }),
       });
 
@@ -111,6 +113,32 @@ export function CartDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () =
 
           {lines.length > 0 && (
             <div className="border-t border-charcoal/10 px-6 py-5">
+              <div className="mb-4 space-y-3">
+                <div>
+                  <label className="flex items-center gap-2 text-xs font-display font-bold uppercase text-charcoal/70">
+                    <Mail size={14} /> Email (for receipts)
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="mt-1.5 w-full rounded-lg border border-charcoal/15 bg-white px-3 py-2 text-sm placeholder-charcoal/40 focus:border-flame focus:outline-none focus:ring-1 focus:ring-flame"
+                  />
+                </div>
+                <div>
+                  <label className="flex items-center gap-2 text-xs font-display font-bold uppercase text-charcoal/70">
+                    <Phone size={14} /> Phone (pickup confirmation)
+                  </label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="(02) XXXX XXXX"
+                    className="mt-1.5 w-full rounded-lg border border-charcoal/15 bg-white px-3 py-2 text-sm placeholder-charcoal/40 focus:border-flame focus:outline-none focus:ring-1 focus:ring-flame"
+                  />
+                </div>
+              </div>
               <div className="flex items-center justify-between text-lg">
                 <span className="font-semibold">Total</span>
                 <span className="font-display text-2xl font-black text-flame">{formatPrice(totalCents)}</span>

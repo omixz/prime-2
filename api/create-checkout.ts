@@ -26,6 +26,7 @@ function isRateLimited(ip: string): boolean {
 }
 
 type IncomingItem = { id: unknown; quantity: unknown };
+type IncomingBody = { items?: IncomingItem[]; email?: string; phone?: string };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
@@ -50,10 +51,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: "Checkout isn't configured yet. Please contact the shop directly." });
   }
 
-  const body = req.body as { items?: IncomingItem[] };
+  const body = req.body as IncomingBody;
   if (!body || !Array.isArray(body.items) || body.items.length === 0) {
     return res.status(400).json({ error: "Your cart is empty." });
   }
+
+  const email = typeof body.email === "string" ? body.email.trim() : "";
+  const phone = typeof body.phone === "string" ? body.phone.trim() : "";
   if (body.items.length > MAX_LINE_ITEMS) {
     return res.status(400).json({ error: "Too many different items in one order." });
   }
@@ -87,6 +91,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ? crypto.randomUUID()
         : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
+    const paymentLinkBody: Record<string, unknown> = {
+      idempotency_key: idempotencyKey,
+      order: {
+        location_id: locationId,
+        line_items: lineItems,
+      },
+      checkout_options: {
+        redirect_url: `${siteUrl}/checkout/success`,
+        ask_for_shipping_address: false,
+      },
+    };
+
+    if (email) {
+      paymentLinkBody.customer_email = email;
+    }
+    if (phone) {
+      paymentLinkBody.customer_phone = phone;
+    }
+
     const squareRes = await fetch(`${squareApiBase}/v2/online-checkout/payment-links`, {
       method: "POST",
       headers: {
@@ -94,17 +117,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        idempotency_key: idempotencyKey,
-        order: {
-          location_id: locationId,
-          line_items: lineItems,
-        },
-        checkout_options: {
-          redirect_url: `${siteUrl}/checkout/success`,
-          ask_for_shipping_address: false,
-        },
-      }),
+      body: JSON.stringify(paymentLinkBody),
     });
 
     const data = await squareRes.json();

@@ -16,10 +16,16 @@ type CartContextValue = {
   clear: () => void;
   totalCents: number;
   totalCount: number;
+  email: string;
+  setEmail: (email: string) => void;
+  phone: string;
+  setPhone: (phone: string) => void;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
 const STORAGE_KEY = "prime-burger-cart";
+const STORAGE_KEY_EMAIL = "prime-burger-email";
+const STORAGE_KEY_PHONE = "prime-burger-phone";
 const MAX_QUANTITY_PER_ITEM = 20;
 
 export function CartProvider({ children }: { children: ReactNode }) {
@@ -32,6 +38,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   });
 
+  const [email, setEmailState] = useState<string>(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEY_EMAIL) || "";
+    } catch {
+      return "";
+    }
+  });
+
+  const [phone, setPhoneState] = useState<string>(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEY_PHONE) || "";
+    } catch {
+      return "";
+    }
+  });
+
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(lines));
@@ -39,6 +61,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
       // storage unavailable — cart just won't persist across reloads
     }
   }, [lines]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_EMAIL, email);
+    } catch {
+      // storage unavailable
+    }
+  }, [email]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_PHONE, phone);
+    } catch {
+      // storage unavailable
+    }
+  }, [phone]);
+
+  const setEmail = (newEmail: string) => setEmailState(newEmail);
+  const setPhone = (newPhone: string) => setPhoneState(newPhone);
 
   const addItem = (item: MenuItem) => {
     setLines((prev) => {
@@ -74,7 +115,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const totalCount = useMemo(() => lines.reduce((sum, l) => sum + l.quantity, 0), [lines]);
 
   return (
-    <CartContext.Provider value={{ lines, addItem, removeItem, updateQuantity, clear, totalCents, totalCount }}>
+    <CartContext.Provider value={{ lines, addItem, removeItem, updateQuantity, clear, totalCents, totalCount, email, setEmail, phone, setPhone }}>
       {children}
     </CartContext.Provider>
   );
