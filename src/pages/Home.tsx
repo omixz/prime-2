@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, MapPin, Star, Quote } from "lucide-react";
+import { ArrowRight, MapPin, Star, Quote, Gift, Users, TrendingUp, ShoppingBag } from "lucide-react";
 import { menuSections, formatPrice } from "../data/menu";
 import { useCart } from "../context/CartContext";
 
@@ -98,6 +98,61 @@ export function Home() {
               </button>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="bg-gradient-to-b from-white to-cream/20 py-20">
+        <div className="mx-auto max-w-6xl px-5">
+          <div className="text-center mb-12">
+            <p className="text-sm font-display font-bold uppercase tracking-widest text-flame">More ways to enjoy</p>
+            <h2 className="mt-1 font-display text-3xl font-black uppercase text-charcoal md:text-4xl">Beyond the menu</h2>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <Link to="/gift-cards" className="group rounded-2xl bg-white p-6 shadow-soft transition-all hover:shadow-glow hover:-translate-y-1">
+              <div className="mb-4 inline-block rounded-full bg-gold/10 p-3">
+                <Gift className="text-gold" size={24} />
+              </div>
+              <h3 className="font-display font-black uppercase text-charcoal">Gift Cards</h3>
+              <p className="mt-2 text-sm text-charcoal/60">$25, $50, $100 — give the gift of burgers.</p>
+              <div className="mt-4 flex items-center gap-1 text-sm font-display font-bold uppercase text-flame">
+                Learn more <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+              </div>
+            </Link>
+
+            <Link to="/loyalty" className="group rounded-2xl bg-white p-6 shadow-soft transition-all hover:shadow-glow hover:-translate-y-1">
+              <div className="mb-4 inline-block rounded-full bg-flame/10 p-3">
+                <TrendingUp className="text-flame" size={24} />
+              </div>
+              <h3 className="font-display font-black uppercase text-charcoal">Loyalty</h3>
+              <p className="mt-2 text-sm text-charcoal/60">Earn 1 point per dollar — 10th burger free.</p>
+              <div className="mt-4 flex items-center gap-1 text-sm font-display font-bold uppercase text-flame">
+                Join now <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+              </div>
+            </Link>
+
+            <Link to="/catering" className="group rounded-2xl bg-white p-6 shadow-soft transition-all hover:shadow-glow hover:-translate-y-1">
+              <div className="mb-4 inline-block rounded-full bg-charcoal/10 p-3">
+                <Users className="text-charcoal" size={24} />
+              </div>
+              <h3 className="font-display font-black uppercase text-charcoal">Catering</h3>
+              <p className="mt-2 text-sm text-charcoal/60">Team events? Staff lunches? We've got you.</p>
+              <div className="mt-4 flex items-center gap-1 text-sm font-display font-bold uppercase text-flame">
+                Get quote <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+              </div>
+            </Link>
+
+            <Link to="/menu" className="group rounded-2xl bg-white p-6 shadow-soft transition-all hover:shadow-glow hover:-translate-y-1">
+              <div className="mb-4 inline-block rounded-full bg-gold/10 p-3">
+                <ShoppingBag className="text-gold" size={24} />
+              </div>
+              <h3 className="font-display font-black uppercase text-charcoal">Merch</h3>
+              <p className="mt-2 text-sm text-charcoal/60">Rep Prime Burger Co — caps, tees, sauce.</p>
+              <div className="mt-4 flex items-center gap-1 text-sm font-display font-bold uppercase text-flame">
+                Shop merch <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+              </div>
+            </Link>
+          </div>
         </div>
       </section>
 
