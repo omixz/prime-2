@@ -308,6 +308,9 @@
 
       <h2>Upgrade Center</h2>
       <div id="upgradeGrid"></div>
+      <div class="row" id="hubRewardedRow" style="display:none;">
+        <button id="btnWatchAdSP" class="small ghost">📺 Watch an Ad for +2 SP</button>
+      </div>
 
       <div class="row"><button id="btnPlayGame">Tip Off Next Game ▶</button>
         <button id="btnHubSave" class="small ghost">Save</button>
@@ -578,6 +581,24 @@ const Platform = (function(){
         if(crazy && crazy.ad && crazy.ad.requestAd){ crazy.ad.requestAd('midgame', { adFinished:finish, adError:finish }); return; }
       }catch(e){}
       finish();
+    },
+    // true only when an actual ad portal SDK is present — gates any "watch an ad for a
+    // reward" UI so that button never shows up on itch.io / the desktop build, where
+    // there'd be nothing to watch and the offer would just be confusing
+    hasAdSDK(){
+      return !!((poki && poki.rewardedBreak) || (crazy && crazy.ad && crazy.ad.requestAd));
+    },
+    // rewarded video: onReward fires ONLY if the player actually watched to completion
+    // (rewarded ads pay out meaningfully more per view than interstitials, and portals
+    // want them used — this is opt-in from the player's side, never forced)
+    rewardedBreak(onReward, onSkippedOrUnavailable){
+      const skip = ()=>{ try{ onSkippedOrUnavailable&&onSkippedOrUnavailable(); }catch(e){} };
+      const reward = ()=>{ try{ onReward(); }catch(e){} };
+      try{
+        if(poki && poki.rewardedBreak){ poki.rewardedBreak().then(success=>{ success?reward():skip(); }, skip); return; }
+        if(crazy && crazy.ad && crazy.ad.requestAd){ crazy.ad.requestAd('rewarded', { adFinished:reward, adError:skip }); return; }
+      }catch(e){}
+      skip();
     }
   };
 })();
@@ -1354,6 +1375,15 @@ function developRosters(){
 // hub + franchise menu/save buttons
 document.getElementById('btnHubSave').addEventListener('click', ()=>{ Audio8.click(); renderSaveLoadModal('save'); });
 document.getElementById('btnHubMenu').addEventListener('click', ()=>{ Audio8.click(); showScreen('screen-mode'); });
+document.getElementById('btnWatchAdSP').addEventListener('click', ()=>{
+  Audio8.click();
+  const btn = document.getElementById('btnWatchAdSP');
+  btn.disabled = true;
+  Platform.rewardedBreak(
+    ()=>{ S.player.sp += 2; S.adRewardClaimed = true; renderHub(); document.getElementById('hubMsg').textContent = 'Thanks for watching! +2 SP.'; },
+    ()=>{ btn.disabled = !!S.adRewardClaimed; }
+  );
+});
 document.getElementById('btnFrSave').addEventListener('click', ()=>{ Audio8.click(); renderSaveLoadModal('save'); });
 document.getElementById('btnFrMenu').addEventListener('click', ()=>{ Audio8.click(); showScreen('screen-mode'); });
 
@@ -1480,6 +1510,10 @@ function renderHub(){
   document.getElementById('hubRecord').textContent = `${S.season.wins}W - ${S.season.losses}L`;
   document.getElementById('hubRound').textContent = ROUND_NAMES[S.season.round];
   document.getElementById('hubSP').textContent = S.player.sp;
+  document.getElementById('hubRewardedRow').style.display = Platform.hasAdSDK() ? '' : 'none';
+  const adBtn = document.getElementById('btnWatchAdSP');
+  adBtn.disabled = !!S.adRewardClaimed;
+  adBtn.textContent = S.adRewardClaimed ? '📺 Ad Bonus Claimed — more next game' : '📺 Watch an Ad for +2 SP';
 
   const badgeList = document.getElementById('hubBadgeList');
   badgeList.innerHTML = S.player.badges.length ? '' : '<span class="small-txt">None yet</span>';
@@ -1891,6 +1925,7 @@ function attackingHoopX(team){ return team==='home' ? COURT.hoopRightX : COURT.h
 
 function startGame(forcedOpponent){
   Audio8.ensureRunning();
+  S.adRewardClaimed = false;   // the rewarded-SP offer resets each time you start a new game
   const round = S.season.round;
   const versus = S.mode==='versus';
   let opponent;
