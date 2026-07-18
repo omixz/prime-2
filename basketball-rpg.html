@@ -2336,7 +2336,7 @@ function updateInput2(dt){
 
 /* ---------------- special moves: dunk + crossover ---------------- */
 function chargeSpecial(who, amt){
-  if(who==='home'){ if(Game.versus||true) Game.special=Math.min(100,Game.special+amt); }
+  if(who==='home') Game.special=Math.min(100,Game.special+amt);
   else Game.special2=Math.min(100,Game.special2+amt);
 }
 function useSpecial(u, who){
