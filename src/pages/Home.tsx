@@ -3,7 +3,7 @@ import { ArrowRight, MapPin, Star, Quote } from "lucide-react";
 import { menuSections, formatPrice } from "../data/menu";
 import { useCart } from "../context/CartContext";
 
-const featuredIds = ["beef-juicy-prime", "chk-mushroom-prime", "beef-cheesy-prime", "fries-chicken-mushroom"];
+const featuredIds = ["combo-beef-prime", "beef-juicy-prime", "chk-mushroom-prime", "beef-cheesy-prime"];
 const featured = menuSections.flatMap((s) => s.items).filter((i) => featuredIds.includes(i.id));
 
 const reviews = [
@@ -84,6 +84,11 @@ export function Home() {
                   <span className="font-display text-lg font-black text-flame">{formatPrice(item.priceCents)}</span>
                 </div>
                 <p className="mt-2 text-sm text-charcoal/60">{item.desc}</p>
+                {item.badge && (
+                  <div className="mt-3 inline-block rounded-full bg-flame/10 px-2.5 py-1 text-xs font-display font-bold uppercase text-flame">
+                    {item.badge}
+                  </div>
+                )}
               </div>
               <button
                 onClick={() => addItem(item)}

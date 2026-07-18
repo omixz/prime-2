@@ -3,6 +3,11 @@ export type MenuItem = {
   name: string;
   desc: string;
   priceCents: number;
+  badge?: string; // "NEW", "POPULAR", "SAVE $X"
+};
+
+export type ComboItem = MenuItem & {
+  includesItems: string[];
 };
 
 export type MenuSection = {
@@ -12,6 +17,16 @@ export type MenuSection = {
 };
 
 export const menuSections: MenuSection[] = [
+  {
+    title: "Combo Meals",
+    blurb: "Burger, loaded fries, and a drink — great value.",
+    items: [
+      { id: "combo-beef-classic", name: "Classic Beef Combo", desc: "Classic Beef Burger + Fries + Soft Drink Can. Save $1.80.", priceCents: 2290, badge: "SAVE $1.80" },
+      { id: "combo-beef-prime", name: "Juicy Prime Combo", desc: "Juicy Prime Burger + Cheesy Loaded Fries + Soft Drink Can. Save $2.50.", priceCents: 3130, badge: "SAVE $2.50" },
+      { id: "combo-chk-mushroom", name: "Mushroom Prime Combo", desc: "Mushroom Prime Burger + Cheesy Loaded Fries + Soft Drink Can. Save $2.50.", priceCents: 3030, badge: "SAVE $2.50" },
+      { id: "combo-chk-classic", name: "Classic Chicken Combo", desc: "Classic Chicken Burger + Fries + Soft Drink Can. Save $1.80.", priceCents: 2290, badge: "SAVE $1.80" },
+    ],
+  },
   {
     title: "Beef Burgers",
     blurb: "Smashed prime cut wagyu beef, 100% halal.",

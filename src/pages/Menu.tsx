@@ -59,6 +59,11 @@ export function Menu() {
                       <span className="shrink-0 font-display text-lg font-black text-flame">{formatPrice(item.priceCents)}</span>
                     </div>
                     <p className="mt-1.5 text-sm text-charcoal/60">{item.desc}</p>
+                    {item.badge && (
+                      <div className="mt-2 inline-block rounded-full bg-flame/10 px-3 py-1 text-xs font-display font-bold uppercase text-flame">
+                        {item.badge}
+                      </div>
+                    )}
                     <button
                       onClick={() => handleAdd(item)}
                       className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-charcoal/5 px-4 py-1.5 text-sm font-display font-bold uppercase text-charcoal transition-colors hover:bg-flame hover:text-cream"
