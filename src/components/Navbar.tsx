@@ -36,6 +36,8 @@ export function Navbar({ onOpenCart }: { onOpenCart: () => void }) {
           <NavLink to="/" end className={linkClass}>Home</NavLink>
           <NavLink to="/menu" className={linkClass}>Menu</NavLink>
           <NavLink to="/gift-cards" className={linkClass}>Gift Cards</NavLink>
+          <NavLink to="/loyalty" className={linkClass}>Loyalty</NavLink>
+          <NavLink to="/catering" className={linkClass}>Catering</NavLink>
           <NavLink to="/visit" className={linkClass}>Visit Us</NavLink>
           <button
             onClick={onOpenCart}
@@ -81,6 +83,8 @@ export function Navbar({ onOpenCart }: { onOpenCart: () => void }) {
             <NavLink to="/" end onClick={() => setOpen(false)} className="rounded-lg px-3 py-3 font-display font-semibold uppercase text-cream hover:bg-white/5">Home</NavLink>
             <NavLink to="/menu" onClick={() => setOpen(false)} className="rounded-lg px-3 py-3 font-display font-semibold uppercase text-cream hover:bg-white/5">Menu</NavLink>
             <NavLink to="/gift-cards" onClick={() => setOpen(false)} className="rounded-lg px-3 py-3 font-display font-semibold uppercase text-cream hover:bg-white/5">Gift Cards</NavLink>
+            <NavLink to="/loyalty" onClick={() => setOpen(false)} className="rounded-lg px-3 py-3 font-display font-semibold uppercase text-cream hover:bg-white/5">Loyalty</NavLink>
+            <NavLink to="/catering" onClick={() => setOpen(false)} className="rounded-lg px-3 py-3 font-display font-semibold uppercase text-cream hover:bg-white/5">Catering</NavLink>
             <NavLink to="/visit" onClick={() => setOpen(false)} className="rounded-lg px-3 py-3 font-display font-semibold uppercase text-cream hover:bg-white/5">Visit Us</NavLink>
           </div>
         </div>

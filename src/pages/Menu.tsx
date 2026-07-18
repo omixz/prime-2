@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, Check } from "lucide-react";
-import { menuSections, formatPrice, type MenuItem } from "../data/menu";
+import { menuSections, merchItems, formatPrice, type MenuItem } from "../data/menu";
 import { useCart } from "../context/CartContext";
 
 function slug(s: string) {
@@ -77,6 +77,42 @@ export function Menu() {
             </div>
           </section>
         ))}
+
+        <section id={slug("Merch")} className="scroll-mt-24">
+          <div className="mb-8 border-b-2 border-dashed border-charcoal/15 pb-5">
+            <h2 className="font-display text-3xl font-black uppercase text-flame md:text-4xl">Merch</h2>
+            <p className="mt-2 text-charcoal/70">Official Prime Burger Co branded gear — perfect to rep your favorite burger spot.</p>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            {merchItems.map((item) => (
+              <div
+                key={item.id}
+                className="group flex items-start gap-4 rounded-2xl bg-white p-5 shadow-soft transition-all hover:-translate-y-0.5 hover:shadow-glow"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <h3 className="font-display text-lg font-bold text-charcoal">{item.name}</h3>
+                    <span className="shrink-0 font-display text-lg font-black text-flame">{formatPrice(item.priceCents)}</span>
+                  </div>
+                  <p className="mt-1.5 text-sm text-charcoal/60">{item.desc}</p>
+                  {item.badge && (
+                    <div className="mt-2 inline-block rounded-full bg-gold/20 px-3 py-1 text-xs font-display font-bold uppercase text-charcoal">
+                      {item.badge}
+                    </div>
+                  )}
+                  <button
+                    onClick={() => handleAdd(item)}
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-charcoal/5 px-4 py-1.5 text-sm font-display font-bold uppercase text-charcoal transition-colors hover:bg-flame hover:text-cream"
+                  >
+                    {justAdded === item.id ? <Check size={15} /> : <Plus size={15} />}
+                    {justAdded === item.id ? "Added" : "Add to cart"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   );

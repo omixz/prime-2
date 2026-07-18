@@ -7,6 +7,8 @@ import { CartDrawer } from "./components/CartDrawer";
 import { Home } from "./pages/Home";
 import { Menu } from "./pages/Menu";
 import { GiftCards } from "./pages/GiftCards";
+import { Loyalty } from "./pages/Loyalty";
+import { Catering } from "./pages/Catering";
 import { Visit } from "./pages/Visit";
 import { CheckoutSuccess } from "./pages/CheckoutSuccess";
 
@@ -23,6 +25,8 @@ export default function App() {
               <Route path="/" element={<Home />} />
               <Route path="/menu" element={<Menu />} />
               <Route path="/gift-cards" element={<GiftCards />} />
+              <Route path="/loyalty" element={<Loyalty />} />
+              <Route path="/catering" element={<Catering />} />
               <Route path="/visit" element={<Visit />} />
               <Route path="/checkout/success" element={<CheckoutSuccess />} />
             </Routes>

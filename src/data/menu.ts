@@ -81,7 +81,13 @@ export const giftCardItems: MenuItem[] = [
   { id: "gift-card-100", name: "$100 Gift Card", desc: "Digital gift card, redeemable in-store for any order.", priceCents: 10000 },
 ];
 
-export const allItems: MenuItem[] = [...menuSections.flatMap((s) => s.items), ...giftCardItems];
+export const merchItems: MenuItem[] = [
+  { id: "merch-cap", name: "Prime Burger Co Cap", desc: "Official branded snapback cap.", priceCents: 1990, badge: "MERCH" },
+  { id: "merch-sauce-bottle", name: "Signature Sauce (500ml)", desc: "Grab a bottle of our in-house fusion sauce.", priceCents: 890, badge: "MERCH" },
+  { id: "merch-tshirt", name: "Prime Burger Co T-Shirt", desc: "Unisex cotton tee, classic logo print.", priceCents: 2490, badge: "MERCH" },
+];
+
+export const allItems: MenuItem[] = [...menuSections.flatMap((s) => s.items), ...giftCardItems, ...merchItems];
 
 export function formatPrice(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
