@@ -1,0 +1,135 @@
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { allItems } from "../src/data/menu";
+
+// Server-side price lookup, keyed by menu item id. We NEVER trust prices sent
+// from the browser — only the id and quantity — so a tampered client request
+// can't change what gets charged.
+const PRICE_BY_ID = new Map(allItems.map((item) => [item.id, item]));
+
+const MAX_LINE_ITEMS = 30;
+const MAX_QUANTITY_PER_ITEM = 20;
+
+// Best-effort in-memory rate limit. Serverless instances are ephemeral and
+// this resets on cold start, so it only slows down casual abuse — for
+// stronger protection, add Vercel's Attack Challenge Mode or an Upstash
+// Redis-backed limiter in front of this route.
+const requestLog = new Map<string, number[]>();
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 10;
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const timestamps = (requestLog.get(ip) ?? []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+  timestamps.push(now);
+  requestLog.set(ip, timestamps);
+  return timestamps.length > RATE_LIMIT_MAX_REQUESTS;
+}
+
+type IncomingItem = { id: unknown; quantity: unknown };
+type IncomingBody = { items?: IncomingItem[]; email?: string; phone?: string };
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
+  if (isRateLimited(ip)) {
+    return res.status(429).json({ error: "Too many requests. Please wait a moment and try again." });
+  }
+
+  const accessToken = process.env.SQUARE_ACCESS_TOKEN;
+  const locationId = process.env.SQUARE_LOCATION_ID;
+  const squareApiBase = process.env.SQUARE_ENVIRONMENT === "production"
+    ? "https://connect.squareup.com"
+    : "https://connect.squareupsandbox.com";
+  const siteUrl = process.env.SITE_URL;
+
+  if (!accessToken || !locationId || !siteUrl) {
+    console.error("Missing Square configuration env vars");
+    return res.status(500).json({ error: "Checkout isn't configured yet. Please contact the shop directly." });
+  }
+
+  const body = req.body as IncomingBody;
+  if (!body || !Array.isArray(body.items) || body.items.length === 0) {
+    return res.status(400).json({ error: "Your cart is empty." });
+  }
+
+  const email = typeof body.email === "string" ? body.email.trim() : "";
+  const phone = typeof body.phone === "string" ? body.phone.trim() : "";
+  if (body.items.length > MAX_LINE_ITEMS) {
+    return res.status(400).json({ error: "Too many different items in one order." });
+  }
+
+  const lineItems: { name: string; quantity: string; base_price_money: { amount: number; currency: string } }[] = [];
+
+  for (const raw of body.items) {
+    const id = typeof raw.id === "string" ? raw.id : null;
+    const quantityNum = Number(raw.quantity);
+
+    if (!id || !PRICE_BY_ID.has(id)) {
+      return res.status(400).json({ error: "One of the items in your cart is no longer available." });
+    }
+    if (!Number.isFinite(quantityNum) || quantityNum < 1) {
+      return res.status(400).json({ error: "Invalid item quantity." });
+    }
+
+    const quantity = Math.min(MAX_QUANTITY_PER_ITEM, Math.floor(quantityNum));
+    const menuItem = PRICE_BY_ID.get(id)!;
+
+    lineItems.push({
+      name: menuItem.name,
+      quantity: String(quantity),
+      base_price_money: { amount: menuItem.priceCents, currency: "AUD" },
+    });
+  }
+
+  try {
+    const idempotencyKey =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    const paymentLinkBody: Record<string, unknown> = {
+      idempotency_key: idempotencyKey,
+      order: {
+        location_id: locationId,
+        line_items: lineItems,
+      },
+      checkout_options: {
+        redirect_url: `${siteUrl}/checkout/success`,
+        ask_for_shipping_address: false,
+      },
+    };
+
+    if (email) {
+      paymentLinkBody.customer_email = email;
+    }
+    if (phone) {
+      paymentLinkBody.customer_phone = phone;
+    }
+
+    const squareRes = await fetch(`${squareApiBase}/v2/online-checkout/payment-links`, {
+      method: "POST",
+      headers: {
+        "Square-Version": "2024-10-17",
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(paymentLinkBody),
+    });
+
+    const data = await squareRes.json();
+
+    if (!squareRes.ok) {
+      console.error("Square API error:", data);
+      return res.status(502).json({ error: "Couldn't start checkout right now. Please try again shortly." });
+    }
+
+    return res.status(200).json({ url: data.payment_link?.url });
+  } catch (err) {
+    console.error("Checkout error:", err);
+    return res.status(500).json({ error: "Something went wrong. Please try again." });
+  }
+}
