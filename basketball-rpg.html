@@ -951,7 +951,7 @@ function frAdvanceAfterGame(userWon, myScore, oppScore){
     const rd=fr.playoff;
     if(userWon){
       rd.wins=(rd.wins||0)+1;
-      advancePlayoffRound(true);
+      advancePlayoffRound();
     } else {
       rd.userOut=true;
       // sim remaining bracket to a champion (someone else)
@@ -1115,7 +1115,10 @@ document.getElementById('btnVsStart').addEventListener('click', ()=>{
 /* ---------------- SAVE / LOAD (manual slots in localStorage) ---------------- */
 const SAVE_KEY='hoopLegendsSaves';
 function readSaves(){ try{ return JSON.parse(localStorage.getItem(SAVE_KEY))||{}; }catch(e){ return {}; } }
-function writeSaves(o){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(o)); }catch(e){} }
+// localStorage can be blocked or full — sandboxed portal iframes (Poki/CrazyGames) and
+// private-browsing modes are the common cases. Report success/failure instead of
+// swallowing it, so the UI can tell the player their save didn't actually happen.
+function writeSaves(o){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(o)); return true; }catch(e){ return false; } }
 function serializeState(){
   // strip the runtime function from the sponsor before saving
   const spon = S.sponsor ? { id:S.sponsor.id, done:S.sponsor.done } : null;
@@ -1125,9 +1128,30 @@ function serializeState(){
     franchise:S.franchise||null
   });
 }
+// fills in any fields a save from an older version of the game is missing,
+// so loading it can't leave S.player half-formed (NaN scale, undefined skin
+// index, etc.) — cheaper and safer than auditing every read site individually
+function backfillPlayerDefaults(p){
+  if(!p) return p;
+  if(p.heightIn==null) p.heightIn=75;
+  if(!p.attrs) p.attrs={shooting:5,passing:5,speed:5,defense:5};
+  ['shooting','passing','speed','defense'].forEach(k=>{ if(p.attrs[k]==null) p.attrs[k]=5; });
+  if(p.skinIdx==null) p.skinIdx=0;
+  if(p.hairIdx==null) p.hairIdx=0;
+  if(!p.hairStyle) p.hairStyle='headband';
+  if(p.jerseyNum==null) p.jerseyNum=23;
+  if(!Array.isArray(p.badges)) p.badges=[];
+  if(p.level==null) p.level=1;
+  if(p.xp==null) p.xp=0;
+  if(p.xpToNext==null) p.xpToNext=100;
+  if(p.sp==null) p.sp=0;
+  if(!p.name) p.name='Rookie';
+  if(!p.position) p.position='Guard';
+  return p;
+}
 function deserializeState(str){
   const d=JSON.parse(str);
-  S.mode=d.mode; S.player=d.player;
+  S.mode=d.mode; S.player=backfillPlayerDefaults(d.player);
   S.team = d.team!=null ? TEAMS[d.team] : null;
   S.season=d.season||{wins:0,losses:0,round:0};
   S.spMultiplierNextGame=d.spMult||1;
@@ -1138,7 +1162,7 @@ function deserializeState(str){
 function doSave(slot){
   const saves=readSaves();
   saves['slot'+slot]={ when:Date.now(), label:(S.mode==='franchise'?'Franchise':'Journey')+' · '+(S.team?S.team.abbr:'—'), data:serializeState() };
-  writeSaves(saves);
+  return writeSaves(saves);
 }
 function slotSummary(slot){
   const s=readSaves()['slot'+slot];
@@ -1168,8 +1192,11 @@ function renderSaveLoadModal(mode){
     if(mode==='save'){
       btn.textContent = s ? 'Overwrite' : 'Save';
       btn.onclick=()=>{
-        Audio8.click(); doSave(n);
-        const msg=document.getElementById('slMsg'); msg.style.color='var(--success)'; msg.textContent=`Saved to slot ${n}.`;
+        Audio8.click();
+        const ok = doSave(n);
+        const msg=document.getElementById('slMsg');
+        if(ok){ msg.style.color='var(--success)'; msg.textContent=`Saved to slot ${n}.`; }
+        else { msg.style.color='var(--danger)'; msg.textContent="Couldn't save — storage may be full or blocked by this browser/site."; }
         renderSaveLoadModal('save');
       };
     } else {
@@ -1177,7 +1204,12 @@ function renderSaveLoadModal(mode){
       btn.disabled = !s;
       btn.onclick=()=>{
         Audio8.click();
-        deserializeState(s.data);
+        try{
+          deserializeState(s.data);
+        }catch(e){
+          const msg=document.getElementById('slMsg'); msg.style.color='var(--danger)'; msg.textContent='That save looks corrupted and could not be loaded.';
+          return;
+        }
         Audio8.ensureRunning(); Audio8.startMusic();
         closeSaveLoadModal();
         if(S.mode==='franchise'){ renderFranchise(); showScreen('screen-franchise'); }
@@ -1723,8 +1755,9 @@ const DIGITS = {
    GAMEPLAY — Hoop Land-style side angle: horizontal court, camera pans left/right
 ========================================================================= */
 const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-ctx.imageSmoothingEnabled = false;
+const mainCtx = canvas.getContext('2d');
+mainCtx.imageSmoothingEnabled = false;
+let ctx = mainCtx;   // temporarily repointed at an offscreen context while pre-rendering the court (see prerenderCourt)
 
 const COURT = {
   W: 2000,               // court length (horizontal)
@@ -1962,6 +1995,7 @@ function startGame(forcedOpponent){
     shakeT:0, shakeMag:0, shakeDur:0, userStreak:0
   };
   attachBall(user);
+  prerenderCourt();   // team colors (bench jerseys) are set above, so cache the court now
   showScreen('screen-game');
   Platform.gameplayStart();
   requestAnimationFrame(gameLoop);
@@ -2931,7 +2965,7 @@ function render(){
   }
   ctx.translate(-Math.round(Game.camX)+shX, shY);
 
-  drawCourt();
+  if(courtCache) ctx.drawImage(courtCache, -40, 0);
   drawHoop(COURT.hoopLeftX, true);
   drawHoop(COURT.hoopRightX, false);
 
@@ -3036,6 +3070,29 @@ function drawFreeThrow(){
   ctx.textAlign='left';
 }
 
+// The court background (floor, planks, crowd texture, benches, hoops-end markings) is
+// fully static for the whole game — drawCrowd()'s comment even calls out that it's
+// deterministic specifically so panning doesn't shimmer it. Redrawing ~600+ individual
+// fillRect/stroke calls for it every single frame at 60fps was pure waste; render it once
+// per game into an offscreen canvas and blit that one image every frame instead.
+let courtCache = null, courtCacheCtx = null;
+function prerenderCourt(){
+  if(!courtCache){
+    courtCache = document.createElement('canvas');
+    courtCache.width = COURT.W + 80;   // matches the -40..W+40 draw range used below
+    courtCache.height = WORLD_H;
+    courtCacheCtx = courtCache.getContext('2d');
+    courtCacheCtx.imageSmoothingEnabled = false;
+  }
+  const prevCtx = ctx;
+  ctx = courtCacheCtx;
+  ctx.clearRect(0, 0, courtCache.width, courtCache.height);
+  ctx.save();
+  ctx.translate(40, 0);   // world x=-40 → canvas x=0
+  drawCourt();
+  ctx.restore();
+  ctx = prevCtx;
+}
 function drawCourt(){
   // ---- upper stands (far crowd) ----
   ctx.fillStyle='#101b31';
@@ -3168,7 +3225,11 @@ function pickGrid(p){
 function drawPlayerSpr(p){
   const sc = SC * (p.scale||1);
   const grid = pickGrid(p);
-  const pal = spritePalette(p.team==='home'?Game.teamHome:Game.teamAway, p.skinIdx, p.hairIdx);
+  // a player's team/skin/hair never change mid-game, but this used to recompute the
+  // palette object (with hex-string parsing) fresh for all 10 players every single
+  // frame — cache it on the player instead of reallocating 600+ times a second
+  if(!p._paletteCache) p._paletteCache = spritePalette(p.team==='home'?Game.teamHome:Game.teamAway, p.skinIdx, p.hairIdx);
+  const pal = p._paletteCache;
   const w = SPRITE_W*sc, h = SPRITE_H*sc;
   const footY = p.y - (p.jumpH||0);
   const ox = Math.round(p.x - w/2), oy = Math.round(footY - h);
