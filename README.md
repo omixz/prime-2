@@ -55,3 +55,22 @@ the Vercel CLI and your Square keys in a local `.env`, copied from `.env.example
 ## Location
 
 585 Hume Highway, Yagoona, NSW 2199 — same address as Prime Creamery Co.
+
+## Operational notes
+
+- **This deployment's actual Vercel env vars are non-standard**: `SquareToken` /
+  `SquareLocation` / `SquareEnviorment` (note the typo) / `SiteURL`, not the
+  `SQUARE_*` names documented above. `api/create-checkout.ts` reads both sets,
+  so either naming works — but if you're troubleshooting a "Missing Square
+  configuration" error, check the dashboard for these exact names first.
+- **`/test-order`** is a hidden, unlisted page (not linked from the nav/menu)
+  that adds a real $1.00 line item and runs it through the exact same
+  checkout → Square Orders API → POS fulfillment path as a real order. Use it
+  to confirm a paid order actually reaches the physical POS terminal without
+  needing a full-price test purchase. $1.00 because Square's payment links
+  reject anything below their minimum charge.
+- **`vercel.json`** exists solely to rewrite every non-`/api/*` route to
+  `index.html` — without it, a direct hit to any client-side route (a page
+  refresh on `/menu`, or Square's post-payment redirect to
+  `/checkout/success`) 404s, since there's no literal file at that path for
+  Vercel's static server to find.
