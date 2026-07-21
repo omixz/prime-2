@@ -50,6 +50,13 @@ const DRINK_KEYWORD_COLORS: [string, { cup: string; cap: string }][] = [
   ["fanta-berry", { cup: "#8C2F5A", cap: "#5C1A3A" }],
   ["blue-lemonade", { cup: "#3E8FD0", cap: "#1E5C99" }],
   ["watermelon", { cup: "#E8607A", cap: "#3E9A4F" }],
+  // Iced-tea keywords must be checked before the generic fruit fallbacks
+  // below — "mango-iced-tea" and "lipton-iced-tea-peach" both contain a
+  // fruit-flavour substring ("mango", "peach") that would otherwise match
+  // first and paint them like a plain fruit soda instead of a tea.
+  ["mango-iced-tea", { cup: "#C68A3D", cap: "#E08B1A" }],
+  ["lipton", { cup: "#C68A3D", cap: "#E08B3A" }],
+  ["green-tea", { cup: "#A8C97D", cap: "#D9436B" }],
   // More specific "*-mango" keywords must be checked before the generic
   // "mango" fallback below, since .find() matches on first substring hit —
   // otherwise "banana-mango"/"orange-mango" ids never reach their own entries.
@@ -58,6 +65,7 @@ const DRINK_KEYWORD_COLORS: [string, { cup: string; cap: string }][] = [
   ["mango", { cup: "#F2B23C", cap: "#E08B1A" }],
   ["blueberry", { cup: "#4B4A8C", cap: "#2E2D5C" }],
   ["pomegranate", { cup: "#9C2B3E", cap: "#6B1626" }],
+  ["peach", { cup: "#F5C6A0", cap: "#E08B3A" }],
   ["solo", { cup: "#F2C23C", cap: "#2E7D32" }],
   ["sprite", { cup: "#4CAF50", cap: "#1B5E20" }],
   ["spring-water", { cup: "#BEE3F5", cap: "#3E8FD0" }],
@@ -67,6 +75,10 @@ const DRINK_KEYWORD_COLORS: [string, { cup: string; cap: string }][] = [
   ["apple-juice", { cup: "#D8C93C", cap: "#8A7A1A" }],
   ["v-original", { cup: "#2E9E4F", cap: "#1B5E20" }],
   ["v-strawberry", { cup: "#D9436B", cap: "#8A1F3A" }],
+  // Catch-all for plain Aloe Vera (no fruit-flavour word in the id) — the
+  // flavoured variants (blueberry/peach/pomegranate) are caught by the
+  // fruit keywords above since this entry is last.
+  ["aloe", { cup: "#EDF2D8", cap: "#8BAF5C" }],
 ];
 
 function drinkColors(id: string) {

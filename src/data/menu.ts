@@ -98,6 +98,10 @@ export const menuSections: MenuSection[] = [
       { id: "drink-okf-pomegranate", name: "OKF Pomegranate", desc: "", priceCents: 400 },
       { id: "drink-solo", name: "Solo", desc: "", priceCents: 400 },
       { id: "drink-sprite", name: "Sprite", desc: "", priceCents: 400 },
+      { id: "drink-aloe-vera-original", name: "Aloe Vera Original", desc: "", priceCents: 400 },
+      { id: "drink-aloe-vera-blueberry", name: "Aloe Vera Blueberry", desc: "", priceCents: 400 },
+      { id: "drink-aloe-vera-peach", name: "Aloe Vera Peach", desc: "", priceCents: 400 },
+      { id: "drink-aloe-vera-pomegranate", name: "Aloe Vera Pomegranate", desc: "", priceCents: 400 },
     ],
   },
   {
@@ -116,6 +120,9 @@ export const menuSections: MenuSection[] = [
       { id: "bottle-v-strawberry-350ml", name: "V Strawberry 350ml", desc: "", priceCents: 550 },
       { id: "bottle-h2-watermelon", name: "H2Coco Watermelon", desc: "", priceCents: 550 },
       { id: "bottle-h2-mango", name: "H2Coco Mango", desc: "", priceCents: 550 },
+      { id: "bottle-lipton-iced-tea-peach", name: "Lipton Iced Tea Peach", desc: "", priceCents: 550 },
+      { id: "bottle-green-tea-strawberry", name: "Green Tea Strawberry", desc: "", priceCents: 550 },
+      { id: "bottle-mango-iced-tea", name: "Mango Iced Tea", desc: "", priceCents: 550 },
     ],
   },
 ];
