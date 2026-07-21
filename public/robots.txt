@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /test-order
+Disallow: /checkout/success
+
+Sitemap: https://www.primeburgerco.com.au/sitemap.xml
