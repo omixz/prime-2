@@ -72,11 +72,11 @@ class TradingBot:
 
         for symbol in self.config.watchlist:
             try:
-                self._evaluate_symbol(symbol, equity, positions)
+                self._evaluate_symbol(symbol, equity, positions, account)
             except Exception:
                 logger.exception("Error evaluating %s", symbol)
 
-    def _evaluate_symbol(self, symbol: str, equity: float, positions: dict) -> None:
+    def _evaluate_symbol(self, symbol: str, equity: float, positions: dict, account) -> None:
         strat_cfg = self.config.strategy
         bars = self.broker.get_bars(
             symbol,
@@ -96,7 +96,12 @@ class TradingBot:
                 return
 
             approved, reason = self.risk.approve_entry(
-                symbol, equity, len(positions), dollar_amount
+                symbol,
+                equity,
+                len(positions),
+                dollar_amount,
+                pattern_day_trader=bool(getattr(account, "pattern_day_trader", False)),
+                day_trade_count=int(getattr(account, "daytrade_count", 0) or 0),
             )
             if not approved:
                 logger.info("Entry for %s rejected by risk manager: %s", symbol, reason)

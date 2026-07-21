@@ -1,0 +1,26 @@
+name: trading-bot tests
+
+on:
+  push:
+    paths:
+      - "trading-bot/**"
+      - ".github/workflows/trading-bot-tests.yml"
+  pull_request:
+    paths:
+      - "trading-bot/**"
+      - ".github/workflows/trading-bot-tests.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: trading-bot
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python -m py_compile src/*.py tests/*.py scripts/*.py
+      - run: python -m pytest tests/ -v
