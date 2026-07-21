@@ -1,0 +1,41 @@
+# Trading bot configuration. All limits are enforced by src/risk_manager.py
+# BEFORE any order is sent — the strategy cannot bypass them.
+
+watchlist:
+  - AAPL
+  - MSFT
+  - AMZN
+  - GOOGL
+  - SPY
+
+strategy:
+  # EMA crossover: buy when fast EMA crosses above slow EMA, sell on the reverse
+  # cross or when a stop/target is hit. Deliberately simple and back-testable —
+  # simple strategies are easier to reason about and debug than complex ones.
+  fast_ema: 9
+  slow_ema: 21
+  bar_timeframe_minutes: 5
+  atr_period: 14
+  stop_loss_atr_multiple: 1.5
+  take_profit_atr_multiple: 3.0
+
+risk:
+  # Hard budget: the bot will never risk more than this many dollars in a
+  # single day, no matter what the strategy wants to do.
+  max_daily_loss_usd: 200
+  # Never put more than this fraction of account equity into one position.
+  max_position_pct_equity: 0.10
+  # Never hold more than this many concurrent positions.
+  max_concurrent_positions: 5
+  # Hard cap on number of orders placed in a single day (guards against a
+  # runaway loop or bad signal spamming orders).
+  max_trades_per_day: 20
+  # If tripped, the bot liquidates all open positions, cancels open orders,
+  # and refuses to place new orders for the rest of the trading day.
+  kill_switch_daily_loss_usd: 250
+
+schedule:
+  # Only ever trade during regular US market hours (bot checks Alpaca's
+  # market clock, this is a redundant local sanity check).
+  flatten_before_close_minutes: 15
+  poll_interval_seconds: 60

@@ -1,0 +1,10 @@
+services:
+  trading-bot:
+    build: .
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+      - ./state:/app/state
+      - ./config.yaml:/app/config.yaml:ro

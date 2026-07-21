@@ -1,0 +1,18 @@
+[Unit]
+Description=Day trading bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/trading-bot
+ExecStart=/opt/trading-bot/.venv/bin/python -m src.main
+Restart=always
+RestartSec=15
+# Restart repeatedly forever rather than giving up after a burst of crashes —
+# "no manual restart needed" is a hard requirement here.
+StartLimitIntervalSec=0
+User=trading-bot
+
+[Install]
+WantedBy=multi-user.target

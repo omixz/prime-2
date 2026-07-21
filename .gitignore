@@ -4,3 +4,11 @@ dist
 .env.local
 .vercel
 *.log
+
+# trading-bot
+trading-bot/.venv
+trading-bot/logs/
+trading-bot/state/
+trading-bot/__pycache__/
+trading-bot/**/__pycache__/
+trading-bot/.pytest_cache/
