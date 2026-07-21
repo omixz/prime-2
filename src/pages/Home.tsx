@@ -5,15 +5,14 @@ import { menuSections, formatPrice, type MenuItem } from "../data/menu";
 import { useCart } from "../context/CartContext";
 import { ComboModal } from "../components/ComboModal";
 import { BurgerArt, FriesArt, DrinkArt } from "../components/FoodArt";
-
-const FEATURED_ART: Record<string, typeof BurgerArt> = {
-  "beef-juicy-prime": BurgerArt,
-  "chk-mushroom-prime": BurgerArt,
-  "beef-cheesy-prime": BurgerArt,
-  "fries-chicken-mushroom": FriesArt,
-};
+import { getItemArt } from "../components/itemArt";
 
 const featuredIds = ["beef-juicy-prime", "chk-mushroom-prime", "beef-cheesy-prime", "fries-chicken-mushroom"];
+
+// Same per-item illustration (combo-variant bun/patty colour, drizzle, etc.)
+// as the Menu page — these two used to diverge because Home kept its own
+// bare BurgerArt/FriesArt mapping with none of that variant logic.
+const sectionTitleById = new Map(menuSections.flatMap((s) => s.items.map((i) => [i.id, s.title] as const)));
 const featured = menuSections.flatMap((s) => s.items).filter((i) => featuredIds.includes(i.id));
 
 const reviews = [
@@ -97,16 +96,16 @@ export function Home() {
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {featured.map((item) => {
-            const Art = FEATURED_ART[item.id];
+            const sectionTitle = sectionTitleById.get(item.id);
             return (
               <div
                 key={item.id}
                 className="group flex flex-col justify-between overflow-hidden rounded-3xl bg-white p-5 shadow-soft ring-1 ring-charcoal/5 transition-transform hover:-translate-y-1 hover:shadow-glow"
               >
                 <div>
-                  {Art ? (
+                  {sectionTitle ? (
                     <div className="mb-4 flex h-28 items-center justify-center rounded-2xl bg-cream">
-                      <Art className="h-20 w-20" />
+                      <div className="h-20 w-20">{getItemArt(sectionTitle, item)}</div>
                     </div>
                   ) : null}
                   <div className="flex items-baseline justify-between gap-2">
