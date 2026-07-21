@@ -93,6 +93,21 @@ not need to touch it day to day.
    itself doesn't hold more than you can afford to lose.
 5. Restart the service/container.
 
+## Verify it against your real paper account before leaving it unattended
+
+Unit tests prove the strategy/risk logic is correct in isolation; they don't
+prove your credentials work or that Alpaca's API responds the way the code
+expects. After filling in `.env`, run:
+
+```bash
+.venv/bin/python scripts/smoke_test.py
+```
+
+This hits your real paper account (refuses to run if `ALPACA_PAPER=false`)
+and checks credentials, account/positions/clock/market-data endpoints, and a
+live signal computation — **it places no orders**. Fix anything it reports
+before starting the bot unattended.
+
 ## Tests
 
 ```bash

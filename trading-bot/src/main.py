@@ -5,8 +5,6 @@ import time
 import traceback
 from datetime import date
 
-from alpaca.trading.enums import OrderSide
-
 from .alerts import Alerter
 from .broker import Broker
 from .config import Config, load_config
@@ -94,8 +92,7 @@ class TradingBot:
         if signal == Signal.BUY and not held:
             price = float(bars["close"].iloc[-1])
             dollar_amount = self.risk.position_size_dollars(equity)
-            qty = round(dollar_amount / price, 4)
-            if qty <= 0:
+            if dollar_amount <= 0:
                 return
 
             approved, reason = self.risk.approve_entry(
@@ -105,13 +102,13 @@ class TradingBot:
                 logger.info("Entry for %s rejected by risk manager: %s", symbol, reason)
                 return
 
-            self.broker.submit_market_order(symbol, qty, OrderSide.BUY)
+            self.broker.submit_notional_buy(symbol, dollar_amount)
             self.state.record_trade()
             levels = compute_trade_levels(bars, price, strat_cfg)
             logger.info(
-                "Bought %s x%.4f @ ~%.2f (stop %.2f, target %.2f)",
+                "Bought %s ~$%.2f @ ~%.2f (stop %.2f, target %.2f)",
                 symbol,
-                qty,
+                dollar_amount,
                 price,
                 levels.stop_loss,
                 levels.take_profit,
@@ -119,7 +116,7 @@ class TradingBot:
 
         elif signal == Signal.SELL and held:
             qty = float(positions[symbol].qty)
-            self.broker.submit_market_order(symbol, qty, OrderSide.SELL)
+            self.broker.submit_market_sell(symbol, qty)
             self.state.record_trade()
             logger.info("Sold %s x%.4f on crossover-down signal", symbol, qty)
 

@@ -66,14 +66,31 @@ class Broker:
         return df.xs(symbol, level="symbol") if "symbol" in df.index.names else df
 
     @retry(**_RETRY)
-    def submit_market_order(self, symbol: str, qty: float, side: OrderSide):
+    def submit_notional_buy(self, symbol: str, notional_usd: float):
+        """Buy a fixed dollar amount rather than a share quantity. This keeps
+        the actual fill within the risk manager's approved dollar cap even if
+        price moves between signal and fill, and works for both fractionable
+        and whole-share-only symbols."""
+        order = MarketOrderRequest(
+            symbol=symbol,
+            notional=round(notional_usd, 2),
+            side=OrderSide.BUY,
+            time_in_force=TimeInForce.DAY,
+        )
+        logger.info("Submitting BUY %s: $%.2f notional", symbol, notional_usd)
+        return self.trading.submit_order(order)
+
+    @retry(**_RETRY)
+    def submit_market_sell(self, symbol: str, qty: float):
+        # Selling must be qty-based: we're closing a specific position, and
+        # the qty comes from the broker's own position record.
         order = MarketOrderRequest(
             symbol=symbol,
             qty=qty,
-            side=side,
+            side=OrderSide.SELL,
             time_in_force=TimeInForce.DAY,
         )
-        logger.info("Submitting %s market order: %s x%s", side, symbol, qty)
+        logger.info("Submitting SELL %s x%s", symbol, qty)
         return self.trading.submit_order(order)
 
     @retry(**_RETRY)
