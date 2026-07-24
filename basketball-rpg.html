@@ -5,15 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Hoop Legends: My Journey</title>
 <!--
-  PORTAL SDK — uncomment exactly ONE of these depending on where this build is hosted.
-  Leave both commented out for itch.io / a plain web host / the Tauri desktop build —
-  the Platform hooks in the game code no-op safely when neither SDK is present.
+  PORTAL SDK — uncomment exactly ONE block depending on where this build is hosted.
+  Leave all of them commented out for itch.io / a plain web host / the Tauri desktop
+  build — the Platform hooks in the game code no-op safely when no SDK is present.
 
   Poki (https://developers.poki.com/):
   <script src="https://game-cdn.poki.com/scripts/v2/poki-sdk.js"></script>
 
   CrazyGames (https://docs.crazygames.com/sdk/html5/):
   <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
+
+  GameDistribution (https://github.com/GameDistribution/GD-HTML5/wiki/SDK-Implementation) —
+  check whether Softgames wants this same SDK or their own before reusing it for both;
+  not confirmed here. Replace YOUR_GD_GAME_ID with the ID from your GameDistribution
+  developer panel. Unlike Poki/CrazyGames, GD pauses/resumes the game via events rather
+  than us calling it directly — onEvent below forwards those into whatever the game's
+  Platform object exposes, once it's loaded.
+  <script>
+    window["GD_OPTIONS"] = {
+      "gameId": "YOUR_GD_GAME_ID",
+      "onEvent": function(event){
+        switch(event.name){
+          case "SDK_GAME_PAUSE": if(window.HoopLegendsGD) window.HoopLegendsGD.pause(); break;
+          case "SDK_GAME_START": if(window.HoopLegendsGD) window.HoopLegendsGD.resume(); break;
+          case "SDK_REWARDED_WATCH_COMPLETE": if(window.HoopLegendsGD && window.HoopLegendsGD.onRewardComplete) window.HoopLegendsGD.onRewardComplete(); break;
+        }
+      }
+    };
+  </script>
+  <script>
+    (function(d, s, id){
+      var js, fjs = d.getElementsByTagName(s)[0];
+      if(d.getElementById(id)) return;
+      js = d.createElement(s); js.id = id;
+      js.src = 'https://html5.api.gamedistribution.com/main.min.js';
+      fjs.parentNode.insertBefore(js, fjs);
+    }(document, 'script', 'gamedistribution-jssdk'));
+  </script>
 -->
 
 <style>
@@ -557,28 +585,49 @@ const Audio8 = (function(){
    their <script> SDK tag and these fire the required gameplay + ad events.
 ========================================================================= */
 const Platform = (function(){
-  let poki = (typeof window!=='undefined') && window.PokiSDK;
-  let crazy = (typeof window!=='undefined') && window.CrazyGames && window.CrazyGames.SDK;
+  // looked up fresh each call rather than captured once — Poki/CrazyGames' <script> tags
+  // block until loaded so capturing at module-init time works for them, but GameDistribution's
+  // loader snippet injects its script dynamically, which fetches asynchronously and may not
+  // have set window.gdsdk yet by the time this file's own inline <script> runs
+  const poki = ()=> (typeof window!=='undefined') && window.PokiSDK;
+  const crazy = ()=> (typeof window!=='undefined') && window.CrazyGames && window.CrazyGames.SDK;
+  const gd = ()=> (typeof window!=='undefined') && window.gdsdk;
+  // GameDistribution is event-driven the other way: it tells the game to pause/resume via
+  // the onEvent handler registered in <head> (before this script even loads), rather than us
+  // calling into it directly. Expose the hook it forwards to, plus a slot for the rewarded-ad
+  // completion callback since GD signals that asynchronously via a global event too.
+  window.HoopLegendsGD = {
+    pause(){ try{ if(Game && !Game.paused) togglePause(true); }catch(e){} },
+    resume(){ try{ if(Game && Game.paused) togglePause(false); }catch(e){} },
+    onRewardComplete: null
+  };
   return {
     init(){
-      try{ if(poki && poki.init) poki.init().catch(()=>{}); }catch(e){}
-      try{ if(crazy && crazy.init) crazy.init(); }catch(e){}
+      try{ const p=poki(); if(p && p.init) p.init().catch(()=>{}); }catch(e){}
+      try{ const c=crazy(); if(c && c.init) c.init(); }catch(e){}
+      // GameDistribution has no init() call — its <head> loader handles setup on its own
     },
     gameplayStart(){
-      try{ if(poki && poki.gameplayStart) poki.gameplayStart(); }catch(e){}
-      try{ if(crazy && crazy.game && crazy.game.gameplayStart) crazy.game.gameplayStart(); }catch(e){}
+      try{ const p=poki(); if(p && p.gameplayStart) p.gameplayStart(); }catch(e){}
+      try{ const c=crazy(); if(c && c.game && c.game.gameplayStart) c.game.gameplayStart(); }catch(e){}
     },
     gameplayStop(){
-      try{ if(poki && poki.gameplayStop) poki.gameplayStop(); }catch(e){}
-      try{ if(crazy && crazy.game && crazy.game.gameplayStop) crazy.game.gameplayStop(); }catch(e){}
+      try{ const p=poki(); if(p && p.gameplayStop) p.gameplayStop(); }catch(e){}
+      try{ const c=crazy(); if(c && c.game && c.game.gameplayStop) c.game.gameplayStop(); }catch(e){}
     },
     // show a commercial break, then run `done` (always runs, even with no SDK) —
     // wrapped so whatever the SDK's promise/callback resolves with never leaks into `done`'s caller
     commercialBreak(done){
       const finish=()=>done();
       try{
-        if(poki && poki.commercialBreak){ poki.commercialBreak().then(finish, finish); return; }
-        if(crazy && crazy.ad && crazy.ad.requestAd){ crazy.ad.requestAd('midgame', { adFinished:finish, adError:finish }); return; }
+        const p=poki(); if(p && p.commercialBreak){ p.commercialBreak().then(finish, finish); return; }
+        const c=crazy(); if(c && c.ad && c.ad.requestAd){ c.ad.requestAd('midgame', { adFinished:finish, adError:finish }); return; }
+        const g=gd(); if(g && g.showAd){
+          // no completion promise/callback from GD for a plain midroll — request it and
+          // start the game immediately; if GD actually shows the ad, SDK_GAME_PAUSE fires
+          // and pauses the already-running game via window.HoopLegendsGD.pause() above
+          g.showAd(); finish(); return;
+        }
       }catch(e){}
       finish();
     },
@@ -586,7 +635,8 @@ const Platform = (function(){
     // reward" UI so that button never shows up on itch.io / the desktop build, where
     // there'd be nothing to watch and the offer would just be confusing
     hasAdSDK(){
-      return !!((poki && poki.rewardedBreak) || (crazy && crazy.ad && crazy.ad.requestAd));
+      const p=poki(), c=crazy(), g=gd();
+      return !!((p && p.rewardedBreak) || (c && c.ad && c.ad.requestAd) || (g && g.showAd));
     },
     // rewarded video: onReward fires ONLY if the player actually watched to completion
     // (rewarded ads pay out meaningfully more per view than interstitials, and portals
@@ -595,8 +645,15 @@ const Platform = (function(){
       const skip = ()=>{ try{ onSkippedOrUnavailable&&onSkippedOrUnavailable(); }catch(e){} };
       const reward = ()=>{ try{ onReward(); }catch(e){} };
       try{
-        if(poki && poki.rewardedBreak){ poki.rewardedBreak().then(success=>{ success?reward():skip(); }, skip); return; }
-        if(crazy && crazy.ad && crazy.ad.requestAd){ crazy.ad.requestAd('rewarded', { adFinished:reward, adError:skip }); return; }
+        const p=poki(); if(p && p.rewardedBreak){ p.rewardedBreak().then(success=>{ success?reward():skip(); }, skip); return; }
+        const c=crazy(); if(c && c.ad && c.ad.requestAd){ c.ad.requestAd('rewarded', { adFinished:reward, adError:skip }); return; }
+        const g=gd(); if(g && g.showAd){
+          // SDK_REWARDED_WATCH_COMPLETE (fired via the <head> onEvent handler) is GD's only
+          // signal that the reward was earned — wire it through window.HoopLegendsGD
+          window.HoopLegendsGD.onRewardComplete = ()=>{ window.HoopLegendsGD.onRewardComplete=null; reward(); };
+          g.showAd();
+          return;
+        }
       }catch(e){}
       skip();
     }

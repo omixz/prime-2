@@ -1,23 +1,32 @@
 # Monetizing Hoop Legends
 
-Three paths, roughly in order of speed-to-revenue. All of the code-side wiring
-listed here is already done — what's left in each section is stuff only you
-can do (accounts, payment/tax info, store submission).
+Several paths, roughly in order of speed-to-revenue. All of the code-side
+wiring listed here is already done — what's left in each section is stuff
+only you can do (accounts, payment/tax info, store submission).
 
-## 1. Poki / CrazyGames (ads — fastest path)
+## 1. Poki / CrazyGames / GameDistribution (ads — fastest path)
 
-The game already calls the portal SDKs correctly:
-- `Platform.gameplayStart()` / `gameplayStop()` fire on game start/pause (required by both portals so they can pause their own ad timers during play).
-- `Platform.commercialBreak()` now actually fires — an interstitial ad request goes out right when you click "Play Game" / "Tip Off Next Game" / "Play Game" (Franchise) / "Tip Off" (Versus), before the match starts. This is the standard "between-session" ad slot portals expect; nothing interrupts live gameplay.
-- Both hooks no-op safely if the portal's SDK script isn't present, so the same `basketball-rpg.html` works unmodified on itch.io or the desktop build.
+The game already calls all three portal SDKs correctly:
+- `Platform.gameplayStart()` / `gameplayStop()` fire on game start/pause (required so portals can pause their own ad timers during play).
+- `Platform.commercialBreak()` fires an interstitial ad request right when you click "Play Game" / "Tip Off Next Game" / "Play Game" (Franchise) / "Tip Off" (Versus), before the match starts — the standard "between-session" slot; nothing interrupts live gameplay.
+- `Platform.rewardedBreak()` powers the "Watch an Ad for +2 SP" button in the Journey hub (only shown when an SDK is actually present).
+- GameDistribution works differently from the other two — it pauses/resumes the game via its own events rather than us calling it — see the `<head>` comment block for exactly how that's wired (`window.HoopLegendsGD`).
+- All hooks no-op safely if no portal SDK is present, so the same `basketball-rpg.html` works unmodified on itch.io or the desktop build.
 
 **To go live on one of these:**
-1. Pick Poki or CrazyGames (you can submit to both, just not with the same exact build running both SDKs at once — ship one SDK tag per host, which the `<head>` comment block in `basketball-rpg.html` already sets up — uncomment the one you need).
-2. Poki: apply at https://developers.poki.com/ → "Submit a game" (free, they review and reach back out). CrazyGames: https://developer.crazygames.com/ → create a developer account → "New Game".
-3. Upload the zip from `web/hoop-legends-web.zip` (regenerate anytime with `bash web/make-itch-build.sh` — same static build works for both portals and itch.io).
-4. Fill in: game title, short description, category (Sports), and images — **all ready-made in `store-assets/`**: `store-assets/poki/thumbnail-1024x1024.png` (Poki's textless square thumbnail) or the matching cover in `store-assets/crazygames/` (landscape/portrait/square), plus the 5 real gameplay captures in `store-assets/screenshots/`. See `store-assets/README.md` for what each file is and how to regenerate them if the game's visuals change.
-5. They review for SDK compliance (this is why `gameplayStart`/`gameplayStop`/`commercialBreak` had to actually be wired up, not just defined) and content. Once approved, ad revenue starts accruing automatically — no per-game setup beyond that.
-6. Payment: both portals pay out via PayPal/bank transfer past a minimum threshold — you'll set that up in their dashboard once your account is approved, using your own info.
+1. Pick one (you can submit to more than one, just not with the same exact build running two SDKs at once — ship one SDK block per host; the `<head>` comment in `basketball-rpg.html` has all three ready, uncomment the one you need. For GameDistribution, also replace `YOUR_GD_GAME_ID` with the real ID from their dashboard).
+2. Poki: developers.poki.com → "Submit a game". CrazyGames: developer.crazygames.com → "New Game". GameDistribution: gamedistribution.com/developers → their submission form.
+3. Upload the zip from `web/hoop-legends-web.zip` (regenerate anytime with `bash web/make-itch-build.sh`).
+4. Fill in: title, short description, category (Sports), and images — **all ready-made in `store-assets/`**: the portal-specific covers/thumbnails plus the 5 real gameplay screenshots. See `store-assets/README.md` for what each file is.
+5. They review for SDK compliance and content, then ad revenue starts accruing automatically. **If rejected on a vague "quality" basis (this happened with CrazyGames)** — that's a curation-bar rejection, not a broken build. Newgrounds, GameJolt, and GameDistribution's own network have a much lower bar and are worth submitting to in parallel rather than waiting on a resubmission. Their published "New games" / quality-guidelines pages are worth checking against before trying the strict portals again.
+6. Payment: portals pay out via PayPal/bank transfer past a minimum threshold — set that up in their dashboard once approved, using your own info.
+
+## 1b. Newgrounds / GameJolt (near-zero rejection risk)
+
+Both are indie-friendly with minimal curation — good for getting the game live
+and earning something while a Poki/CrazyGames application is pending or being
+reconsidered. Same zip (`web/hoop-legends-web.zip`) and screenshots work for
+both; no extra SDK integration needed for a basic listing on either.
 
 ## 2. itch.io (direct — you set the price)
 
