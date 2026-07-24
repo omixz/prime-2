@@ -1,0 +1,3626 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hoop Legends: My Journey</title>
+<!--
+  PORTAL SDK — uncomment exactly ONE block depending on where this build is hosted.
+  Leave all of them commented out for itch.io / a plain web host / the Tauri desktop
+  build — the Platform hooks in the game code no-op safely when no SDK is present.
+
+  Poki (https://developers.poki.com/):
+  <script src="https://game-cdn.poki.com/scripts/v2/poki-sdk.js"></script>
+
+  CrazyGames (https://docs.crazygames.com/sdk/html5/):
+  <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
+
+  GameDistribution (https://github.com/GameDistribution/GD-HTML5/wiki/SDK-Implementation) —
+  check whether Softgames wants this same SDK or their own before reusing it for both;
+  not confirmed here. Replace YOUR_GD_GAME_ID with the ID from your GameDistribution
+  developer panel. Unlike Poki/CrazyGames, GD pauses/resumes the game via events rather
+  than us calling it directly — onEvent below forwards those into whatever the game's
+  Platform object exposes, once it's loaded.
+  <script>
+    window["GD_OPTIONS"] = {
+      "gameId": "YOUR_GD_GAME_ID",
+      "onEvent": function(event){
+        switch(event.name){
+          case "SDK_GAME_PAUSE": if(window.HoopLegendsGD) window.HoopLegendsGD.pause(); break;
+          case "SDK_GAME_START": if(window.HoopLegendsGD) window.HoopLegendsGD.resume(); break;
+          case "SDK_REWARDED_WATCH_COMPLETE": if(window.HoopLegendsGD && window.HoopLegendsGD.onRewardComplete) window.HoopLegendsGD.onRewardComplete(); break;
+        }
+      }
+    };
+  </script>
+  <script>
+    (function(d, s, id){
+      var js, fjs = d.getElementsByTagName(s)[0];
+      if(d.getElementById(id)) return;
+      js = d.createElement(s); js.id = id;
+      js.src = 'https://html5.api.gamedistribution.com/main.min.js';
+      fjs.parentNode.insertBefore(js, fjs);
+    }(document, 'script', 'gamedistribution-jssdk'));
+  </script>
+-->
+
+<style>
+  :root{
+    --bg-deep:#070d18;
+    --bg-panel:#141f36;
+    --bg-panel2:#0d1526;
+    --accent:#ff7a29;
+    --accent-soft:#ffbe7d;
+    --accent2:#2ee6ff;
+    --text:#eef4fc;
+    --text-dim:#93a6c2;
+    --success:#3ce68a;
+    --danger:#ff6b6b;
+    --border:#2a3c5e;
+  }
+  *{ box-sizing:border-box; }
+  @keyframes bgpan{ 0%{background-position:0 0;} 100%{background-position:120px 120px;} }
+  @keyframes popIn{ 0%{transform:translateY(14px) scale(.98);opacity:0;} 100%{transform:none;opacity:1;} }
+  @keyframes glowPulse{ 0%,100%{box-shadow:0 0 0 1px rgba(255,122,41,.25), 0 26px 80px rgba(0,0,0,.6);} 50%{box-shadow:0 0 0 1px rgba(46,230,255,.35), 0 26px 90px rgba(0,0,0,.6);} }
+  html,body{
+    margin:0; padding:0; height:100%;
+    color:var(--text);
+    font-family:'Segoe UI', system-ui, -apple-system, Helvetica, Arial, sans-serif;
+    overflow:hidden; -webkit-user-select:none; user-select:none;
+    background:
+      radial-gradient(circle at 50% -10%, #1d3a63 0%, rgba(29,58,99,0) 55%),
+      radial-gradient(circle at 12% 100%, rgba(255,122,41,.16) 0%, rgba(255,122,41,0) 42%),
+      radial-gradient(circle at 88% 90%, rgba(46,230,255,.14) 0%, rgba(46,230,255,0) 42%),
+      var(--bg-deep);
+  }
+  /* subtle animated court-line texture behind everything */
+  #app::before{
+    content:''; position:absolute; inset:0; pointer-events:none; opacity:.5;
+    background-image:
+      repeating-linear-gradient(45deg, rgba(255,255,255,.025) 0 2px, transparent 2px 26px),
+      repeating-linear-gradient(-45deg, rgba(255,255,255,.02) 0 2px, transparent 2px 26px);
+    background-size:120px 120px;
+    animation:bgpan 8s linear infinite;
+  }
+  #app{
+    position:relative; width:100vw; height:100vh;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #gameCanvas{
+    image-rendering:pixelated; image-rendering:crisp-edges;
+    border-radius:12px;
+    border:2px solid var(--border);
+    box-shadow: 0 24px 70px rgba(0,0,0,.6), 0 0 0 1px rgba(46,230,255,.1);
+    background:#0e1524;
+    max-width:100vw; max-height:100vh;
+  }
+  .screen{
+    position:absolute; inset:0; display:none; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center;
+    padding:24px; overflow:auto;
+  }
+  .screen.active{ display:flex; }
+  .panel{
+    position:relative;
+    background: linear-gradient(160deg, var(--bg-panel), var(--bg-panel2));
+    border:1px solid var(--border); border-radius:22px; padding:34px 40px;
+    box-shadow: 0 26px 80px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.05);
+    max-width:720px; width:94%;
+    animation:popIn .28s cubic-bezier(.2,.8,.2,1);
+  }
+  /* accent bar across the top of every panel */
+  .panel::before{
+    content:''; position:absolute; top:0; left:26px; right:26px; height:4px; border-radius:0 0 4px 4px;
+    background:linear-gradient(90deg, var(--accent), var(--accent2));
+    box-shadow:0 0 16px rgba(255,122,41,.5);
+  }
+  h1{
+    font-size:40px; font-weight:900; letter-spacing:-1px; margin:6px 0 8px; line-height:1;
+    text-transform:uppercase;
+    background:linear-gradient(92deg, var(--accent-soft), var(--accent) 55%, var(--accent2));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    text-shadow:0 2px 0 rgba(0,0,0,.25);
+  }
+  h2{
+    color:var(--text); margin:22px 0 12px; font-size:15px; font-weight:800;
+    letter-spacing:1.2px; text-align:left; text-transform:uppercase;
+    border-bottom:2px solid var(--border); padding-bottom:7px;
+  }
+  p, label{ font-size:14px; line-height:1.7; color:var(--text-dim); }
+  .story{
+    font-size:13.5px; color:var(--accent-soft); font-style:italic; margin:2px 0 20px;
+    border-left:3px solid var(--accent); padding-left:14px; text-align:left;
+  }
+  input[type=text]{
+    font-family:inherit; font-size:17px; padding:12px 14px; width:100%;
+    background:#0a1220; color:var(--text); border:2px solid var(--border); border-radius:10px;
+    text-align:center; margin-bottom:4px; outline:none; transition:border-color .15s;
+  }
+  input[type=text]:focus{ border-color:var(--accent2); box-shadow:0 0 0 3px rgba(46,230,255,.12); }
+  input[type=range]{ width:100%; accent-color:var(--accent); }
+  .row{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin:12px 0; }
+  button{
+    font-family:inherit; cursor:pointer; background:linear-gradient(160deg, var(--accent-soft), var(--accent));
+    color:#1a1204; border:none; padding:13px 22px; font-size:14px; font-weight:800;
+    border-radius:11px; letter-spacing:.4px; text-transform:uppercase;
+    box-shadow:0 5px 0 #a8551c, 0 8px 18px rgba(255,122,41,.3);
+    transition:transform .07s, box-shadow .07s, filter .12s;
+  }
+  button:hover{ filter:brightness(1.08); transform:translateY(-1px); }
+  button:active{ transform:translateY(4px); box-shadow:0 1px 0 #a8551c, 0 3px 10px rgba(255,122,41,.3); }
+  button.sel{ background:linear-gradient(160deg, #7dffc0, var(--success)); box-shadow:0 5px 0 #1c8f56, 0 8px 18px rgba(60,230,138,.3); }
+  button:disabled{ background:#28324a; color:#5c6c85; box-shadow:0 5px 0 #1a2236; cursor:not-allowed; filter:none; }
+  button.small{ padding:8px 13px; font-size:12px; box-shadow:0 4px 0 #a8551c; }
+  button.small:active{ transform:translateY(3px); box-shadow:0 1px 0 #a8551c; }
+  button.ghost{ background:transparent; border:2px solid var(--border); color:var(--text-dim); box-shadow:none; }
+  button.ghost:hover{ color:var(--text); border-color:var(--accent2); filter:none; }
+  button.ghost:active{ transform:translateY(2px); box-shadow:none; }
+  .diffBtn{ min-width:110px; background:#16233c; color:var(--text-dim); box-shadow:0 4px 0 #0c1526; border:2px solid var(--border); }
+  .diffBtn.sel{ background:linear-gradient(160deg, var(--accent-soft), var(--accent)); color:#1a1204; border-color:transparent; box-shadow:0 4px 0 #a8551c; }
+  .posCard, .teamPick{
+    border:2px solid var(--border); border-radius:14px; padding:14px; width:158px; background:#0e1930;
+    cursor:pointer; transition:border-color .14s, transform .14s, box-shadow .14s;
+  }
+  .posCard:hover, .teamPick:hover{ border-color:var(--accent2); transform:translateY(-3px); box-shadow:0 10px 24px rgba(0,0,0,.4); }
+  .posCard.sel, .teamPick.sel{ border-color:var(--success); box-shadow:0 0 0 2px var(--success) inset, 0 8px 22px rgba(60,230,138,.2); }
+  .attrRow{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin:7px 0; font-size:13px; }
+  .bar{ width:130px; height:11px; background:#16223a; border-radius:6px; position:relative; overflow:hidden; border:1px solid #223252; }
+  .bar>div{ height:100%; background:linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .jersey{ width:36px; height:36px; margin:0 auto 6px; border-radius:9px; border:2px solid rgba(0,0,0,.35); box-shadow:0 3px 8px rgba(0,0,0,.35); }
+  /* on-screen touch controls — shown only on touch/coarse-pointer devices (phones, Poki mobile) */
+  .touchControls{ display:none; }
+  @media (hover:none) and (pointer:coarse){
+    .touchControls{ display:block; }
+  }
+  .tcJoyBase{
+    position:absolute; left:14px; bottom:14px; width:116px; height:116px; border-radius:50%;
+    background:rgba(255,255,255,.08); border:2px solid rgba(255,255,255,.28); touch-action:none;
+  }
+  .tcJoyStick{
+    position:absolute; left:50%; top:50%; width:50px; height:50px; margin:-25px 0 0 -25px; border-radius:50%;
+    background:rgba(255,190,125,.6); border:2px solid rgba(255,255,255,.55); pointer-events:none;
+  }
+  .tcBtn{
+    position:absolute; border-radius:50%; background:rgba(255,122,41,.55); border:2px solid rgba(255,255,255,.4);
+    color:#fff; font-weight:700; font-size:11px; display:flex; align-items:center; justify-content:center;
+    touch-action:none; -webkit-user-select:none; user-select:none; transition:transform .08s;
+  }
+  .tcBtn.pressed{ transform:scale(0.88); background:rgba(255,122,41,.85); }
+  .tcShoot{ right:14px; bottom:14px; width:76px; height:76px; font-size:13px; background:rgba(46,230,255,.4); }
+  .tcPass{ right:96px; bottom:20px; width:56px; height:56px; }
+  .tcSpecial{ right:20px; bottom:102px; width:56px; height:56px; }
+  .swatch{ width:30px; height:30px; border-radius:8px; border:2px solid var(--border); cursor:pointer; transition:border-color .12s, transform .12s; }
+  .swatch:hover{ transform:translateY(-2px); }
+  .swatch.sel{ border-color:var(--success); box-shadow:0 0 0 2px var(--success) inset; }
+  .styleChip{ border:2px solid var(--border); border-radius:8px; padding:6px 10px; font-size:12px; cursor:pointer; background:#0e1930; color:var(--text-dim); }
+  .styleChip.sel{ border-color:var(--success); color:var(--text); }
+  .badgeChip{
+    display:inline-block; background:#16233c; border:2px solid var(--accent2); border-radius:20px;
+    padding:5px 12px; margin:3px; font-size:11px; color:var(--accent2); font-weight:700;
+  }
+  .small-txt{ font-size:12px; color:var(--text-dim); }
+  .flashMsg{ color:var(--success); font-weight:700; min-height:18px; font-size:13px; margin-top:10px; }
+  .heightVal{ color:var(--accent2); font-weight:800; }
+  select{ font-family:inherit; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ SAVE / LOAD (in-page modal — no native prompt()/alert(),
+       which portal iframes like Poki/CrazyGames commonly block) ============ -->
+  <div id="saveLoadModal" style="display:none;position:fixed;inset:0;z-index:999;align-items:center;justify-content:center;background:rgba(6,10,18,.82);">
+    <div class="panel" style="max-width:480px;">
+      <h1 id="slModalTitle" style="font-size:26px;">SAVE / LOAD</h1>
+      <div id="slSlots"></div>
+      <div class="row"><button id="slCancel" class="small ghost">Close</button></div>
+      <div class="flashMsg" id="slMsg"></div>
+    </div>
+  </div>
+
+  <!-- ============ MODE SELECT ============ -->
+  <div id="screen-mode" class="screen active">
+    <div class="panel">
+      <h1>HOOP LEGENDS</h1>
+      <p class="story">Two ways to play. Rise from rookie to Finals MVP, or run a franchise to a title.</p>
+      <div class="row" style="gap:14px;">
+        <div class="teamPick" id="modeJourney" style="width:200px;">
+          <h2 style="border:none;text-align:center;margin:6px 0;color:var(--accent-soft)">🏀 MY JOURNEY</h2>
+          <p class="small-txt">Create one baller. Level up, unlock badges, and carry your team through the playoffs.</p>
+        </div>
+        <div class="teamPick" id="modeFranchise" style="width:200px;">
+          <h2 style="border:none;text-align:center;margin:6px 0;color:var(--accent2)">🏆 FRANCHISE HQ</h2>
+          <p class="small-txt">Run a whole team. Play or sim a full season, climb the standings, and win it all.</p>
+        </div>
+        <div class="teamPick" id="modeVersus" style="width:200px;">
+          <h2 style="border:none;text-align:center;margin:6px 0;color:var(--success)">🎮 LOCAL VERSUS</h2>
+          <p class="small-txt">Two players, one keyboard. Pick both teams and battle head-to-head.</p>
+        </div>
+      </div>
+      <h2 style="text-align:center;border:none;">Difficulty</h2>
+      <div class="row" id="diffRow">
+        <button class="diffBtn" data-d="easy">EASY</button>
+        <button class="diffBtn sel" data-d="medium">MEDIUM</button>
+        <button class="diffBtn" data-d="hard">HARD</button>
+      </div>
+      <div class="row"><button id="btnLoadGame" class="small ghost">Load Saved Game</button></div>
+    </div>
+  </div>
+
+  <!-- ============ VERSUS SETUP ============ -->
+  <div id="screen-vsSetup" class="screen">
+    <div class="panel">
+      <h1>LOCAL VERSUS</h1>
+      <p class="story">Two players share one keyboard. Choose each team, then tip off.</p>
+      <h2 style="color:var(--success)">Player 1 Team</h2>
+      <div class="row" id="vsTeamRow1"></div>
+      <h2 style="color:var(--accent2)">Player 2 Team</h2>
+      <div class="row" id="vsTeamRow2"></div>
+      <div class="row"><button id="btnVsStart">Tip Off ▶</button></div>
+      <div class="flashMsg" id="vsSetupMsg"></div>
+    </div>
+  </div>
+
+  <!-- ============ CHARACTER CREATION ============ -->
+  <div id="screen-create" class="screen">
+    <div class="panel">
+      <h1>HOOP LEGENDS</h1>
+      <p class="story">Every legend starts on a dead-end court with a dream. Build your baller, get drafted by one of seven franchises, and chase a championship — one shot at a time.</p>
+
+      <input type="text" id="playerName" maxlength="14" placeholder="Enter Player Name" value="Rookie" />
+
+      <h2>Position</h2>
+      <div class="row" id="posRow">
+        <div class="posCard" data-pos="Guard"><b>GUARD</b><p class="small-txt">Handles &amp; sets up plays</p></div>
+        <div class="posCard" data-pos="Forward"><b>FORWARD</b><p class="small-txt">Two-way playmaker</p></div>
+        <div class="posCard" data-pos="Center"><b>CENTER</b><p class="small-txt">Paint enforcer</p></div>
+      </div>
+
+      <h2>Height <span class="heightVal" id="heightLabel">6'3"</span></h2>
+      <input type="range" id="heightSlider" min="66" max="84" value="75" />
+      <p class="small-txt">Taller boosts Defense &amp; rebounding. Shorter boosts Speed.</p>
+
+      <h2>Attributes <span id="ptsLeft" style="color:var(--success)">(10 points left)</span></h2>
+      <div id="attrEditor"></div>
+
+      <h2>Your Look</h2>
+      <div class="row" style="align-items:flex-start; gap:20px; flex-wrap:wrap;">
+        <canvas id="lookPreview" width="68" height="100" style="image-rendering:pixelated; border:1px solid var(--border); border-radius:6px; background:#0a1220;"></canvas>
+        <div style="flex:1; min-width:200px;">
+          <p class="small-txt" style="margin:2px 0">Skin Tone</p>
+          <div class="row" id="skinRow" style="justify-content:flex-start; gap:6px;"></div>
+          <p class="small-txt" style="margin:8px 0 2px">Hair Style</p>
+          <div class="row" id="hairStyleRow" style="justify-content:flex-start; gap:6px;"></div>
+          <p class="small-txt" style="margin:8px 0 2px">Hair Color</p>
+          <div class="row" id="hairColorRow" style="justify-content:flex-start; gap:6px;"></div>
+          <p class="small-txt" style="margin:8px 0 2px">Jersey Number</p>
+          <input type="number" id="jerseyNumInput" min="0" max="99" value="23" style="width:70px;" />
+        </div>
+      </div>
+
+      <h2>Choose Your Team</h2>
+      <div class="row" id="teamRow"></div>
+
+      <div class="row"><button id="btnStartCareer">Enter The Draft</button></div>
+      <div class="flashMsg" id="createMsg"></div>
+    </div>
+  </div>
+
+  <!-- ============ TEAM DRAFT RESULT ============ -->
+  <div id="screen-teamResult" class="screen">
+    <div class="panel">
+      <h1 id="draftHeadline">DRAFTED!</h1>
+      <div id="draftTeamCard"></div>
+      <p id="draftBlurb" class="story"></p>
+      <div class="row"><button id="btnToHub">Start My Journey</button></div>
+    </div>
+  </div>
+
+  <!-- ============ MY JOURNEY HUB ============ -->
+  <div id="screen-hub" class="screen">
+    <div class="panel" style="max-width:740px;">
+      <h1 id="hubTeamName">MY JOURNEY</h1>
+      <p class="story" id="hubStory"></p>
+      <div class="row" style="justify-content:space-between; text-align:left;">
+        <div>
+          <p><b>Player:</b> <span id="hubPlayerName"></span> (<span id="hubPos"></span>)</p>
+          <p><b>Level:</b> <span id="hubLevel"></span> &nbsp; <b>XP:</b> <span id="hubXP"></span></p>
+          <p><b>Season Record:</b> <span id="hubRecord"></span></p>
+          <p><b>Round:</b> <span id="hubRound"></span></p>
+          <p><b>Skill Points:</b> <span id="hubSP" style="color:var(--success)"></span></p>
+        </div>
+        <div id="hubBadges"><b>Badges:</b><br/><div id="hubBadgeList"></div></div>
+      </div>
+
+      <div id="sponsorBox" class="panel" style="background:#0e1727; margin:12px 0; padding:14px 16px;"></div>
+
+      <h2>Upgrade Center</h2>
+      <div id="upgradeGrid"></div>
+      <div class="row" id="hubRewardedRow" style="display:none;">
+        <button id="btnWatchAdSP" class="small ghost">📺 Watch an Ad for +2 SP</button>
+      </div>
+
+      <div class="row"><button id="btnPlayGame">Tip Off Next Game ▶</button>
+        <button id="btnHubSave" class="small ghost">Save</button>
+        <button id="btnHubMenu" class="small ghost">Menu</button></div>
+      <div class="flashMsg" id="hubMsg"></div>
+    </div>
+  </div>
+
+  <!-- ============ FRANCHISE SETUP ============ -->
+  <div id="screen-frSetup" class="screen">
+    <div class="panel">
+      <h1>FRANCHISE HQ</h1>
+      <p class="story">Choose the franchise you'll lead. You'll play or sim a full season against the rest of the league, then chase the championship.</p>
+      <h2>Select Your Franchise</h2>
+      <div class="row" id="frTeamRow"></div>
+      <div class="row"><button id="btnFrStart">Begin Season</button></div>
+      <div class="flashMsg" id="frSetupMsg"></div>
+    </div>
+  </div>
+
+  <!-- ============ FRANCHISE DASHBOARD ============ -->
+  <div id="screen-franchise" class="screen">
+    <div class="panel" style="max-width:780px;">
+      <h1 id="frTitle">FRANCHISE HQ</h1>
+      <p class="story" id="frStatus"></p>
+      <div class="row" style="align-items:flex-start; gap:20px; justify-content:space-between;">
+        <div style="flex:1; min-width:300px;">
+          <h2>Standings</h2>
+          <div id="frStandings"></div>
+        </div>
+        <div style="flex:1; min-width:240px;">
+          <h2>Next Up</h2>
+          <div id="frNext"></div>
+          <div class="row" style="justify-content:flex-start;">
+            <button id="btnFrPlay">▶ Play Game</button>
+            <button id="btnFrSim" class="small">Sim Game</button>
+          </div>
+          <div class="row" style="justify-content:flex-start;">
+            <button id="btnFrSimWeek" class="small ghost">Sim Rest of Season</button>
+            <button id="btnFrRoster" class="small ghost">Roster / Trade</button>
+          </div>
+          <div class="row" style="justify-content:flex-start;">
+            <button id="btnFrSave" class="small ghost">Save</button>
+            <button id="btnFrMenu" class="small ghost">Menu</button>
+          </div>
+          <div class="flashMsg" id="frMsg"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ROSTER / TRADE ============ -->
+  <div id="screen-roster" class="screen">
+    <div class="panel" style="max-width:820px;">
+      <h1 id="rosTitle">ROSTER</h1>
+      <p class="story">Your roster and the trade market. Propose a swap — the other GM accepts if it doesn't hurt their team.</p>
+      <div class="row" style="align-items:flex-start; gap:24px; justify-content:space-between;">
+        <div style="flex:1; min-width:280px;">
+          <h2>Your Roster <span class="small-txt" id="rosOvr"></span></h2>
+          <div id="rosMine"></div>
+          <h2 style="margin-top:10px;">Your Future Picks</h2>
+          <div id="rosMinePicks"></div>
+        </div>
+        <div style="flex:1; min-width:280px;">
+          <h2>Trade Block <select id="rosTeamSel"></select></h2>
+          <div id="rosOther"></div>
+          <h2 style="margin-top:10px;">Their Future Picks</h2>
+          <div id="rosOtherPicks"></div>
+        </div>
+      </div>
+      <div class="row"><button id="btnRosPropose">Propose Trade</button><button id="btnRosBack" class="small ghost">Back to HQ</button></div>
+      <p class="small-txt">Select a player and/or a pick from each side, then propose. Selections are optional on either side.</p>
+      <div class="flashMsg" id="rosMsg"></div>
+    </div>
+  </div>
+
+  <!-- ============ DRAFT ============ -->
+  <div id="screen-draft" class="screen">
+    <div class="panel" style="max-width:820px;">
+      <h1>ROOKIE DRAFT</h1>
+      <p class="story" id="draftStatus"></p>
+      <div class="row" style="align-items:flex-start; gap:24px; justify-content:space-between;">
+        <div style="flex:1; min-width:300px;">
+          <h2>Available Prospects</h2>
+          <div id="draftProspects"></div>
+        </div>
+        <div style="flex:1; min-width:220px;">
+          <h2>Draft Board</h2>
+          <div id="draftBoard"></div>
+        </div>
+      </div>
+      <div class="row"><button id="btnDraftPick">Draft Selected</button><button id="btnDraftAuto" class="small ghost">Auto-pick for me</button></div>
+      <div class="row"><button id="btnDraftDone" style="display:none">Start Season ▶</button></div>
+      <div class="flashMsg" id="draftMsg"></div>
+    </div>
+  </div>
+
+  <!-- ============ GAMEPLAY ============ -->
+  <div id="screen-game" class="screen">
+    <div style="position:relative;">
+      <canvas id="gameCanvas" width="960" height="540"></canvas>
+      <button id="btnPause" title="Pause (Esc)" style="position:absolute;top:10px;right:10px;padding:6px 10px;font-size:12px;">⏸ Pause</button>
+      <div class="touchControls">
+        <div class="tcJoyBase" id="tcJoyBase"><div class="tcJoyStick" id="tcJoyStick"></div></div>
+        <div class="tcBtn tcSpecial" id="tcSpecial">SPECIAL</div>
+        <div class="tcBtn tcPass" id="tcPass">PASS</div>
+        <div class="tcBtn tcShoot" id="tcShoot">SHOOT</div>
+      </div>
+      <div id="pauseOverlay" style="display:none;position:absolute;inset:0;background:rgba(6,10,18,.82);border-radius:10px;align-items:center;justify-content:center;flex-direction:column;">
+        <h1 style="font-size:34px;">PAUSED</h1>
+        <div class="row"><button id="btnResume">Resume ▶</button></div>
+        <div class="row"><button id="btnQuitMenu" class="ghost">Quit to Menu</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ TROPHY / MVP SCREEN ============ -->
+  <div id="screen-trophy" class="screen">
+    <div class="panel">
+      <h1 style="color:var(--accent-soft);">🏆 FINALS MVP 🏆</h1>
+      <canvas id="trophyCanvas" width="300" height="260" style="image-rendering:pixelated; border-radius:10px; border:1px solid var(--border); background:#0a1220;"></canvas>
+      <p id="mvpText" class="story"></p>
+      <div class="row"><button id="btnPostChamp">Continue My Journey</button></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* =========================================================================
+   AUDIO ENGINE (Web Audio API - synthesized 8-bit SFX)
+========================================================================= */
+const Audio8 = (function(){
+  let ctx=null;
+  function ac(){ if(!ctx){ ctx = new (window.AudioContext||window.webkitAudioContext)(); } return ctx; }
+  function beep(freq, dur, type, vol, slideTo){
+    try{
+      const c = ac();
+      const o = c.createOscillator();
+      const g = c.createGain();
+      o.type = type||'square';
+      o.frequency.setValueAtTime(freq, c.currentTime);
+      if(slideTo) o.frequency.linearRampToValueAtTime(slideTo, c.currentTime+dur);
+      g.gain.setValueAtTime(vol||0.15, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime+dur);
+      o.connect(g); g.connect(c.destination);
+      o.start(); o.stop(c.currentTime+dur);
+    }catch(e){}
+  }
+  function noise(dur, vol, filterFreq){
+    try{
+      const c = ac();
+      const bufferSize = c.sampleRate*dur;
+      const buffer = c.createBuffer(1, bufferSize, c.sampleRate);
+      const data = buffer.getChannelData(0);
+      for(let i=0;i<bufferSize;i++) data[i] = (Math.random()*2-1) * (1 - i/bufferSize);
+      const src = c.createBufferSource();
+      src.buffer = buffer;
+      const filt = c.createBiquadFilter();
+      filt.type='bandpass'; filt.frequency.value = filterFreq||3000;
+      const g = c.createGain();
+      g.gain.setValueAtTime(vol||0.2, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime+dur);
+      src.connect(filt); filt.connect(g); g.connect(c.destination);
+      src.start(); src.stop(c.currentTime+dur);
+    }catch(e){}
+  }
+  return {
+    dribble(){ beep(90,0.07,'sine',0.12); },
+    shotRelease(){ beep(440,0.08,'square',0.1,880); },
+    swish(){ noise(0.3,0.22,4500); beep(1200,0.15,'sine',0.08); },
+    rimMiss(){ beep(180,0.12,'sawtooth',0.12,90); },
+    squeak(){ beep(1800,0.05,'triangle',0.05,2200); },
+    buzzer(){ beep(220,0.6,'sawtooth',0.2,120); },
+    steal(){ beep(700,0.1,'square',0.12,1400); },
+    block(){ beep(150,0.15,'square',0.18,60); noise(0.1,0.15,1200); },
+    levelup(){ beep(523,0.1,'square',0.15,1046); setTimeout(()=>beep(659,0.15,'square',0.15,1318),100); },
+    badge(){ beep(400,0.1,'sawtooth',0.12,1200); setTimeout(()=>beep(800,0.2,'sine',0.15,1600),120); },
+    click(){ beep(300,0.04,'square',0.08); },
+    layup(){ beep(520,0.09,'sine',0.1,720); },
+    // crowd swell — filtered noise rising then falling, like a reaction from the stands
+    cheer(big){
+      try{
+        const c=ac(); const dur=big?1.1:0.6;
+        const bufferSize=c.sampleRate*dur;
+        const buffer=c.createBuffer(1,bufferSize,c.sampleRate);
+        const data=buffer.getChannelData(0);
+        for(let i=0;i<bufferSize;i++){ const env=Math.sin(Math.PI*i/bufferSize); data[i]=(Math.random()*2-1)*env; }
+        const src=c.createBufferSource(); src.buffer=buffer;
+        const filt=c.createBiquadFilter(); filt.type='bandpass'; filt.frequency.value=big?1100:900; filt.Q.value=0.6;
+        const g=c.createGain(); g.gain.value=big?0.22:0.13;
+        src.connect(filt); filt.connect(g); g.connect(c.destination);
+        src.start(); src.stop(c.currentTime+dur);
+      }catch(e){}
+    },
+    buzzerBeater(){ this.cheer(true); this.buzzer(); setTimeout(()=>this.badge(),150); },
+    ensureRunning(){ try{ ac().resume(); }catch(e){} },
+    // ---- original synthesized background loop ----
+    _music:null, _muted:false, _timer:null, _step:0,
+    startMusic(){
+      const self=this;
+      if(self._timer) return;
+      const c=ac();
+      // original chiptune: a I-vi-IV-V-ish loop, bass + arp, nothing copyrighted
+      const bass=[131,131,110,110,147,147,98,98];       // C3 A2 D3 G2 pattern
+      const arp =[[262,330,392],[220,262,330],[294,370,440],[196,247,294]];
+      let step=0;
+      const beat=0.32;
+      function tick(){
+        if(self._muted){ return; }
+        const t=c.currentTime;
+        const bi=step%8;
+        // bass
+        const bo=c.createOscillator(), bg=c.createGain();
+        bo.type='triangle'; bo.frequency.value=bass[bi];
+        bg.gain.setValueAtTime(0.10,t); bg.gain.exponentialRampToValueAtTime(0.001,t+beat*0.9);
+        bo.connect(bg); bg.connect(c.destination); bo.start(t); bo.stop(t+beat);
+        // arp note
+        const chord=arp[(step>>1)%4];
+        const note=chord[step%3];
+        const ao=c.createOscillator(), ag=c.createGain();
+        ao.type='square'; ao.frequency.value=note;
+        ag.gain.setValueAtTime(0.045,t); ag.gain.exponentialRampToValueAtTime(0.001,t+beat*0.7);
+        ao.connect(ag); ag.connect(c.destination); ao.start(t); ao.stop(t+beat*0.8);
+        // light hat every other step
+        if(step%2===0) noise(0.03,0.03,7000);
+        step++;
+      }
+      self._timer=setInterval(tick, beat*1000);
+      tick();
+    },
+    stopMusic(){ if(this._timer){ clearInterval(this._timer); this._timer=null; } },
+    toggleMute(){ this._muted=!this._muted; return this._muted; }
+  };
+})();
+
+/* =========================================================================
+   PLATFORM HOOKS (Poki / CrazyGames web-portal SDKs)
+   All calls no-op unless the host page has loaded the portal's SDK, so the
+   game runs identically offline / on itch.io. On Poki or CrazyGames you add
+   their <script> SDK tag and these fire the required gameplay + ad events.
+========================================================================= */
+const Platform = (function(){
+  // looked up fresh each call rather than captured once — Poki/CrazyGames' <script> tags
+  // block until loaded so capturing at module-init time works for them, but GameDistribution's
+  // loader snippet injects its script dynamically, which fetches asynchronously and may not
+  // have set window.gdsdk yet by the time this file's own inline <script> runs
+  const poki = ()=> (typeof window!=='undefined') && window.PokiSDK;
+  const crazy = ()=> (typeof window!=='undefined') && window.CrazyGames && window.CrazyGames.SDK;
+  const gd = ()=> (typeof window!=='undefined') && window.gdsdk;
+  // GameDistribution is event-driven the other way: it tells the game to pause/resume via
+  // the onEvent handler registered in <head> (before this script even loads), rather than us
+  // calling into it directly. Expose the hook it forwards to, plus a slot for the rewarded-ad
+  // completion callback since GD signals that asynchronously via a global event too.
+  window.HoopLegendsGD = {
+    pause(){ try{ if(Game && !Game.paused) togglePause(true); }catch(e){} },
+    resume(){ try{ if(Game && Game.paused) togglePause(false); }catch(e){} },
+    onRewardComplete: null
+  };
+  return {
+    init(){
+      try{ const p=poki(); if(p && p.init) p.init().catch(()=>{}); }catch(e){}
+      try{ const c=crazy(); if(c && c.init) c.init(); }catch(e){}
+      // GameDistribution has no init() call — its <head> loader handles setup on its own
+    },
+    gameplayStart(){
+      try{ const p=poki(); if(p && p.gameplayStart) p.gameplayStart(); }catch(e){}
+      try{ const c=crazy(); if(c && c.game && c.game.gameplayStart) c.game.gameplayStart(); }catch(e){}
+    },
+    gameplayStop(){
+      try{ const p=poki(); if(p && p.gameplayStop) p.gameplayStop(); }catch(e){}
+      try{ const c=crazy(); if(c && c.game && c.game.gameplayStop) c.game.gameplayStop(); }catch(e){}
+    },
+    // show a commercial break, then run `done` (always runs, even with no SDK) —
+    // wrapped so whatever the SDK's promise/callback resolves with never leaks into `done`'s caller
+    commercialBreak(done){
+      const finish=()=>done();
+      try{
+        const p=poki(); if(p && p.commercialBreak){ p.commercialBreak().then(finish, finish); return; }
+        const c=crazy(); if(c && c.ad && c.ad.requestAd){ c.ad.requestAd('midgame', { adFinished:finish, adError:finish }); return; }
+        const g=gd(); if(g && g.showAd){
+          // no completion promise/callback from GD for a plain midroll — request it and
+          // start the game immediately; if GD actually shows the ad, SDK_GAME_PAUSE fires
+          // and pauses the already-running game via window.HoopLegendsGD.pause() above
+          g.showAd(); finish(); return;
+        }
+      }catch(e){}
+      finish();
+    },
+    // true only when an actual ad portal SDK is present — gates any "watch an ad for a
+    // reward" UI so that button never shows up on itch.io / the desktop build, where
+    // there'd be nothing to watch and the offer would just be confusing
+    hasAdSDK(){
+      const p=poki(), c=crazy(), g=gd();
+      return !!((p && p.rewardedBreak) || (c && c.ad && c.ad.requestAd) || (g && g.showAd));
+    },
+    // rewarded video: onReward fires ONLY if the player actually watched to completion
+    // (rewarded ads pay out meaningfully more per view than interstitials, and portals
+    // want them used — this is opt-in from the player's side, never forced)
+    rewardedBreak(onReward, onSkippedOrUnavailable){
+      const skip = ()=>{ try{ onSkippedOrUnavailable&&onSkippedOrUnavailable(); }catch(e){} };
+      const reward = ()=>{ try{ onReward(); }catch(e){} };
+      try{
+        const p=poki(); if(p && p.rewardedBreak){ p.rewardedBreak().then(success=>{ success?reward():skip(); }, skip); return; }
+        const c=crazy(); if(c && c.ad && c.ad.requestAd){ c.ad.requestAd('rewarded', { adFinished:reward, adError:skip }); return; }
+        const g=gd(); if(g && g.showAd){
+          // SDK_REWARDED_WATCH_COMPLETE (fired via the <head> onEvent handler) is GD's only
+          // signal that the reward was earned — wire it through window.HoopLegendsGD
+          window.HoopLegendsGD.onRewardComplete = ()=>{ window.HoopLegendsGD.onRewardComplete=null; reward(); };
+          g.showAd();
+          return;
+        }
+      }catch(e){}
+      skip();
+    }
+  };
+})();
+try{ Platform.init(); }catch(e){}
+
+/* =========================================================================
+   GLOBAL STATE
+========================================================================= */
+const TEAMS = [
+  { name:"Los Angeles Lakes",   abbr:"LAL", primary:"#552583", secondary:"#FDB927" },
+  { name:"Chicago Bisons",      abbr:"CHI", primary:"#CE1141", secondary:"#1a1a1a" },
+  { name:"Boston Greens",       abbr:"BOS", primary:"#007A33", secondary:"#BA9653" },
+  { name:"Miami Heats",         abbr:"MIA", primary:"#98002E", secondary:"#F9A01B" },
+  { name:"New York Knights",    abbr:"NYK", primary:"#1d5fd6", secondary:"#F58426" },
+  { name:"Golden Bay Warlocks", abbr:"GBW", primary:"#1d4289", secondary:"#FFC72C" },
+  { name:"Phoenix Embers",      abbr:"PHX", primary:"#E56020", secondary:"#5b2a86" }
+];
+
+// visual customization palettes (used by both the sprite builder and the create-a-player UI)
+const SKINS = [
+  {S:'#e8b482', s:'#c98f5e'},
+  {S:'#c98f5e', s:'#a86f42'},
+  {S:'#9c6238', s:'#7e4c28'},
+  {S:'#6e4526', s:'#553318'}
+];
+const HAIRS = [
+  {H:'#221409', h:'#3a2814'},
+  {H:'#3a2814', h:'#553d20'},
+  {H:'#111111', h:'#2c2c2c'},
+  {H:'#4a3010', h:'#6b4a1e'}
+];
+const HAIR_STYLES = ['plain','afro','headband'];
+function shadeC(hex,pct){
+  const n=parseInt(hex.slice(1),16);
+  let r=(n>>16)+pct,g=(n>>8&0xff)+pct,b=(n&0xff)+pct;
+  r=Math.max(0,Math.min(255,r));g=Math.max(0,Math.min(255,g));b=Math.max(0,Math.min(255,b));
+  return `rgb(${r},${g},${b})`;
+}
+
+const STORY = {
+  round: [
+    "Quarterfinals. Nobody expected you here — the league's cellar team playing spoiler. Prove them wrong.",
+    "Semifinals. Only two series stand between you and the Finals. The air gets thinner from here.",
+    "The Championship. This is it — win four quarters and your name goes in the rafters forever."
+  ],
+  win: [
+    "You survived the first round. The city is starting to notice.",
+    "You're going to the Finals. History is one series away.",
+    ""
+  ],
+  lose: "The season ends early. It stings — but next year starts right now."
+};
+
+function freshState(){
+  return {
+    player: {
+      name:"Rookie", position:"Guard", heightIn:75,
+      attrs:{ shooting:5, passing:5, speed:5, defense:5 },
+      level:1, xp:0, xpToNext:100, sp:0,
+      badges:[]
+    },
+    team: null,
+    season:{ wins:0, losses:0, round:0 },
+    sponsor:null,
+    spMultiplierNextGame:1
+  };
+}
+let S = freshState();
+S.mode = 'journey';   // 'journey' | 'franchise' | 'versus'
+S.difficulty = 'medium';
+// difficulty tuning: aiSkill scales AI shooting, aiSpeed their movement,
+// aiSteal their strip/block rate, timingWin your shot-timing window (bigger =
+// more forgiving), playerSteal your steal success.
+const DIFF = {
+  easy:   { aiSkill:0.70, aiSpeed:0.92, aiSteal:0.6, timingWin:1.6, playerSteal:1.35 },
+  medium: { aiSkill:1.00, aiSpeed:1.00, aiSteal:1.0, timingWin:1.0, playerSteal:1.0 },
+  hard:   { aiSkill:1.28, aiSpeed:1.10, aiSteal:1.5, timingWin:0.62, playerSteal:0.85 }
+};
+const ROUND_NAMES = ["Quarterfinals","Semifinals","Championship","Champion"];
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(el=>el.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+/* =========================================================================
+   CHARACTER CREATION UI
+========================================================================= */
+let attrPoints = 10;
+const attrKeys = ['shooting','passing','speed','defense'];
+let chosenPos = null;
+let chosenTeamIdx = null;
+
+function renderAttrEditor(){
+  const box = document.getElementById('attrEditor');
+  box.innerHTML='';
+  attrKeys.forEach(k=>{
+    const val = S.player.attrs[k];
+    const row = document.createElement('div');
+    row.className='attrRow';
+    row.innerHTML = `
+      <span style="width:80px;text-align:left;text-transform:capitalize">${k}</span>
+      <div class="bar"><div style="width:${val*10}%"></div></div>
+      <span style="width:20px">${val}</span>
+      <button class="small" data-k="${k}" data-d="-1">-</button>
+      <button class="small" data-k="${k}" data-d="1">+</button>
+    `;
+    box.appendChild(row);
+  });
+  box.querySelectorAll('button').forEach(b=>{
+    b.onclick = ()=>{
+      Audio8.click();
+      const k = b.dataset.k, d = parseInt(b.dataset.d);
+      if(d>0 && attrPoints>0 && S.player.attrs[k]<10){ S.player.attrs[k]++; attrPoints--; }
+      else if(d<0 && S.player.attrs[k] > 5){ S.player.attrs[k]--; attrPoints++; }
+      document.getElementById('ptsLeft').textContent = `(${attrPoints} points left)`;
+      renderAttrEditor();
+    };
+  });
+}
+
+function renderTeamRow(){
+  const row = document.getElementById('teamRow');
+  row.innerHTML='';
+  TEAMS.forEach((t,i)=>{
+    const card = document.createElement('div');
+    card.className='teamPick';
+    card.innerHTML = `
+      <div class="jersey" style="background:${t.primary}; border-color:${t.secondary}"></div>
+      <p style="margin:0;font-size:12px;color:var(--text)"><b>${t.name}</b></p>
+    `;
+    card.onclick = ()=>{
+      Audio8.click();
+      document.querySelectorAll('.teamPick').forEach(c=>c.classList.remove('sel'));
+      card.classList.add('sel');
+      chosenTeamIdx = i;
+      if(typeof renderLookPreview==='function') renderLookPreview();
+    };
+    row.appendChild(card);
+  });
+}
+
+function heightLabelStr(inches){
+  const ft = Math.floor(inches/12), inch = inches%12;
+  return `${ft}'${inch}"`;
+}
+document.getElementById('heightSlider').addEventListener('input', (e)=>{
+  S.player.heightIn = parseInt(e.target.value);
+  document.getElementById('heightLabel').textContent = heightLabelStr(S.player.heightIn);
+});
+function heightDefBonus(){ return Math.round((S.player.heightIn-75)/6); }
+function heightSpdBonus(){ return Math.round((75-S.player.heightIn)/6); }
+function heightScale(){ return 0.85 + (S.player.heightIn-66)/(84-66)*0.35; }
+
+document.getElementById('posRow').addEventListener('click', (e)=>{
+  const card = e.target.closest('.posCard');
+  if(!card) return;
+  Audio8.click();
+  document.querySelectorAll('.posCard').forEach(c=>c.classList.remove('sel'));
+  card.classList.add('sel');
+  chosenPos = card.dataset.pos;
+  S.player.position = chosenPos;
+});
+
+document.getElementById('btnStartCareer').addEventListener('click', ()=>{
+  Audio8.ensureRunning();
+  Audio8.startMusic();
+  Audio8.click();
+  const nm = document.getElementById('playerName').value.trim();
+  const msg = document.getElementById('createMsg');
+  if(!nm){ msg.textContent = "Enter a player name!"; return; }
+  if(!chosenPos){ msg.textContent = "Select a position!"; return; }
+  if(chosenTeamIdx===null){ msg.textContent = "Pick a team to be drafted by!"; return; }
+  if(attrPoints>0){ msg.textContent = `Distribute all attribute points! (${attrPoints} left)`; return; }
+  S.player.name = nm;
+  S.team = TEAMS[chosenTeamIdx];
+  document.getElementById('draftHeadline').textContent = `Welcome to the ${S.team.name}!`;
+  document.getElementById('draftTeamCard').innerHTML = `
+    <div class="jersey" style="width:48px;height:48px;background:${S.team.primary}; border-color:${S.team.secondary}"></div>
+    <p><b>${S.team.name}</b></p>`;
+  document.getElementById('draftBlurb').textContent =
+    `${S.player.name} the ${S.player.position} signs a rookie deal with the ${S.team.name}. The front office believes — now it's on you. Three playoff rounds stand between you and a championship.`;
+  showScreen('screen-teamResult');
+});
+
+document.getElementById('btnToHub').addEventListener('click', ()=>{
+  Audio8.click();
+  renderHub();
+  showScreen('screen-hub');
+});
+
+renderAttrEditor();
+renderTeamRow();
+
+/* =========================================================================
+   MODE SELECT + FRANCHISE HQ
+========================================================================= */
+document.getElementById('modeJourney').addEventListener('click', ()=>{
+  Audio8.ensureRunning(); Audio8.startMusic(); Audio8.click();
+  S.mode='journey';
+  showScreen('screen-create');
+});
+document.getElementById('modeFranchise').addEventListener('click', ()=>{
+  Audio8.ensureRunning(); Audio8.startMusic(); Audio8.click();
+  S.mode='franchise';
+  renderFrTeamRow();
+  showScreen('screen-frSetup');
+});
+
+let frChosenIdx = null;
+function renderFrTeamRow(){
+  const row = document.getElementById('frTeamRow');
+  row.innerHTML='';
+  frChosenIdx=null;
+  TEAMS.forEach((t,i)=>{
+    const card=document.createElement('div');
+    card.className='teamPick';
+    card.innerHTML=`<div class="jersey" style="background:${t.primary};border-color:${t.secondary}"></div>
+      <p style="margin:0;font-size:12px;color:var(--text)"><b>${t.name}</b></p>`;
+    card.onclick=()=>{ Audio8.click(); document.querySelectorAll('#frTeamRow .teamPick').forEach(c=>c.classList.remove('sel')); card.classList.add('sel'); frChosenIdx=i; };
+    row.appendChild(card);
+  });
+}
+
+// --- original name pools for generated players (not real athletes) ---
+const FIRST_NAMES=['Deuce','Marlo','Kip','Treyson','Zane','Cassius','Rome','Jax','Devonte','Malik','Rio','Kolt','Amari','Beau','Nash','Tobias','Quill','Dane','Elias','Cruz','Ade','Bishop','Onyx','Vince','Rashad','Kobe','Solo','Trace','Emeka','Dario'];
+const LAST_NAMES=['Vance','Okafor','Hollis','Braxton','Mercer','Sable','Duqu','Yates','Ashford','Bell','Ngata','Frost','Cortez','Rhodes','Ivory','Tan','Bishara','Colt','Reyes','Sloan','Adebayo','Wu','Kane','Marsh','Delgado','Pike','Osei','Vaughn','Rivera','Storm'];
+function randName(){ return FIRST_NAMES[Math.floor(Math.random()*FIRST_NAMES.length)]+' '+LAST_NAMES[Math.floor(Math.random()*LAST_NAMES.length)]; }
+function makeRosterPlayer(role, baseline, age){
+  const ovr = Math.max(38, Math.min(96, Math.round(baseline + (Math.random()*12-6))));
+  return { name:randName(), pos:role, ovr, age: age!=null?age : 19+Math.floor(Math.random()*15) };
+}
+// roster size bounds for trades/drafts: MIN keeps a real starting 5 + bench,
+// MAX leaves headroom above the starting 8 so uneven trades (e.g. player-for-pick) are possible
+const MIN_ROSTER = 5, MAX_ROSTER = 12;
+// believable rosters: one clear star, a starting core, then role players off the bench
+function makeRoster(teamBaseline){
+  const spec = [
+    {pos:'PG', bonus:12}, {pos:'SG', bonus:6}, {pos:'SF', bonus:3},
+    {pos:'PF', bonus:1},  {pos:'C', bonus:-1},
+    {pos:'G', bonus:-9},  {pos:'F', bonus:-12}, {pos:'C', bonus:-15}
+  ];
+  const starIdx = Math.floor(Math.random()*5);   // which starter is the franchise star
+  return spec.map((s,i)=> makeRosterPlayer(s.pos, teamBaseline + s.bonus + (i===starIdx?18:0)));
+}
+function teamOverall(roster){
+  const top = roster.slice().sort((a,b)=>b.ovr-a.ovr).slice(0,5);
+  return top.reduce((s,p)=>s+p.ovr,0)/5;
+}
+
+function newFranchise(teamIdx){
+  const standings = TEAMS.map((t,i)=>({ idx:i, w:0, l:0, pf:0, pa:0 }));
+  const rosters = TEAMS.map((t,i)=> makeRoster(62 + ((i*11)%15)));  // varied team strengths (62-76)
+  const sched = [];
+  for(let rep=0; rep<2; rep++){
+    for(let j=0;j<TEAMS.length;j++){ if(j!==teamIdx) sched.push(j); }
+  }
+  for(let i=sched.length-1;i>0;i--){ const k=Math.floor(Math.random()*(i+1)); [sched[i],sched[k]]=[sched[k],sched[i]]; }
+  // each team owns its own next-2-drafts' 1st round picks to start; these can be traded
+  const picks = [];
+  TEAMS.forEach((t,i)=>{ picks.push({yearsOut:1, ownerIdx:i, origTeamIdx:i}); picks.push({yearsOut:2, ownerIdx:i, origTeamIdx:i}); });
+  return { teamIdx, standings, rosters, sched, gameIdx:0, phase:'season', playoff:null, champion:null, season:1, picks };
+}
+// a pick's trade value tracks how weak the ORIGINAL team currently is (bad teams' picks are worth more),
+// discounted a bit for picks further out
+function pickValue(fr, pk){
+  const ovr = teamOverall(fr.rosters[pk.origTeamIdx]);
+  // picks are real trade chips, not throwaways — worth roughly a solid rotation player,
+  // more if the original team is bad (their pick is more likely to land a star)
+  const base = Math.max(48, 130-ovr);
+  return Math.round(base - (pk.yearsOut-1)*8);
+}
+function pickLabel(fr, pk){
+  const yr = (fr.season||1) + pk.yearsOut;
+  return `Season ${yr} 1st (via ${TEAMS[pk.origTeamIdx].abbr})`;
+}
+
+// rating-based sim using each team's roster overall
+function teamPower(idx){
+  const r = S.franchise && S.franchise.rosters ? S.franchise.rosters[idx] : null;
+  return r ? teamOverall(r) : 60;
+}
+function simGame(aIdx,bIdx){
+  const pa=teamPower(aIdx), pb=teamPower(bIdx);
+  const sa=Math.round(74 + (pa-60)*0.9 + Math.random()*22);
+  const sb=Math.round(74 + (pb-60)*0.9 + Math.random()*22);
+  let A=sa,B=sb; if(A===B){ Math.random()<0.5?A++:B++; }
+  return { a:A, b:B, aWin:A>B };
+}
+function recordResult(st, aIdx, bIdx, aScore, bScore){
+  const A=st.standings.find(s=>s.idx===aIdx), Bo=st.standings.find(s=>s.idx===bIdx);
+  A.pf+=aScore; A.pa+=bScore; Bo.pf+=bScore; Bo.pa+=aScore;
+  if(aScore>bScore){ A.w++; Bo.l++; } else { A.l++; Bo.w++; }
+}
+// sim one game for the other teams each time your team plays, to keep standings live
+function simOtherGames(st){
+  const others = TEAMS.map((t,i)=>i).filter(i=>i!==st.teamIdx && i!==st.sched[st.gameIdx]);
+  for(let i=0;i+1<others.length;i+=2){
+    const r=simGame(others[i],others[i+1]);
+    recordResult(st, others[i], others[i+1], r.a, r.b);
+  }
+}
+
+function renderFranchise(){
+  const fr=S.franchise, myTeam=TEAMS[fr.teamIdx];
+  if(!fr.picks){ // backfill for saves made before tradeable draft picks existed
+    fr.picks=[]; TEAMS.forEach((t,i)=>{ fr.picks.push({yearsOut:1,ownerIdx:i,origTeamIdx:i}); fr.picks.push({yearsOut:2,ownerIdx:i,origTeamIdx:i}); });
+  }
+  document.getElementById('frTitle').textContent = `FRANCHISE HQ — ${myTeam.name.toUpperCase()}`;
+
+  // standings table sorted by wins
+  const sorted = fr.standings.slice().sort((a,b)=> (b.w-a.w) || ((b.pf-b.pa)-(a.pf-a.pa)));
+  let html='<table style="width:100%;border-collapse:collapse;font-size:12px;">'+
+    '<tr style="color:var(--text-dim);text-align:left"><th>#</th><th>Team</th><th>W</th><th>L</th><th>Diff</th></tr>';
+  sorted.forEach((s,rank)=>{
+    const t=TEAMS[s.idx];
+    const me = s.idx===fr.teamIdx;
+    const diff=s.pf-s.pa;
+    html+=`<tr style="${me?'background:#12324a;color:var(--accent-soft);font-weight:700':''}">`+
+      `<td>${rank+1}</td><td><span style="display:inline-block;width:10px;height:10px;background:${t.primary};border-radius:2px;margin-right:5px"></span>${t.abbr}</td>`+
+      `<td>${s.w}</td><td>${s.l}</td><td>${diff>0?'+':''}${diff}</td></tr>`;
+  });
+  html+='</table>';
+  document.getElementById('frStandings').innerHTML=html;
+
+  const nextBox=document.getElementById('frNext');
+  const playBtn=document.getElementById('btnFrPlay'), simBtn=document.getElementById('btnFrSim'), weekBtn=document.getElementById('btnFrSimWeek');
+  if(fr.phase==='season'){
+    const oppIdx=fr.sched[fr.gameIdx];
+    document.getElementById('frStatus').textContent = `Regular season — game ${fr.gameIdx+1} of ${fr.sched.length}. Play your games or sim to the playoffs.`;
+    nextBox.innerHTML = `<p><b>Game ${fr.gameIdx+1}/${fr.sched.length}</b></p>
+      <p style="font-size:14px"><span style="color:${myTeam.primary}">${myTeam.abbr}</span> vs <span style="color:${TEAMS[oppIdx].primary}">${TEAMS[oppIdx].name}</span></p>`;
+    playBtn.style.display=''; simBtn.style.display=''; weekBtn.style.display='';
+  } else if(fr.phase==='playoffs'){
+    const rd=fr.playoff;
+    document.getElementById('frStatus').textContent = `Playoffs — ${rd.roundName}. Win to advance.`;
+    if(rd.userOut){
+      nextBox.innerHTML=`<p style="color:var(--danger)">Your season is over — eliminated in the ${rd.roundName}.</p>`;
+      playBtn.style.display='none'; simBtn.style.display='none'; weekBtn.style.display='none';
+    } else if(fr.champion!==null){
+      // handled below
+    } else {
+      nextBox.innerHTML = `<p><b>${rd.roundName}</b></p>
+        <p style="font-size:14px"><span style="color:${myTeam.primary}">${myTeam.abbr}</span> vs <span style="color:${TEAMS[rd.oppIdx].primary}">${TEAMS[rd.oppIdx].name}</span></p>`;
+      playBtn.style.display=''; simBtn.style.display=''; weekBtn.style.display='none';
+    }
+  }
+  if(fr.champion!==null){
+    document.getElementById('frStatus').textContent = fr.champion===fr.teamIdx
+      ? `🏆 The ${myTeam.name} are CHAMPIONS! What a season.`
+      : `Season over. ${TEAMS[fr.champion].name} took the title. There's always next year.`;
+    nextBox.innerHTML = `<div class="row"><button id="btnFrNewSeason">Offseason → Rookie Draft</button></div>`;
+    document.getElementById('btnFrNewSeason').onclick=()=>{ Audio8.click();
+      // develop existing players, then hold the rookie draft before next season tips off
+      developRosters();
+      startDraft();
+    };
+    playBtn.style.display='none'; simBtn.style.display='none'; weekBtn.style.display='none';
+  }
+}
+
+function frAdvanceAfterGame(userWon, myScore, oppScore){
+  const fr=S.franchise;
+  if(fr.phase==='season'){
+    const oppIdx=fr.sched[fr.gameIdx];
+    recordResult(fr, fr.teamIdx, oppIdx, myScore, oppScore);
+    simOtherGames(fr);
+    fr.gameIdx++;
+    if(fr.gameIdx>=fr.sched.length) startFrPlayoffs();
+  } else if(fr.phase==='playoffs'){
+    const rd=fr.playoff;
+    if(userWon){
+      rd.wins=(rd.wins||0)+1;
+      advancePlayoffRound();
+    } else {
+      rd.userOut=true;
+      // sim remaining bracket to a champion (someone else)
+      finishBracketWithoutUser();
+    }
+  }
+}
+
+function seedPlayoffs(){
+  const fr=S.franchise;
+  const sorted=fr.standings.slice().sort((a,b)=>(b.w-a.w)||((b.pf-b.pa)-(a.pf-a.pa)));
+  return sorted.slice(0,4).map(s=>s.idx); // top 4 seeds
+}
+function startFrPlayoffs(){
+  const fr=S.franchise;
+  const seeds=seedPlayoffs();
+  fr.phase='playoffs';
+  const userSeed = seeds.indexOf(fr.teamIdx);
+  if(userSeed<0){
+    // missed the playoffs — sim a champion
+    fr.playoff={ roundName:'Playoffs', userOut:true };
+    const champ=simBracket(seeds);
+    fr.champion=champ;
+    return;
+  }
+  fr.bracket=seeds;
+  fr.roundName='Semifinals';
+  // opponent = the other semi pairing partner: seeds[0]v[3], [1]v[2]
+  setupUserPlayoffMatch();
+}
+function setupUserPlayoffMatch(){
+  const fr=S.franchise, seeds=fr.bracket;
+  const us=fr.teamIdx;
+  let oppIdx;
+  if(fr.roundName==='Semifinals'){
+    const pairA=[seeds[0],seeds[3]], pairB=[seeds[1],seeds[2]];
+    oppIdx = pairA.includes(us) ? pairA.find(i=>i!==us) : pairB.find(i=>i!==us);
+  } else { // Championship: opponent is the winner of the other semi (sim it)
+    oppIdx = fr.otherFinalist;
+  }
+  fr.playoff={ roundName:fr.roundName, oppIdx, wins:0 };
+}
+function advancePlayoffRound(){
+  const fr=S.franchise;
+  if(fr.roundName==='Semifinals'){
+    // sim the other semi to get the finalist
+    const seeds=fr.bracket, us=fr.teamIdx;
+    const pairA=[seeds[0],seeds[3]], pairB=[seeds[1],seeds[2]];
+    const otherPair = pairA.includes(us) ? pairB : pairA;
+    const r=simGame(otherPair[0], otherPair[1]);
+    fr.otherFinalist = r.aWin ? otherPair[0] : otherPair[1];
+    fr.roundName='Championship';
+    setupUserPlayoffMatch();
+  } else {
+    // won the championship!
+    fr.champion=fr.teamIdx;
+  }
+}
+function simBracket(seeds){
+  const r1=simGame(seeds[0],seeds[3]).aWin?seeds[0]:seeds[3];
+  const r2=simGame(seeds[1],seeds[2]).aWin?seeds[1]:seeds[2];
+  return simGame(r1,r2).aWin?r1:r2;
+}
+function finishBracketWithoutUser(){
+  const fr=S.franchise;
+  const seeds=fr.bracket||seedPlayoffs();
+  fr.champion=simBracket(seeds);
+}
+
+document.getElementById('btnFrStart').addEventListener('click', ()=>{
+  Audio8.click();
+  if(frChosenIdx===null){ document.getElementById('frSetupMsg').textContent='Pick a franchise first!'; return; }
+  S.team=TEAMS[frChosenIdx];
+  // franchise uses a generated star player you control (team's floor general)
+  S.player = { name:'Your Star', position:'Guard', heightIn:76,
+    attrs:{ shooting:7, passing:7, speed:7, defense:6 }, level:1, xp:0, xpToNext:100, sp:0, badges:[] };
+  S.franchise=newFranchise(frChosenIdx);
+  renderFranchise();
+  showScreen('screen-franchise');
+});
+
+function frOpponentTeam(){
+  const fr=S.franchise;
+  const oppIdx = fr.phase==='season' ? fr.sched[fr.gameIdx] : fr.playoff.oppIdx;
+  return TEAMS[oppIdx];
+}
+
+document.getElementById('btnFrPlay').addEventListener('click', ()=>{
+  Audio8.ensureRunning(); Audio8.startMusic(); Audio8.click();
+  const opp = frOpponentTeam();
+  Platform.commercialBreak(()=> startGame(opp));
+});
+document.getElementById('btnFrSim').addEventListener('click', ()=>{
+  Audio8.click();
+  const opp=frOpponentTeam();
+  const r=simGame(S.franchise.teamIdx, TEAMS.indexOf(opp));
+  document.getElementById('frMsg').textContent = `Sim result: ${S.team.abbr} ${r.a} — ${r.b} ${opp.abbr} (${r.aWin?'W':'L'})`;
+  frAdvanceAfterGame(r.aWin, r.a, r.b);
+  renderFranchise();
+});
+document.getElementById('btnFrSimWeek').addEventListener('click', ()=>{
+  Audio8.click();
+  const fr=S.franchise;
+  while(fr.phase==='season'){
+    const opp=fr.sched[fr.gameIdx];
+    const r=simGame(fr.teamIdx, opp);
+    frAdvanceAfterGame(r.aWin, r.a, r.b);
+  }
+  renderFranchise();
+});
+
+/* ---------------- LOCAL VERSUS setup ---------------- */
+let vsP1Idx=null, vsP2Idx=null;
+document.getElementById('diffRow').addEventListener('click', (e)=>{
+  const b=e.target.closest('.diffBtn'); if(!b) return;
+  Audio8.click();
+  S.difficulty=b.dataset.d;
+  document.querySelectorAll('.diffBtn').forEach(x=>x.classList.remove('sel'));
+  b.classList.add('sel');
+});
+document.getElementById('modeVersus').addEventListener('click', ()=>{
+  Audio8.ensureRunning(); Audio8.startMusic(); Audio8.click();
+  S.mode='versus';
+  vsP1Idx=null; vsP2Idx=null;
+  renderVsTeams();
+  showScreen('screen-vsSetup');
+});
+// scouting-report OVR per team for the versus team-select screen — same baseline
+// formula Franchise mode seeds its rosters with, so the number means the same
+// thing in both modes. Rolled once per visit to this screen (not per row) so
+// both players see the identical rating for a given team.
+let vsTeamOvrs = null;
+function renderVsTeams(){
+  vsTeamOvrs = TEAMS.map((t,i)=> Math.round(teamOverall(makeRoster(62 + ((i*11)%15)))));
+  [['vsTeamRow1',1],['vsTeamRow2',2]].forEach(([rowId,pnum])=>{
+    const row=document.getElementById(rowId); row.innerHTML='';
+    TEAMS.forEach((t,i)=>{
+      const ovr = vsTeamOvrs[i];
+      const ovrColor = ovr>=76?'#34d399':ovr>=68?'#ffd166':'#8fa0b8';
+      const card=document.createElement('div'); card.className='teamPick'; card.style.width='120px';
+      card.innerHTML=`<div class="jersey" style="background:${t.primary};border-color:${t.secondary}"></div>
+        <p style="margin:0;font-size:11px;color:var(--text)"><b>${t.abbr}</b></p>
+        <p style="margin:2px 0 0;font-size:11px;font-weight:700;color:${ovrColor}">OVR ${ovr}</p>`;
+      card.onclick=()=>{ Audio8.click();
+        row.querySelectorAll('.teamPick').forEach(c=>c.classList.remove('sel')); card.classList.add('sel');
+        if(pnum===1) vsP1Idx=i; else vsP2Idx=i; };
+      row.appendChild(card);
+    });
+  });
+}
+document.getElementById('btnVsStart').addEventListener('click', ()=>{
+  Audio8.ensureRunning(); Audio8.startMusic(); Audio8.click();
+  if(vsP1Idx===null||vsP2Idx===null){ document.getElementById('vsSetupMsg').textContent='Pick a team for each player!'; return; }
+  if(vsP1Idx===vsP2Idx){ document.getElementById('vsSetupMsg').textContent='Players need different teams!'; return; }
+  S.team=TEAMS[vsP1Idx];
+  S.versusP2Idx=vsP2Idx;
+  S.player={ name:'P1', position:'Guard', heightIn:75, attrs:{shooting:6,passing:6,speed:6,defense:6}, level:1, xp:0, xpToNext:100, sp:0, badges:[] };
+  Platform.commercialBreak(()=> startGame());
+});
+
+/* ---------------- SAVE / LOAD (manual slots in localStorage) ---------------- */
+const SAVE_KEY='hoopLegendsSaves';
+function readSaves(){ try{ return JSON.parse(localStorage.getItem(SAVE_KEY))||{}; }catch(e){ return {}; } }
+// localStorage can be blocked or full — sandboxed portal iframes (Poki/CrazyGames) and
+// private-browsing modes are the common cases. Report success/failure instead of
+// swallowing it, so the UI can tell the player their save didn't actually happen.
+function writeSaves(o){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(o)); return true; }catch(e){ return false; } }
+function serializeState(){
+  // strip the runtime function from the sponsor before saving
+  const spon = S.sponsor ? { id:S.sponsor.id, done:S.sponsor.done } : null;
+  return JSON.stringify({
+    mode:S.mode, player:S.player, team:S.team?TEAMS.indexOf(S.team):null,
+    season:S.season, sponsorId:spon, spMult:S.spMultiplierNextGame,
+    franchise:S.franchise||null
+  });
+}
+// fills in any fields a save from an older version of the game is missing,
+// so loading it can't leave S.player half-formed (NaN scale, undefined skin
+// index, etc.) — cheaper and safer than auditing every read site individually
+function backfillPlayerDefaults(p){
+  if(!p) return p;
+  if(p.heightIn==null) p.heightIn=75;
+  if(!p.attrs) p.attrs={shooting:5,passing:5,speed:5,defense:5};
+  ['shooting','passing','speed','defense'].forEach(k=>{ if(p.attrs[k]==null) p.attrs[k]=5; });
+  if(p.skinIdx==null) p.skinIdx=0;
+  if(p.hairIdx==null) p.hairIdx=0;
+  if(!p.hairStyle) p.hairStyle='headband';
+  if(p.jerseyNum==null) p.jerseyNum=23;
+  if(!Array.isArray(p.badges)) p.badges=[];
+  if(p.level==null) p.level=1;
+  if(p.xp==null) p.xp=0;
+  if(p.xpToNext==null) p.xpToNext=100;
+  if(p.sp==null) p.sp=0;
+  if(!p.name) p.name='Rookie';
+  if(!p.position) p.position='Guard';
+  return p;
+}
+function deserializeState(str){
+  const d=JSON.parse(str);
+  S.mode=d.mode; S.player=backfillPlayerDefaults(d.player);
+  S.team = d.team!=null ? TEAMS[d.team] : null;
+  S.season=d.season||{wins:0,losses:0,round:0};
+  S.spMultiplierNextGame=d.spMult||1;
+  S.franchise=d.franchise||null;
+  // rebuild sponsor from its saved id
+  S.sponsor = d.sponsorId ? rebuildSponsor(d.sponsorId.id, d.sponsorId.done) : null;
+}
+function doSave(slot){
+  const saves=readSaves();
+  saves['slot'+slot]={ when:Date.now(), label:(S.mode==='franchise'?'Franchise':'Journey')+' · '+(S.team?S.team.abbr:'—'), data:serializeState() };
+  return writeSaves(saves);
+}
+function slotSummary(slot){
+  const s=readSaves()['slot'+slot];
+  if(!s) return 'Empty';
+  const d=new Date(s.when);
+  return `${s.label} · ${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`;
+}
+
+// in-page save/load modal — deliberately avoids window.prompt()/alert()/confirm(),
+// which are commonly blocked (silently, with a console warning) inside the sandboxed
+// iframes that Poki/CrazyGames embed games in, which would otherwise brick Save/Load
+// entirely on those platforms without any visible error to the player.
+function renderSaveLoadModal(mode){
+  document.getElementById('slModalTitle').textContent = mode==='save' ? 'SAVE GAME' : 'LOAD GAME';
+  const box = document.getElementById('slSlots');
+  box.innerHTML='';
+  for(let n=1;n<=3;n++){
+    const s = readSaves()['slot'+n];
+    const row = document.createElement('div');
+    row.className='attrRow';
+    row.style.cssText='border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin:6px 0;';
+    const label = document.createElement('span');
+    label.style.cssText='flex:1;text-align:left;font-size:12px;';
+    label.textContent = `Slot ${n}: ${slotSummary(n)}`;
+    row.appendChild(label);
+    const btn=document.createElement('button'); btn.className='small';
+    if(mode==='save'){
+      btn.textContent = s ? 'Overwrite' : 'Save';
+      btn.onclick=()=>{
+        Audio8.click();
+        const ok = doSave(n);
+        const msg=document.getElementById('slMsg');
+        if(ok){ msg.style.color='var(--success)'; msg.textContent=`Saved to slot ${n}.`; }
+        else { msg.style.color='var(--danger)'; msg.textContent="Couldn't save — storage may be full or blocked by this browser/site."; }
+        renderSaveLoadModal('save');
+      };
+    } else {
+      btn.textContent='Load';
+      btn.disabled = !s;
+      btn.onclick=()=>{
+        Audio8.click();
+        try{
+          deserializeState(s.data);
+        }catch(e){
+          const msg=document.getElementById('slMsg'); msg.style.color='var(--danger)'; msg.textContent='That save looks corrupted and could not be loaded.';
+          return;
+        }
+        Audio8.ensureRunning(); Audio8.startMusic();
+        closeSaveLoadModal();
+        if(S.mode==='franchise'){ renderFranchise(); showScreen('screen-franchise'); }
+        else { renderHub(); showScreen('screen-hub'); }
+      };
+    }
+    row.appendChild(btn);
+    box.appendChild(row);
+  }
+  document.getElementById('slMsg').textContent='';
+  document.getElementById('saveLoadModal').style.display='flex';
+}
+function closeSaveLoadModal(){ document.getElementById('saveLoadModal').style.display='none'; }
+document.getElementById('slCancel').addEventListener('click', ()=>{ Audio8.click(); closeSaveLoadModal(); });
+document.getElementById('btnLoadGame').addEventListener('click', ()=>{ Audio8.click(); renderSaveLoadModal('load'); });
+
+/* ---------------- Franchise: roster, trades, development ---------------- */
+let rosSelMine=null, rosSelOther=null, rosOtherIdx=null, rosSelMinePick=null, rosSelOtherPick=null;
+function renderRoster(){
+  const fr=S.franchise;
+  document.getElementById('rosTitle').textContent = `${TEAMS[fr.teamIdx].name.toUpperCase()} — ROSTER`;
+  const mine=fr.rosters[fr.teamIdx];
+  document.getElementById('rosOvr').textContent = `(Team OVR ${Math.round(teamOverall(mine))})`;
+  rosSelMine=null; rosSelOther=null; rosSelMinePick=null; rosSelOtherPick=null;
+
+  const POS_RANK = {PG:0,SG:1,SF:2,PF:3,C:4,G:5,F:6};
+  const listHTML=(roster, which)=> roster.map((p,i)=>({p,realIdx:i}))
+    .sort((a,b)=>(POS_RANK[a.p.pos]??9)-(POS_RANK[b.p.pos]??9))
+    .map(({p,realIdx})=>{
+    return `<div class="attrRow rosItem" data-which="${which}" data-i="${realIdx}" style="cursor:pointer;border:1px solid var(--border);border-radius:6px;padding:5px 8px;margin:3px 0;">
+      <span style="width:26px;color:var(--text-dim)">${p.pos}</span>
+      <span style="flex:1;text-align:left">${p.name}</span>
+      <span style="width:34px;color:${p.ovr>=80?'#34d399':p.ovr>=68?'#ffd166':'#8fa0b8'};font-weight:700">${p.ovr}</span>
+      <span style="width:34px;color:var(--text-dim)">${p.age}y</span></div>`;
+  }).join('');
+
+  const pickListHTML=(teamIdx, which)=> fr.picks.map((pk,i)=>({pk,i})).filter(o=>o.pk.ownerIdx===teamIdx)
+    .map(({pk,i})=>`<div class="attrRow rosPickItem" data-which="${which}" data-i="${i}" style="cursor:pointer;border:1px solid var(--border);border-radius:6px;padding:5px 8px;margin:3px 0;">
+      <span style="flex:1;text-align:left">${pickLabel(fr,pk)}</span>
+      <span style="width:34px;color:var(--text-dim);font-weight:700">${pickValue(fr,pk)}</span></div>`).join('')
+      || '<span class="small-txt">No picks owned.</span>';
+
+  document.getElementById('rosMine').innerHTML=listHTML(mine,'mine');
+  document.getElementById('rosMinePicks').innerHTML=pickListHTML(fr.teamIdx,'mine');
+
+  // opponent selector
+  const sel=document.getElementById('rosTeamSel');
+  if(!sel.dataset.filled){
+    sel.innerHTML='';
+    TEAMS.forEach((t,i)=>{ if(i!==fr.teamIdx){ const o=document.createElement('option'); o.value=i; o.textContent=t.name; sel.appendChild(o);} });
+    sel.dataset.filled='1';
+    sel.onchange=()=>{ rosOtherIdx=parseInt(sel.value); renderOtherRoster(); };
+  }
+  rosOtherIdx = rosOtherIdx!=null && rosOtherIdx!==fr.teamIdx ? rosOtherIdx : TEAMS.findIndex((t,i)=>i!==fr.teamIdx);
+  sel.value=rosOtherIdx;
+  renderOtherRoster();
+
+  function renderOtherRoster(){
+    document.getElementById('rosOther').innerHTML=listHTML(fr.rosters[rosOtherIdx],'other');
+    document.getElementById('rosOtherPicks').innerHTML=pickListHTML(rosOtherIdx,'other');
+    bindRosItems();
+  }
+  bindRosItems();
+  function bindRosItems(){
+    document.querySelectorAll('.rosItem').forEach(el=>{
+      el.onclick=()=>{ Audio8.click();
+        const which=el.dataset.which, i=parseInt(el.dataset.i);
+        document.querySelectorAll(`.rosItem[data-which="${which}"]`).forEach(e=>e.style.background='');
+        el.style.background='#12324a';
+        if(which==='mine') rosSelMine=i; else rosSelOther=i;
+      };
+    });
+    document.querySelectorAll('.rosPickItem').forEach(el=>{
+      el.onclick=()=>{ Audio8.click();
+        const which=el.dataset.which, i=parseInt(el.dataset.i);
+        document.querySelectorAll(`.rosPickItem[data-which="${which}"]`).forEach(e=>e.style.background='');
+        el.style.background='#12324a';
+        if(which==='mine') rosSelMinePick = (rosSelMinePick===i?null:i); else rosSelOtherPick = (rosSelOtherPick===i?null:i);
+        if(which==='mine' && rosSelMinePick==null) el.style.background='';
+        if(which==='other' && rosSelOtherPick==null) el.style.background='';
+      };
+    });
+  }
+}
+document.getElementById('btnFrRoster').addEventListener('click', ()=>{ Audio8.click(); renderRoster(); showScreen('screen-roster'); });
+document.getElementById('btnRosBack').addEventListener('click', ()=>{ Audio8.click(); renderFranchise(); showScreen('screen-franchise'); });
+document.getElementById('btnRosPropose').addEventListener('click', ()=>{
+  Audio8.click();
+  const fr=S.franchise, msg=document.getElementById('rosMsg');
+  if(rosSelMine==null && rosSelMinePick==null){ msg.style.color='var(--danger)'; msg.textContent='Select at least a player or pick to give up.'; return; }
+  if(rosSelOther==null && rosSelOtherPick==null){ msg.style.color='var(--danger)'; msg.textContent='Select at least a player or pick to receive.'; return; }
+  const mine=fr.rosters[fr.teamIdx], other=fr.rosters[rosOtherIdx];
+  const give=rosSelMine!=null ? mine[rosSelMine] : null;
+  const get=rosSelOther!=null ? other[rosSelOther] : null;
+  // both rosters must stay big enough to field a starting 5, and small enough to stay a real bench.
+  // rosters start at MAX_ROSTER (full), so a cap equal to the starting size would make any
+  // uneven trade (e.g. a player for a pick) impossible from turn one — MAX_ROSTER leaves headroom.
+  const mineCountAfter = mine.length + (!give&&get?1:0) - (give&&!get?1:0);
+  const otherCountAfter = other.length + (give&&!get?1:0) - (!give&&get?1:0);
+  if(mineCountAfter<MIN_ROSTER || mineCountAfter>MAX_ROSTER || otherCountAfter<MIN_ROSTER || otherCountAfter>MAX_ROSTER){
+    msg.style.color='var(--danger)';
+    msg.textContent=`That trade leaves a roster with too few or too many players — rosters must stay between ${MIN_ROSTER} and ${MAX_ROSTER}.`;
+    return;
+  }
+  const givePick = rosSelMinePick!=null ? fr.picks[rosSelMinePick] : null;
+  const getPick = rosSelOtherPick!=null ? fr.picks[rosSelOtherPick] : null;
+  const giveVal = (give?give.ovr:0) + (givePick?pickValue(fr,givePick):0);
+  const getVal = (get?get.ovr:0) + (getPick?pickValue(fr,getPick):0);
+  // other GM accepts if the incoming value is at least as good (within a small margin)
+  if(giveVal + 3 >= getVal){
+    if(give && get){ mine[rosSelMine]=get; other[rosSelOther]=give; }
+    else if(give && !get){ /* pick-only return: player still moves, no player back */ mine.splice(rosSelMine,1); other.push(give); }
+    else if(!give && get){ other.splice(rosSelOther,1); mine.push(get); }
+    if(givePick) givePick.ownerIdx = rosOtherIdx;
+    if(getPick) getPick.ownerIdx = fr.teamIdx;
+    const giveDesc = [give?give.name:null, givePick?pickLabel(fr,givePick):null].filter(Boolean).join(' + ') || 'nothing';
+    const getDesc = [get?get.name:null, getPick?pickLabel(fr,getPick):null].filter(Boolean).join(' + ') || 'nothing';
+    msg.style.color='var(--success)';
+    msg.textContent=`Trade accepted! ${giveDesc} ↔ ${getDesc}.`;
+    Audio8.badge();
+    renderRoster();
+  } else {
+    msg.style.color='var(--danger)';
+    msg.textContent=`${TEAMS[rosOtherIdx].abbr} rejects — you'd need to give up more value.`;
+  }
+});
+
+// between seasons: young players improve, older players decline
+function developRosters(){
+  const fr=S.franchise;
+  fr.rosters.forEach(roster=>{
+    roster.forEach(p=>{
+      p.age++;
+      if(p.age<=24) p.ovr=Math.min(96, p.ovr + (1+Math.floor(Math.random()*3)));
+      else if(p.age>=31) p.ovr=Math.max(40, p.ovr - (1+Math.floor(Math.random()*3)));
+      // retirements → fresh rookie
+      if(p.age>=38){ Object.assign(p, makeRosterPlayer(p.pos, 52)); }
+    });
+  });
+}
+
+// hub + franchise menu/save buttons
+document.getElementById('btnHubSave').addEventListener('click', ()=>{ Audio8.click(); renderSaveLoadModal('save'); });
+document.getElementById('btnHubMenu').addEventListener('click', ()=>{ Audio8.click(); showScreen('screen-mode'); });
+document.getElementById('btnWatchAdSP').addEventListener('click', ()=>{
+  Audio8.click();
+  const btn = document.getElementById('btnWatchAdSP');
+  btn.disabled = true;
+  Platform.rewardedBreak(
+    ()=>{ S.player.sp += 2; S.adRewardClaimed = true; renderHub(); document.getElementById('hubMsg').textContent = 'Thanks for watching! +2 SP.'; },
+    ()=>{ btn.disabled = !!S.adRewardClaimed; }
+  );
+});
+document.getElementById('btnFrSave').addEventListener('click', ()=>{ Audio8.click(); renderSaveLoadModal('save'); });
+document.getElementById('btnFrMenu').addEventListener('click', ()=>{ Audio8.click(); showScreen('screen-mode'); });
+
+/* ---------------- Franchise: end-of-season ROOKIE DRAFT (worst picks first) ---------------- */
+let draftSel=null;
+function startDraft(){
+  const fr=S.franchise;
+  // draft order = reverse standings (worst record picks first), honoring any traded picks —
+  // whoever now OWNS a team's imminent (yearsOut:1) 1st rounder makes that pick instead
+  const order = fr.standings.slice().sort((a,b)=> (a.w-b.w) || ((a.pf-a.pa)-(b.pf-b.pa))).map(s=>{
+    const pk = fr.picks.find(p=>p.origTeamIdx===s.idx && p.yearsOut===1);
+    return pk ? pk.ownerIdx : s.idx;
+  });
+  // generate a rookie class (2 rounds worth)
+  const n = TEAMS.length*2;
+  const prospects=[];
+  for(let i=0;i<n;i++){
+    const pos=['PG','SG','SF','PF','C'][Math.floor(Math.random()*5)];
+    prospects.push(makeRosterPlayer(pos, 74 - i*1.3, 19));   // early picks are better prospects
+  }
+  prospects.sort((a,b)=>b.ovr-a.ovr);
+  fr.draft = { order, pick:0, prospects, picks:[] };
+  draftSel=null;
+  renderDraft();
+  showScreen('screen-draft');
+}
+function renderDraft(){
+  const fr=S.franchise, d=fr.draft;
+  const onClock = d.order[d.pick % d.order.length];
+  const userTurn = onClock===fr.teamIdx && d.pick<d.order.length; // 1 round for the user pick UX; others auto
+  document.getElementById('draftStatus').textContent =
+    d.pick>=d.order.length ? 'Draft complete — build your dynasty.' :
+    userTurn ? `You're on the clock! Pick ${d.pick+1} of ${d.order.length}.`
+             : `${TEAMS[onClock].name} is picking… (pick ${d.pick+1})`;
+
+  document.getElementById('draftProspects').innerHTML = d.prospects.map((p,i)=>
+    `<div class="attrRow draftItem" data-i="${i}" style="cursor:pointer;border:1px solid var(--border);border-radius:6px;padding:5px 8px;margin:3px 0;${draftSel===i?'background:#12324a':''}">
+      <span style="width:26px;color:var(--text-dim)">${p.pos}</span>
+      <span style="flex:1;text-align:left">${p.name}</span>
+      <span style="width:34px;color:${p.ovr>=74?'#34d399':p.ovr>=66?'#ffd166':'#8fa0b8'};font-weight:700">${p.ovr}</span>
+      <span style="width:34px;color:var(--text-dim)">${p.age}y</span></div>`).join('') || '<span class="small-txt">All prospects drafted.</span>';
+  document.querySelectorAll('.draftItem').forEach(el=>{
+    el.onclick=()=>{ Audio8.click(); draftSel=parseInt(el.dataset.i); renderDraft(); };
+  });
+
+  document.getElementById('draftBoard').innerHTML = d.picks.map(pk=>
+    `<div style="font-size:12px;margin:2px 0;${pk.team===fr.teamIdx?'color:var(--accent-soft);font-weight:700':''}">${pk.n}. ${TEAMS[pk.team].abbr} — ${pk.player.name} (${pk.player.pos} ${pk.player.ovr})</div>`).join('');
+
+  document.getElementById('btnDraftPick').style.display = userTurn ? '' : 'none';
+  document.getElementById('btnDraftAuto').style.display = userTurn ? '' : 'none';
+  const done = d.pick>=d.order.length;
+  document.getElementById('btnDraftDone').style.display = done ? '' : 'none';
+
+  // if it's not the user's turn (and draft not done), auto-advance AI picks
+  if(!done && !userTurn){
+    setTimeout(()=>{ aiDraftPick(); }, 350);
+  }
+}
+function assignRookie(teamIdx, prospectIdx){
+  const fr=S.franchise, d=fr.draft;
+  const player = d.prospects.splice(prospectIdx,1)[0];
+  d.picks.push({ n:d.pick+1, team:teamIdx, player });
+  // add rookie: replace the team's weakest player if roster is full
+  const roster=fr.rosters[teamIdx];
+  if(roster.length>=MAX_ROSTER){
+    let wi=0; roster.forEach((p,i)=>{ if(p.ovr<roster[wi].ovr) wi=i; });
+    if(player.ovr>roster[wi].ovr) roster[wi]=player; // only if the rookie is an upgrade
+  } else roster.push(player);
+  d.pick++;
+}
+function aiDraftPick(){
+  const fr=S.franchise, d=fr.draft;
+  if(d.pick>=d.order.length){ renderDraft(); return; }
+  const team=d.order[d.pick % d.order.length];
+  if(team===fr.teamIdx){ renderDraft(); return; } // safety: don't auto-pick for the user
+  assignRookie(team, 0); // AI takes best available
+  renderDraft();
+}
+document.getElementById('btnDraftPick').addEventListener('click', ()=>{
+  Audio8.click();
+  const fr=S.franchise, d=fr.draft;
+  if(draftSel==null){ document.getElementById('draftMsg').textContent='Select a prospect first.'; return; }
+  assignRookie(fr.teamIdx, draftSel);
+  draftSel=null;
+  Audio8.badge();
+  renderDraft();
+});
+document.getElementById('btnDraftAuto').addEventListener('click', ()=>{
+  Audio8.click();
+  assignRookie(S.franchise.teamIdx, 0);
+  draftSel=null;
+  renderDraft();
+});
+document.getElementById('btnDraftDone').addEventListener('click', ()=>{
+  Audio8.click();
+  const fr=S.franchise;
+  const keptRosters=fr.rosters, nextSeason=(fr.season||1)+1;
+  // this draft consumed all yearsOut:1 picks; roll the rest forward a year and mint fresh far-future ones
+  const carriedPicks = fr.picks.filter(p=>p.yearsOut>1).map(p=>({...p, yearsOut:p.yearsOut-1}));
+  TEAMS.forEach((t,i)=> carriedPicks.push({yearsOut:2, ownerIdx:i, origTeamIdx:i}));
+  S.franchise=newFranchise(fr.teamIdx);
+  S.franchise.rosters=keptRosters; S.franchise.season=nextSeason; S.franchise.picks=carriedPicks;
+  renderFranchise();
+  showScreen('screen-franchise');
+});
+
+/* =========================================================================
+   MY JOURNEY HUB
+========================================================================= */
+const BADGE_INFO = {
+  shooting:{name:"Limitless Range", desc:"Boosts shot % from deep"},
+  passing:{name:"Floor General", desc:"Boosts teammates when you pass"},
+  speed:{name:"Ankle Breaker", desc:"Stuns defenders on direction change"},
+  defense:{name:"Eraser", desc:"Bigger blocks & steal radius"}
+};
+
+function renderHub(){
+  document.getElementById('hubTeamName').textContent = "MY JOURNEY — " + S.team.name.toUpperCase();
+  document.getElementById('hubStory').textContent = STORY.round[Math.min(S.season.round,2)];
+  document.getElementById('hubPlayerName').textContent = S.player.name;
+  document.getElementById('hubPos').textContent = `${S.player.position}, ${heightLabelStr(S.player.heightIn)}`;
+  document.getElementById('hubLevel').textContent = S.player.level;
+  document.getElementById('hubXP').textContent = `${S.player.xp} / ${S.player.xpToNext}`;
+  document.getElementById('hubRecord').textContent = `${S.season.wins}W - ${S.season.losses}L`;
+  document.getElementById('hubRound').textContent = ROUND_NAMES[S.season.round];
+  document.getElementById('hubSP').textContent = S.player.sp;
+  document.getElementById('hubRewardedRow').style.display = Platform.hasAdSDK() ? '' : 'none';
+  const adBtn = document.getElementById('btnWatchAdSP');
+  adBtn.disabled = !!S.adRewardClaimed;
+  adBtn.textContent = S.adRewardClaimed ? '📺 Ad Bonus Claimed — more next game' : '📺 Watch an Ad for +2 SP';
+
+  const badgeList = document.getElementById('hubBadgeList');
+  badgeList.innerHTML = S.player.badges.length ? '' : '<span class="small-txt">None yet</span>';
+  S.player.badges.forEach(b=>{
+    const chip = document.createElement('span');
+    chip.className='badgeChip';
+    chip.textContent = BADGE_INFO[b].name;
+    badgeList.appendChild(chip);
+  });
+
+  const sBox = document.getElementById('sponsorBox');
+  if(!S.sponsor){ S.sponsor = generateSponsorOffer(); }
+  sBox.innerHTML = `<b>📣 Sponsor Deal:</b> ${S.sponsor.text}<br/><span class="small-txt">${S.sponsor.done ? '✅ Completed! Bonus applied next game.' : 'Pending — complete it during your next game.'}</span>`;
+
+  const grid = document.getElementById('upgradeGrid');
+  grid.innerHTML='';
+  attrKeys.forEach(k=>{
+    const val = S.player.attrs[k];
+    const div = document.createElement('div');
+    div.className='attrRow';
+    div.style.justifyContent='flex-start';
+    div.style.gap='10px';
+    div.innerHTML = `
+      <span style="width:80px;text-align:left;text-transform:capitalize">${k}</span>
+      <div class="bar"><div style="width:${val*10}%"></div></div>
+      <span style="width:28px">${val}${val>=10?' ★':''}</span>
+      <button class="small" data-k="${k}" ${ (S.player.sp<=0 || val>=10) ? 'disabled':'' }>+1 (1 SP)</button>
+    `;
+    grid.appendChild(div);
+  });
+  grid.querySelectorAll('button').forEach(b=>{
+    b.onclick = ()=>{
+      const k = b.dataset.k;
+      if(S.player.sp<=0 || S.player.attrs[k]>=10) return;
+      Audio8.click();
+      S.player.attrs[k]++;
+      S.player.sp--;
+      if(S.player.attrs[k]===10 && !S.player.badges.includes(k)){
+        S.player.badges.push(k);
+        Audio8.badge();
+        document.getElementById('hubMsg').textContent = `🏅 Badge Unlocked: ${BADGE_INFO[k].name}!`;
+      }
+      renderHub();
+    };
+  });
+}
+
+const SPONSOR_OPTIONS = [
+  { id:0, text:"Score 10+ points this game for a 1.5x SP Multiplier next game.", check:(st)=> st.points>=10, mult:1.5 },
+  { id:1, text:"Grab 5+ rebounds this game for a 1.5x SP Multiplier next game.", check:(st)=> st.rebounds>=5, mult:1.5 },
+  { id:2, text:"Dish 5+ assists this game for a 1.75x SP Multiplier next game.", check:(st)=> st.assists>=5, mult:1.75 },
+  { id:3, text:"Record 3+ steals or blocks this game for a 2x SP Multiplier next game.", check:(st)=> (st.steals+st.blocks)>=3, mult:2 }
+];
+function generateSponsorOffer(){
+  const o = SPONSOR_OPTIONS[Math.floor(Math.random()*SPONSOR_OPTIONS.length)];
+  return { id:o.id, text:o.text, check:o.check, mult:o.mult, done:false };
+}
+function rebuildSponsor(id, done){
+  const o = SPONSOR_OPTIONS[id] || SPONSOR_OPTIONS[0];
+  return { id:o.id, text:o.text, check:o.check, mult:o.mult, done:!!done };
+}
+
+document.getElementById('btnPlayGame').addEventListener('click', ()=>{
+  Audio8.ensureRunning();
+  Audio8.click();
+  Platform.commercialBreak(()=> startGame());
+});
+document.getElementById('btnPostChamp').addEventListener('click', ()=>{
+  Audio8.click();
+  if(S.mode==='versus'){ showScreen('screen-mode'); return; }
+  S.season = { wins:0, losses:0, round:0 };
+  renderHub();
+  showScreen('screen-hub');
+});
+
+/* =========================================================================
+   SPRITE SHEET — hand-authored pixel grids (17 x 25), scaled crisp
+========================================================================= */
+const BODY_STAND = [
+"......OOOOO......",
+"....OOHHHHHOO....",
+"...OHhhHHHHHHO...",
+"...OHhHHHHHHHO...",
+"...OHHHHHHHHHO...",
+"...OHSHSSSHSHO...",
+"...OSSESSSESSO...",
+"...OSSSSSSSSSO...",
+"...OsSSSSMSSsO...",
+"....OsssssssO....",
+".....OOsssOO.....",
+"...OOJJJJJJJOO...",
+"..OJJjJJJJJjJJO..",
+"..OJJjJJJJJjJJO..",
+"..OJJjJJJJJjJJO..",
+"..OssOJJJJJOssO..",
+"....OJJJJJJJO....",
+"....OjjjjjjjO....",
+"....OKKKKKKKO....",
+"....OKKKOKKKO....",
+"....OkkO.OkkO....",
+"....OSSO.OSSO....",
+"....OssO.OssO....",
+"...OWWWO.OWWWO...",
+"...OOOOO.OOOOO...",
+];
+// run frame A: legs spread wide (mid-stride)
+const LEGS_RUN_A = [
+"....OkkO.OkkO....",
+"...OSSO...OSSO...",
+"...OssO...OssO...",
+"..OWWWO...OWWWO..",
+"..OOOOO...OOOOO..",
+];
+// run frame B: feet together (gather step)
+const LEGS_RUN_B = [
+"....OkkO.OkkO....",
+".....OSSOSSO.....",
+".....OssOssO.....",
+"....OWWWWWWO.....",
+"....OOOOOOOO.....",
+];
+const HAIR_AFRO = [
+".....OOOOOOO.....",
+"...OOHHHHHHHOO...",
+"..OHHhhHHHHHHHO..",
+"..OHHhHHHHHHHHO..",
+"..OHHHHHHHHHHHO..",
+];
+const ROW_HEADBAND = "...OTTTTTTTTTO...";
+// narrower torso used while arms are raised (shoot / block poses)
+const TORSO_SHOOT = [
+"..OSOJJJJJJJOSO..",
+"..OSOJjJJJjJOSO..",
+"..OSOJJJJJJJOSO..",
+"..OOOJJJJJJJOOO..",
+"....OJJJJJJJO....",
+];
+
+const SPRITE_W = 17, SPRITE_H = 25;
+
+// raise arms alongside the head: both sides for a shot, one side for a block
+function raiseArms(grid, both){
+  const g = grid.map(r=>r.split(''));
+  const sides = both ? [[1,2],[15,14]] : [[15,14]];
+  sides.forEach(([oc,sc])=>{
+    for(let r=4;r<=10;r++){ g[r][oc]='O'; g[r][sc]='S'; }
+    g[3][oc]='O'; g[3][sc]='S';
+    g[2][sc]='O';
+  });
+  return g.map(r=>r.join(''));
+}
+
+function buildSprite(opts){
+  let g = BODY_STAND.slice();
+  if(opts.afro){ g = HAIR_AFRO.concat(g.slice(5)); }
+  if(opts.headband){ g = g.slice(); g[5] = ROW_HEADBAND; }
+  const runA = g.slice(0,20).concat(LEGS_RUN_A);
+  const runB = g.slice(0,20).concat(LEGS_RUN_B);
+  const armsBase = g.slice(0,11).concat(TORSO_SHOOT, g.slice(16));
+  const shoot = raiseArms(armsBase, true);
+  const block = raiseArms(armsBase, false);
+  return { stand:g, runA, runB, shoot, block };
+}
+
+function spritePalette(team, skinIdx, hairIdx){
+  const sk = SKINS[skinIdx%SKINS.length], hr = HAIRS[hairIdx%HAIRS.length];
+  return {
+    O:'#241c12',
+    H:hr.H, h:hr.h,
+    S:sk.S, s:sk.s,
+    E:'#241c12', M:'#b06a42',
+    J:team.primary, j:shadeC(team.primary,-32),
+    K:team.secondary, k:shadeC(team.secondary,-32),
+    T:team.secondary,
+    W:'#f2f4f8'
+  };
+}
+
+/* ---------------- create-a-player appearance UI (skin / hair / jersey #) ---------------- */
+S.player.skinIdx = S.player.skinIdx!=null ? S.player.skinIdx : 0;
+S.player.hairIdx = S.player.hairIdx!=null ? S.player.hairIdx : 0;
+S.player.hairStyle = S.player.hairStyle || 'headband';
+S.player.jerseyNum = S.player.jerseyNum!=null ? S.player.jerseyNum : 23;
+
+function renderLookPreview(){
+  const cv = document.getElementById('lookPreview');
+  const c = cv.getContext('2d');
+  c.imageSmoothingEnabled = false;
+  c.clearRect(0,0,cv.width,cv.height);
+  const team = (chosenTeamIdx!=null ? TEAMS[chosenTeamIdx] : TEAMS[0]);
+  const spr = buildSprite({ afro:S.player.hairStyle==='afro', headband:S.player.hairStyle==='headband' });
+  const pal = spritePalette(team, S.player.skinIdx, S.player.hairIdx);
+  const sc = 3.6;
+  const grid = spr.stand;
+  const ox = Math.round((cv.width - SPRITE_W*sc)/2), oy = 6;
+  for(let r=0;r<grid.length;r++){
+    const row = grid[r];
+    for(let col=0;col<row.length;col++){
+      const ch = row[col];
+      if(ch==='.') continue;
+      c.fillStyle = pal[ch]||'#f0f';
+      c.fillRect(ox+col*sc, oy+r*sc, Math.ceil(sc), Math.ceil(sc));
+    }
+  }
+}
+function renderSkinRow(){
+  const row = document.getElementById('skinRow');
+  row.innerHTML='';
+  SKINS.forEach((sk,i)=>{
+    const sw = document.createElement('div');
+    sw.className = 'swatch' + (S.player.skinIdx===i?' sel':'');
+    sw.style.background = sk.S;
+    sw.onclick=()=>{ Audio8.click(); S.player.skinIdx=i; renderSkinRow(); renderLookPreview(); };
+    row.appendChild(sw);
+  });
+}
+function renderHairColorRow(){
+  const row = document.getElementById('hairColorRow');
+  row.innerHTML='';
+  HAIRS.forEach((hr,i)=>{
+    const sw = document.createElement('div');
+    sw.className = 'swatch' + (S.player.hairIdx===i?' sel':'');
+    sw.style.background = hr.H;
+    sw.onclick=()=>{ Audio8.click(); S.player.hairIdx=i; renderHairColorRow(); renderLookPreview(); };
+    row.appendChild(sw);
+  });
+}
+function renderHairStyleRow(){
+  const row = document.getElementById('hairStyleRow');
+  row.innerHTML='';
+  HAIR_STYLES.forEach(style=>{
+    const chip = document.createElement('div');
+    chip.className = 'styleChip' + (S.player.hairStyle===style?' sel':'');
+    chip.textContent = style.charAt(0).toUpperCase()+style.slice(1);
+    chip.onclick=()=>{ Audio8.click(); S.player.hairStyle=style; renderHairStyleRow(); renderLookPreview(); };
+    row.appendChild(chip);
+  });
+}
+document.getElementById('jerseyNumInput').addEventListener('input', (e)=>{
+  let n = parseInt(e.target.value);
+  if(isNaN(n)) n=0;
+  n = Math.max(0, Math.min(99, n));
+  S.player.jerseyNum = n;
+});
+renderSkinRow();
+renderHairColorRow();
+renderHairStyleRow();
+renderLookPreview();
+
+const BALL_SPR = [
+"..OOOOO..",
+".OBBOBBO.",
+"OBBBOBBBO",
+"OBbBObBbO",
+"OOOOOOOOO",
+"OBbBObBbO",
+"OBBBOBBBO",
+".OBBOBBO.",
+"..OOOOO..",
+];
+const BALL_PAL = {O:'#241c12',B:'#e87c30',b:'#c9601d'};
+
+// tiny 3x5 pixel digits for jersey numbers
+const DIGITS = {
+  '0':['111','101','101','101','111'],'1':['010','110','010','010','111'],
+  '2':['111','001','111','100','111'],'3':['111','001','111','001','111'],
+  '4':['101','101','111','001','001'],'5':['111','100','111','001','111'],
+  '6':['111','100','111','101','111'],'7':['111','001','010','010','010'],
+  '8':['111','101','111','101','111'],'9':['111','101','111','001','111']
+};
+
+/* =========================================================================
+   GAMEPLAY — Hoop Land-style side angle: horizontal court, camera pans left/right
+========================================================================= */
+const canvas = document.getElementById('gameCanvas');
+const mainCtx = canvas.getContext('2d');
+mainCtx.imageSmoothingEnabled = false;
+let ctx = mainCtx;   // temporarily repointed at an offscreen context while pre-rendering the court (see prerenderCourt)
+
+const COURT = {
+  W: 2000,               // court length (horizontal)
+  bandTop: 96, bandBottom: 508,   // hardwood floor band (world y)
+  inLeft: 50, inRight: 1950,
+  inTop: 130, inBottom: 474,
+  hoopLeftX: 95, hoopRightX: 1905,
+  hoopY: 302
+};
+const WORLD_H = 676;   // total vertical world drawn (stands + floor + bench)
+const ZOOM = 540/WORLD_H;  // scale so the whole vertical composition fits & we see sidelines
+const SC = 4; // sprite pixel scale
+
+const KEYS = {};
+window.addEventListener('keydown', e=>{
+  KEYS[e.code]=true;
+  if(e.code==='KeyM'){ const m=Audio8.toggleMute(); if(Game) Game.muted=m; }
+  if((e.code==='Escape'||e.code==='KeyP') && Game && !Game.over){ togglePause(); }
+  if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
+});
+window.addEventListener('keyup', e=>{ KEYS[e.code]=false; });
+
+/* on-screen touch controls (phones / Poki mobile) — drive the same KEYS map
+   the keyboard uses so no gameplay code needs to know the difference */
+(function setupTouchControls(){
+  const joyBase = document.getElementById('tcJoyBase');
+  const joyStick = document.getElementById('tcJoyStick');
+  if(!joyBase || !joyStick) return;
+  let joyId = null;
+  const maxR = 44;
+  function resetJoy(){
+    KEYS['KeyW']=KEYS['KeyA']=KEYS['KeyS']=KEYS['KeyD']=false;
+    KEYS['ShiftLeft']=false;
+    joyStick.style.transform = 'translate(0px,0px)';
+  }
+  function updateJoy(clientX, clientY){
+    const rect = joyBase.getBoundingClientRect();
+    const cx = rect.left+rect.width/2, cy = rect.top+rect.height/2;
+    const dx = clientX-cx, dy = clientY-cy;
+    const dist = Math.min(Math.hypot(dx,dy), maxR);
+    const ang = Math.atan2(dy,dx);
+    const sx = Math.cos(ang)*dist, sy = Math.sin(ang)*dist;
+    joyStick.style.transform = `translate(${sx}px,${sy}px)`;
+    const nx = sx/maxR, ny = sy/maxR;
+    KEYS['KeyA'] = nx < -0.3; KEYS['KeyD'] = nx > 0.3;
+    KEYS['KeyW'] = ny < -0.3; KEYS['KeyS'] = ny > 0.3;
+    KEYS['ShiftLeft'] = (dist/maxR) > 0.8;   // push to the edge to sprint
+  }
+  joyBase.addEventListener('pointerdown', e=>{
+    joyId = e.pointerId; joyBase.setPointerCapture(e.pointerId);
+    Audio8.ensureRunning();
+    updateJoy(e.clientX, e.clientY); e.preventDefault();
+  });
+  joyBase.addEventListener('pointermove', e=>{
+    if(e.pointerId!==joyId) return;
+    updateJoy(e.clientX, e.clientY); e.preventDefault();
+  });
+  const endJoy = e=>{ if(e.pointerId!==joyId) return; joyId=null; resetJoy(); };
+  joyBase.addEventListener('pointerup', endJoy);
+  joyBase.addEventListener('pointercancel', endJoy);
+
+  function bindTouchBtn(id, code){
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('pointerdown', e=>{ KEYS[code]=true; el.classList.add('pressed'); Audio8.ensureRunning(); e.preventDefault(); });
+    el.addEventListener('pointerup', e=>{ KEYS[code]=false; el.classList.remove('pressed'); e.preventDefault(); });
+    el.addEventListener('pointercancel', ()=>{ KEYS[code]=false; el.classList.remove('pressed'); });
+    el.addEventListener('pointerleave', ()=>{ KEYS[code]=false; el.classList.remove('pressed'); });
+  }
+  bindTouchBtn('tcShoot','Space');
+  bindTouchBtn('tcPass','KeyX');
+  bindTouchBtn('tcSpecial','KeyC');
+})();
+
+let Game = null;
+
+function togglePause(force){
+  if(!Game) return;
+  Game.paused = force!=null ? force : !Game.paused;
+  document.getElementById('pauseOverlay').style.display = Game.paused ? 'flex' : 'none';
+  if(Game.paused){ Platform.gameplayStop(); }
+  else { Platform.gameplayStart(); Game.lastFrame = performance.now(); }  // avoid a dt jump on resume
+}
+document.getElementById('btnPause').addEventListener('click', ()=>{ Audio8.click(); togglePause(true); });
+document.getElementById('btnResume').addEventListener('click', ()=>{ Audio8.click(); togglePause(false); });
+document.getElementById('btnQuitMenu').addEventListener('click', ()=>{
+  Audio8.click();
+  if(Game) Game.over = true;   // stop the loop
+  togglePause(false);
+  showScreen('screen-mode');
+});
+
+const ROLES = ['PG','SG','SF','PF','C'];
+// slots: horizontal distance back from the attacking hoop + vertical offset from hoop line
+const SLOTS = {
+  PG:{ dist:380, yOff:0 },
+  SG:{ dist:300, yOff:-140 },
+  SF:{ dist:300, yOff:140 },
+  PF:{ dist:170, yOff:-100 },
+  C: { dist:90,  yOff:85 }
+};
+
+function makePlayer(opts){
+  const e = Object.assign({
+    x:COURT.W/2, y:COURT.hoopY,
+    team:'home', role:'PG', isUser:false,
+    facing:1, moving:false,
+    jumpH:0, jumping:false, jumpVel:0,
+    shootPose:0,
+    stunTimer:0, aiTimer:0, animT:0, dribbleT:0,
+    buffed:false, buffTimer:0,
+    scale: 0.9 + Math.random()*0.28,   // varied heights so the roster isn't all clones
+    sprintT:0,
+    jerseyNum: 10+Math.floor(Math.random()*90),
+    skinIdx: Math.floor(Math.random()*SKINS.length),
+    hairIdx: Math.floor(Math.random()*HAIRS.length),
+    hairStyle: ['plain','afro','headband'][Math.floor(Math.random()*3)],
+    ovr: 58 + Math.floor(Math.random()*24)   // journey/versus games have no roster to draw from
+  }, opts);
+  // taller players are a touch slower but grab boards; shorter are quicker
+  // higher-OVR players also move a bit sharper, so a stacked roster feels faster on both ends
+  e.baseSpeed = 210 - (e.scale-1)*70 + (e.ovr-70)*0.5;
+  e.sprites = buildSprite({ afro:e.hairStyle==='afro', headband:e.hairStyle==='headband' });
+  return e;
+}
+// converts a 38-96 OVR into the same 0-10ish attribute scale the user's own attrs use,
+// so a star player's rating actually shows up in shot/defense/pass math, not just the roster screen
+function ovrAttr(p){ return 5 + ((p.ovr!=null?p.ovr:70)-70)/5; }
+
+function attackingHoopX(team){ return team==='home' ? COURT.hoopRightX : COURT.hoopLeftX; }
+
+function startGame(forcedOpponent){
+  Audio8.ensureRunning();
+  S.adRewardClaimed = false;   // the rewarded-SP offer resets each time you start a new game
+  const round = S.season.round;
+  const versus = S.mode==='versus';
+  let opponent;
+  if(forcedOpponent){ opponent = forcedOpponent; }
+  else if(versus){ opponent = TEAMS[S.versusP2Idx]; }
+  else {
+    const oppTeams = TEAMS.filter(t=>t.name!==S.team.name);
+    opponent = oppTeams[Math.floor(Math.random()*oppTeams.length)];
+  }
+  const diff = versus ? 1.0 : S.mode==='franchise' ? 1.15 : 1 + round*0.18;
+
+  // in Franchise, pull each on-court player's real OVR from the roster so a team you built
+  // through trades/drafts actually plays better — not just a nicer number on the roster screen
+  const franchiseRoster = S.mode==='franchise' ? S.franchise.rosters[S.franchise.teamIdx] : null;
+  const oppIdx = TEAMS.indexOf(opponent);
+  const franchiseOppRoster = (S.mode==='franchise' && oppIdx>=0) ? S.franchise.rosters[oppIdx] : null;
+  const usedMine=new Set(), usedOpp=new Set();
+  function rosterOvrForRole(roster, role, used){
+    if(!roster) return null;
+    let pool = roster.filter((p,i)=>!used.has(i) && p.pos===role);
+    if(!pool.length) pool = roster.filter((p,i)=>!used.has(i));
+    if(!pool.length) return null;
+    const best = pool.reduce((a,b)=>b.ovr>a.ovr?b:a);
+    used.add(roster.indexOf(best));
+    return best.ovr;
+  }
+  // the user's own rating for display, derived from their build (gameplay still runs off S.player.attrs)
+  const userOvr = Math.round(40 + ((S.player.attrs.shooting+S.player.attrs.passing+S.player.attrs.speed+S.player.attrs.defense)/4)*6);
+
+  const home=[], away=[];
+  // home attacks the RIGHT hoop; away attacks the LEFT hoop
+  const user = makePlayer({
+    isUser:true, team:'home', role:'PG',
+    x: COURT.hoopRightX - SLOTS.PG.dist, y: COURT.hoopY,
+    scale: heightScale(),
+    hairStyle: S.player.hairStyle || 'headband',
+    skinIdx: S.player.skinIdx!=null ? S.player.skinIdx : 0,
+    hairIdx: S.player.hairIdx!=null ? S.player.hairIdx : 0,
+    jerseyNum: S.player.jerseyNum!=null ? S.player.jerseyNum : 23,
+    ovr: Math.max(38, Math.min(96, userOvr))
+  });
+  if(franchiseRoster) rosterOvrForRole(franchiseRoster, 'PG', usedMine); // reserve the user's own slot
+  home.push(user);
+  for(let i=0;i<4;i++){
+    const slot = SLOTS[ROLES[i+1]] || SLOTS.SG;
+    const teamOvr = rosterOvrForRole(franchiseRoster, ROLES[i+1], usedMine);
+    home.push(makePlayer(Object.assign({
+      team:'home', role:ROLES[i+1],
+      x: COURT.hoopRightX - slot.dist, y: COURT.hoopY + slot.yOff
+    }, teamOvr!=null ? {ovr:teamOvr} : {})));
+  }
+  // away starts on defense, matched to home players, spaced off them
+  for(let i=0;i<5;i++){
+    const mark = home[i];
+    const teamOvr = rosterOvrForRole(franchiseOppRoster, ROLES[i], usedOpp);
+    away.push(makePlayer(Object.assign({
+      team:'away', role:ROLES[i],
+      x: mark.x + 130, y: mark.y + 25,
+      aiTimer: 2 // no instant steal rolls at tip-off
+    }, teamOvr!=null ? {ovr:teamOvr} : {})));
+  }
+  // in local versus, Player 2 controls the away team's point guard
+  let user2 = null;
+  if(versus){
+    user2 = away[0];
+    user2.isUser2 = true;
+    user2.hairStyle='headband'; user2.sprites = buildSprite({ headband:true });
+  }
+
+  Game = {
+    home, away, all: home.concat(away),
+    teamHome: S.team, teamAway: opponent,
+    versus, user, user2,
+    ball:{ x:user.x, y:user.y, h:30, holder:user, inAir:false, loose:false,
+           arcT:0, arcDur:0, sx:0, sy:0, tx:0, ty:0, made:false, isThree:false,
+           shooter:null, vx:0, vy:0, vh:0, snap:true },
+    camX: 0,
+    stamina: 100, stamina2: 100,
+    special: 0, special2: 0,        // dunk/crossover charge meters
+    quarter:1, quarterTime:60,
+    shotClock: 24,
+    scoreHome:0, scoreAway:0,
+    foulsHome:0, foulsAway:0,
+    diff,
+    diffCfg: DIFF[S.difficulty] || DIFF.medium,
+    paused:false,
+    stats:{ points:0, rebounds:0, assists:0, steals:0, blocks:0 },
+    shotMeter:{ active:false, t:0, holding:false },
+    shotMeter2:{ active:false, t:0, holding:false },
+    shotPopup:null, shotPopup2:null,
+    freeThrow:null,               // active free-throw sequence
+    playbook:null, playbookTimer:0,
+    banner:null,
+    floatTexts:[],
+    phase:'live', inbounder:null, inboundTargetX:0,
+    pendingAssist:null,
+    lastFrame: performance.now(),
+    over:false,
+    xPressed:false, x2Pressed:false, ePressed:false, e2Pressed:false,
+    pbPressed:false,
+    lastMoveDirX:0, ankleApplied:false, dirChangeTimer:0,
+    shakeT:0, shakeMag:0, shakeDur:0, userStreak:0
+  };
+  attachBall(user);
+  prerenderCourt();   // team colors (bench jerseys) are set above, so cache the court now
+  showScreen('screen-game');
+  Platform.gameplayStart();
+  requestAnimationFrame(gameLoop);
+}
+
+// one-time onboarding nudge: control-follows-the-ball is a real departure from the
+// "you always play the same guy" convention most sports games use, so the very first
+// time it happens, call it out explicitly instead of leaving the player to notice the
+// name tag jumped to someone else on their own. Never shown again after that.
+let controlHintShownThisSession = false;
+function showControlSwitchHintOnce(p){
+  if(controlHintShownThisSession) return;
+  let seen = false;
+  try{ seen = localStorage.getItem('hoopLegendsSeenControlHint')==='1'; }catch(e){}
+  if(seen) return;
+  controlHintShownThisSession = true;
+  try{ localStorage.setItem('hoopLegendsSeenControlHint','1'); }catch(e){}
+  addFloat(p.x, p.y-110, "YOU'RE NOW " + p.role + "!", '#2ee6ff', 15);
+}
+function attachBall(p, smooth){
+  const b = Game.ball;
+  const prev = b.holder;
+  b.holder = p; b.inAir = false; b.loose = false; b.rest = false;
+  b.snap = !smooth;            // ground pickups ease in; passes/steals snap to hand
+  b.side = undefined;          // reset the smoothed hand-side offset
+  Game.all.forEach(pl=>pl.hasBall=false);
+  p.hasBall = true;
+  // reset the shot clock whenever possession changes teams
+  if(Game && (!prev || prev.team!==p.team)) Game.shotClock = 24;
+  // control always follows the ball: whoever just got it (pass, steal, rebound,
+  // inbound) becomes the human-controlled player on their side, and the player
+  // who had control reverts to AI. This is the single choke point every
+  // possession change already runs through, so it covers every case uniformly.
+  switchControlToBallHolder(p);
+}
+function switchControlToBallHolder(p){
+  if(!Game) return;
+  if(p.team==='home' && Game.user && p!==Game.user){
+    Game.user.isUser = false;
+    p.isUser = true;
+    Game.user = p;
+    showControlSwitchHintOnce(p);
+  } else if(p.team==='away' && Game.versus && Game.user2 && p!==Game.user2){
+    Game.user2.isUser2 = false;
+    p.isUser2 = true;
+    Game.user2 = p;
+  }
+}
+
+/* start a visible ball-in-flight travel between two players (pass / inbound throw) */
+function startPass(from, to, opts){
+  opts = opts || {};
+  const b = Game.ball;
+  b.holder = null; from.hasBall = false;
+  b.inAir = false; b.loose = false; b.rest = false;
+  b.passing = true; b.passDeflected = false;
+  b.passTeam = from.team;
+  b.passFrom = from; b.passTo = to;
+  b.psx = b.x; b.psy = b.y;
+  b.ptx = to.x; b.pty = to.y;
+  const d = Math.hypot(b.ptx-b.psx, b.pty-b.psy);
+  b.passDur = opts.dur || Math.max(0.14, Math.min(0.5, d/900));
+  b.passT = 0;
+}
+
+function dist2(a,b){ const dx=a.x-b.x, dy=a.y-b.y; return dx*dx+dy*dy; }
+function clampP(p, allowOOB){
+  const m = allowOOB ? 70 : 0;
+  p.x = Math.max(COURT.inLeft - m, Math.min(COURT.inRight + m, p.x));
+  p.y = Math.max(COURT.inTop, Math.min(COURT.inBottom, p.y));
+}
+
+/* ---------------- game loop ---------------- */
+function gameLoop(now){
+  if(!Game || Game.over) return;
+  let dt = (now - Game.lastFrame)/1000;
+  dt = Math.min(dt, 0.05);
+  Game.lastFrame = now;
+  update(dt);
+  render();
+  requestAnimationFrame(gameLoop);
+}
+
+function update(dt){
+  if(Game.paused) return;   // frozen while the pause menu is open
+  if(Game.banner){ Game.banner.t-=dt; if(Game.banner.t<=0) Game.banner=null; }
+  // free throws freeze normal play
+  if(Game.freeThrow){ updateFreeThrow(dt); updateFloatTexts(dt); return; }
+  updateInput(dt);
+  if(Game.versus) updateInput2(dt);
+  updateAI(dt);
+  updateInbound(dt);
+  updateBall(dt);
+  updateCamera(dt);
+  updateFloatTexts(dt);
+  updateShotPopup(dt);
+  updatePoses(dt);
+  updatePlaybook(dt);
+  updateShotClock(dt);
+  updateClock(dt);
+}
+
+function updatePoses(dt){
+  Game.all.forEach(p=>{ if(p.shootPose>0) p.shootPose-=dt; });
+}
+
+function updateShotClock(dt){
+  if(Game.phase!=='live') return;
+  Game.shotClock -= dt;
+  if(Game.shotClock<=0){
+    // shot-clock violation → turnover to the other team
+    const off = Game.ball.holder ? Game.ball.holder.team : 'home';
+    Audio8.buzzer();
+    addFloat(Game.ball.x, Game.ball.y-80, "SHOT CLOCK!", '#ff5577', 20);
+    const other = off==='home' ? Game.away : Game.home;
+    attachBall(other[0]);
+    Game.shotClock = 24;
+  }
+}
+
+function updatePlaybook(dt){
+  if(Game.playbookTimer>0){ Game.playbookTimer-=dt; if(Game.playbookTimer<=0) Game.playbook=null; }
+}
+
+function updateClock(dt){
+  Game.quarterTime -= dt;
+  if(Game.quarterTime<=0){
+    if(Game.quarter<4){
+      Game.quarter++;
+      Game.quarterTime = 60;
+      Game.foulsHome=0; Game.foulsAway=0; // team fouls reset each quarter
+      Audio8.buzzer();
+      Game.banner={ text:`END OF Q${Game.quarter-1}`, t:1.6 };
+    } else {
+      endGame();
+    }
+  }
+}
+
+/* ---------------- input (sprint + stamina) ---------------- */
+function updateInput(dt){
+  const user = Game.user;   // control follows the ball — this is whoever on home currently has it
+  if(user.stunTimer>0){ user.stunTimer-=dt; return; }
+
+  // playbook calls (offense only) — 1 iso, 2 pick & roll, 3 fast break
+  if(user.hasBall && !Game.pbPressed){
+    if(KEYS['Digit1']){ callPlaybook('iso'); Game.pbPressed=true; }
+    else if(KEYS['Digit2']){ callPlaybook('pnr'); Game.pbPressed=true; }
+    else if(KEYS['Digit3']){ callPlaybook('fastbreak'); Game.pbPressed=true; }
+  }
+  if(!KEYS['Digit1']&&!KEYS['Digit2']&&!KEYS['Digit3']) Game.pbPressed=false;
+
+  // special move (C): dunk if near rim with ball, crossover if guarded, steal-swipe on D
+  if(KEYS['KeyC'] && !Game.ePressed){ Game.ePressed=true; useSpecial(user, 1); }
+  if(!KEYS['KeyC']) Game.ePressed=false;
+
+  let dx=0, dy=0;
+  const arrows = !Game.versus;   // in versus the arrows belong to Player 2
+  if(KEYS['KeyA']||(arrows&&KEYS['ArrowLeft'])) dx-=1;
+  if(KEYS['KeyD']||(arrows&&KEYS['ArrowRight'])) dx+=1;
+  if(KEYS['KeyW']||(arrows&&KEYS['ArrowUp'])) dy-=1;
+  if(KEYS['KeyS']||(arrows&&KEYS['ArrowDown'])) dy+=1;
+
+  user.moving = (dx!==0||dy!==0);
+  const wantSprint = KEYS['ShiftLeft'] && user.moving && Game.stamina>2;
+  if(wantSprint){ Game.stamina = Math.max(0, Game.stamina - 30*dt); }
+  else { Game.stamina = Math.min(100, Game.stamina + 16*dt); }
+  const sprintMult = wantSprint ? 1.55 : 1;
+
+  const spd = (150 + (S.player.attrs.speed + heightSpdBonus())*14) * sprintMult;
+  if(user.moving){
+    const len = Math.hypot(dx,dy);
+    user.x += (dx/len)*spd*dt;
+    user.y += (dy/len)*spd*dt;
+    if(dx!==0) user.facing = dx>0?1:-1;
+    user.animT += dt*(wantSprint?13:9);
+    if(dx!==0){
+      if(Game.lastMoveDirX!==0 && Math.sign(dx)!==Math.sign(Game.lastMoveDirX)) Game.dirChangeTimer = 0.25;
+      Game.lastMoveDirX = dx;
+    }
+  }
+  clampP(user, Game.phase==='inbound' && Game.inbounder===user);
+
+  // Ankle Breaker badge
+  if(Game.dirChangeTimer>0){
+    Game.dirChangeTimer-=dt;
+    if(S.player.badges.includes('speed') && !Game.ankleApplied){
+      Game.away.forEach(def=>{
+        if(dist2(def,user)<80*80){ def.stunTimer=0.8; addFloat(def.x, def.y-90, "ANKLE BROKEN!", '#ff5577', 15); }
+      });
+      Game.ankleApplied = true;
+    }
+  } else Game.ankleApplied = false;
+
+  if(user.hasBall && user.moving){
+    user.dribbleSnd = (user.dribbleSnd||0)-dt;
+    if(user.dribbleSnd<=0){ Audio8.dribble(); user.dribbleSnd = wantSprint?0.22:0.3; }
+  }
+
+  if(user.hasBall){
+    if(KEYS['Space'] && !Game.shotMeter.active){
+      Game.shotMeter.active=true; Game.shotMeter.t=0; Game.shotMeter.holding=true;
+      Audio8.shotRelease();
+    }
+    if(Game.shotMeter.active && Game.shotMeter.holding){
+      Game.shotMeter.t += dt*1.6;
+      if(Game.shotMeter.t>1) Game.shotMeter.t = 1-(Game.shotMeter.t-1);
+      if(!KEYS['Space']){
+        Game.shotMeter.holding=false;
+        Game.shotMeter.active=false;
+        releaseShot(user, Math.max(0,Math.min(1,Game.shotMeter.t)));
+      }
+    }
+  } else {
+    if(KEYS['Space'] && !user.jumping){
+      user.jumping=true; user.jumpVel=230; Audio8.squeak();
+    }
+  }
+  if(user.jumping){
+    user.jumpVel -= 720*dt;
+    user.jumpH += user.jumpVel*dt;
+    if(user.jumpH<=0){ user.jumpH=0; user.jumping=false; }
+    const b = Game.ball;
+    if(b.inAir && b.shooter && b.shooter.team!=='home' && user.jumpH>30){
+      const d = Math.hypot(b.x-user.x, b.y-user.y);
+      const reach = S.player.badges.includes('defense') ? 90 : 60;
+      if(d<reach && Math.random()<0.5 && !b.blockedThisShot){
+        b.made=false; b.blockedThisShot=true;
+        Game.stats.blocks++; gainXP(12);
+        Audio8.block();
+        addFloat(user.x, user.y-100, "BLOCKED!", '#4ade80', 18);
+        screenShake(8, 0.3);
+        buzz(35);
+      }
+    }
+  }
+
+  if(KEYS['KeyX'] && !Game.xPressed){
+    Game.xPressed=true;
+    if(user.hasBall) doPass(user);
+    else if(Game.ball.holder && Game.ball.holder.team===user.team){
+      // off-ball: call for the pass — the AI handler swings it to you
+      Game.ball.holder.aiTimer = 0;
+      doPass(Game.ball.holder, user);
+      addFloat(user.x, user.y-88, "GIVE IT!", '#22d3ee', 13);
+    }
+    else attemptSteal(user);
+  }
+  if(!KEYS['KeyX']) Game.xPressed=false;
+}
+
+/* ---------------- Player 2 input (local versus) ---------------- */
+function updateInput2(dt){
+  const u = Game.user2;
+  if(!u) return;
+  if(u.stunTimer>0){ u.stunTimer-=dt; return; }
+
+  // special move (RightCtrl)
+  if(KEYS['ControlRight'] && !Game.e2Pressed){ Game.e2Pressed=true; useSpecial(u, 2); }
+  if(!KEYS['ControlRight']) Game.e2Pressed=false;
+
+  let dx=0,dy=0;
+  if(KEYS['ArrowLeft']) dx-=1;
+  if(KEYS['ArrowRight']) dx+=1;
+  if(KEYS['ArrowUp']) dy-=1;
+  if(KEYS['ArrowDown']) dy+=1;
+  u.moving=(dx!==0||dy!==0);
+  const wantSprint = KEYS['ShiftRight'] && u.moving && Game.stamina2>2;
+  if(wantSprint) Game.stamina2=Math.max(0,Game.stamina2-30*dt);
+  else Game.stamina2=Math.min(100,Game.stamina2+16*dt);
+  const spd=(150+6*14)*(wantSprint?1.55:1);
+  if(u.moving){
+    const len=Math.hypot(dx,dy);
+    u.x+=(dx/len)*spd*dt; u.y+=(dy/len)*spd*dt;
+    if(dx!==0) u.facing=dx>0?1:-1;
+    u.animT+=dt*(wantSprint?13:9);
+  }
+  clampP(u, Game.phase==='inbound' && Game.inbounder===u);
+
+  if(u.hasBall){
+    if(KEYS['Slash'] && !Game.shotMeter2.active){ Game.shotMeter2.active=true; Game.shotMeter2.t=0; Game.shotMeter2.holding=true; Audio8.shotRelease(); }
+    if(Game.shotMeter2.active && Game.shotMeter2.holding){
+      Game.shotMeter2.t += dt*1.6;
+      if(Game.shotMeter2.t>1) Game.shotMeter2.t = 1-(Game.shotMeter2.t-1);
+      if(!KEYS['Slash']){
+        Game.shotMeter2.holding=false; Game.shotMeter2.active=false;
+        releaseShot(u, Math.max(0,Math.min(1,Game.shotMeter2.t)));
+      }
+    }
+  } else if(KEYS['Slash'] && !u.jumping){
+    u.jumping=true; u.jumpVel=230; Audio8.squeak();
+  }
+  if(u.jumping){
+    u.jumpVel-=720*dt; u.jumpH+=u.jumpVel*dt;
+    if(u.jumpH<=0){ u.jumpH=0; u.jumping=false; }
+  }
+  if(KEYS['Period'] && !Game.x2Pressed){
+    Game.x2Pressed=true;
+    if(u.hasBall) doPass(u); else attemptStealBy(u);
+  }
+  if(!KEYS['Period']) Game.x2Pressed=false;
+}
+
+/* ---------------- special moves: dunk + crossover ---------------- */
+function chargeSpecial(who, amt){
+  if(who==='home') Game.special=Math.min(100,Game.special+amt);
+  else Game.special2=Math.min(100,Game.special2+amt);
+}
+function useSpecial(u, who){
+  const meter = who===1 ? Game.special : Game.special2;
+  if(meter < 100) { addFloat(u.x,u.y-90,"CHARGING…",'#8fa0b8',13); return; }
+  const hx = attackingHoopX(u.team);
+  if(u.hasBall){
+    const dRim = Math.hypot(u.x-hx, u.y-COURT.hoopY);
+    if(dRim < 230){
+      // POSTER DUNK — guaranteed bucket with flair
+      const b=Game.ball; b.inAir=true; b.holder=null; u.hasBall=false; b.blockedThisShot=false;
+      u.shootPose=0.6; b.shooter=u; b.made=true; b.isThree=false;
+      b.sx=u.x; b.sy=u.y; b.tx=hx; b.ty=COURT.hoopY; b.arcT=0; b.arcDur=0.5;
+      addFloat(u.x,u.y-100,"💥 POSTER DUNK!",'#ffd166',20);
+      Audio8.shotRelease();
+    } else {
+      // CROSSOVER — juke: stun the nearest defender and burst forward
+      const defs = u.team==='home'?Game.away:Game.home;
+      let near=null,nd=Infinity; defs.forEach(df=>{ const d=dist2(df,u); if(d<nd){nd=d;near=df;} });
+      if(near){ near.stunTimer=1.0; addFloat(near.x,near.y-90,"BROKEN!",'#ff5577',16); }
+      u.x += (u.team==='home'?1:-1)*70;
+      addFloat(u.x,u.y-90,"CROSSOVER!",'#22d3ee',16);
+      Audio8.squeak();
+    }
+  } else {
+    // on defense: a lockdown swipe with a big steal radius
+    attemptStealBy(u, 0.9);
+  }
+  if(who===1) Game.special=0; else Game.special2=0;
+}
+
+/* ---------------- playbooks (reposition your AI teammates) ---------------- */
+function callPlaybook(kind){
+  Game.playbook={ kind, team:Game.ball.holder?Game.ball.holder.team:'home' };
+  Game.playbookTimer=4;
+  const label = kind==='iso'?'ISO — clear out!' : kind==='pnr'?'PICK & ROLL!' : 'FAST BREAK!';
+  Game.banner={ text:label, t:1.3 };
+  Audio8.click();
+}
+
+/* ---------------- fouls & free throws ---------------- */
+function commitFoul(offenseTeam, shooter, wasShooting){
+  const defTeam = offenseTeam==='home'?'away':'home';
+  if(defTeam==='home') Game.foulsHome++; else Game.foulsAway++;
+  addFloat(shooter.x, shooter.y-90, "FOUL!", '#ffd166', 16);
+  Audio8.buzzer();
+  const teamFouls = defTeam==='home'?Game.foulsHome:Game.foulsAway;
+  // shooting foul, or bonus after 5 team fouls → free throws
+  if(wasShooting || teamFouls>=5){
+    startFreeThrows(shooter, wasShooting? (Math.hypot(shooter.x-attackingHoopX(offenseTeam),shooter.y-COURT.hoopY)>330?3:2) : 2);
+  }
+}
+function startFreeThrows(shooter, count){
+  Game.freeThrow = { shooter, remaining:count, meter:0, dir:1, state:'aim', timer:0 };
+  Game.ball.holder=null; Game.ball.inAir=false; Game.ball.loose=false;
+  Game.ball.x=shooter.x; Game.ball.y=shooter.y; Game.ball.h=40;
+}
+function updateFreeThrow(dt){
+  const ft=Game.freeThrow;
+  const shooterIsHuman = ft.shooter.isUser || ft.shooter.isUser2;
+  if(ft.state==='aim'){
+    // moving meter; human taps space/slash to shoot, AI auto-fires
+    ft.meter += dt*1.3*ft.dir;
+    if(ft.meter>1){ ft.meter=1; ft.dir=-1; } if(ft.meter<0){ ft.meter=0; ft.dir=1; }
+    const fire = ft.shooter.isUser ? KEYS['Space'] : ft.shooter.isUser2 ? KEYS['Slash'] : false;
+    ft.timer+=dt;
+    if((shooterIsHuman && fire) || (!shooterIsHuman && ft.timer>0.8)){
+      const timing = shooterIsHuman ? (1-Math.abs(ft.meter-0.5)*2) : (0.55+Math.random()*0.3);
+      const ftAttr = ft.shooter.isUser? S.player.attrs.shooting : ovrAttr(ft.shooter);
+      const made = Math.random() < (0.45 + ftAttr*0.03 + Math.max(0,timing)*0.30);
+      ft.made=made; ft.state='shot'; ft.timer=0;
+      Audio8.shotRelease();
+      if(made){ Audio8.swish(); if(ft.shooter.team==='home') Game.scoreHome++; else Game.scoreAway++;
+        if(ft.shooter.isUser){ Game.stats.points++; }
+        addFloat(attackingHoopX(ft.shooter.team), COURT.hoopY-60, "+1", '#ffd166', 18);
+      } else Audio8.rimMiss();
+    }
+  } else if(ft.state==='shot'){
+    ft.timer+=dt;
+    if(ft.timer>0.7){
+      ft.remaining--;
+      if(ft.remaining>0){ ft.state='aim'; ft.meter=0; ft.dir=1; ft.timer=0; }
+      else {
+        // done → other team inbounds
+        const off=ft.shooter.team;
+        Game.freeThrow=null;
+        const other = off==='home'?Game.away:Game.home;
+        attachBall(other[0]);
+        Game.phase='live';
+      }
+    }
+  }
+}
+
+/* alternate steal used by P2 / specials (mirrors attemptSteal but for any player) */
+function attemptStealBy(u, forcedChance){
+  if(Game.phase!=='live') return;
+  const bh=Game.ball.holder;
+  if(!bh || bh.team===u.team) return;
+  const d=Math.sqrt(dist2(u,bh));
+  const radius = forcedChance? 110 : 60;
+  if(d>radius) return;
+  Audio8.squeak();
+  const chance = forcedChance!=null ? forcedChance : 0.28;
+  if(Math.random()<chance){
+    Audio8.steal(); attachBall(u, true);
+    addFloat(u.x,u.y-90,"STEAL!", '#4ade80', 16);
+  } else if(Math.random()<0.28){
+    // reaching in → foul
+    commitFoul(bh.team, bh, false);
+  }
+}
+
+/* ---------------- shooting ---------------- */
+function computeShotChance(shooter, meterT){
+  const hx = attackingHoopX(shooter.team);
+  // timing window scales with difficulty (Easy = forgiving, Hard = tight)
+  const winMul = (Game.diffCfg ? Game.diffCfg.timingWin : 1);
+  const peak = 1 - Math.abs(meterT-0.5)*(2.3/winMul);
+  const timing = Math.max(0, Math.min(1, peak));
+  const shootAttr = shooter.isUser ? S.player.attrs.shooting
+                                   : (ovrAttr(shooter) + Game.diff*2) * (Game.diffCfg?Game.diffCfg.aiSkill:1);
+
+  const d = Math.hypot(shooter.x-hx, shooter.y-COURT.hoopY);
+  const isThree = d > 330;
+
+  // Distance is the dominant factor and gates the WHOLE shot: a layup is a
+  // near-lock, a three is a real gamble, and a half-court heave is nearly zero.
+  // Curve: 1 at the rim, ~0.55 at the arc, ~0.03 at half court, 0 full court.
+  const distNorm = Math.min(1, Math.max(0, (d-55)/500));
+  const distFactor = Math.max(0, 1 - Math.pow(distNorm, 1.4));
+
+  // the makeable portion is multiplied by distance, so skill+timing can't
+  // rescue a shot from way downtown.
+  let chance = distFactor * (0.42 + shootAttr*0.035 + timing*0.30);
+
+  if(isThree && shooter.isUser && S.player.badges.includes('shooting')) chance += 0.10*distFactor;
+
+  // defensive contest: a defender in your face tanks the shot — a better defender contests harder
+  const defenders = shooter.team==='home' ? Game.away : Game.home;
+  let nearest = Infinity, nearestDf = null;
+  defenders.forEach(df=>{ const dd = Math.hypot(df.x-shooter.x, df.y-shooter.y); if(dd<nearest){ nearest=dd; nearestDf=df; } });
+  if(nearest < 78){
+    const defSkill = nearestDf.isUser ? (S.player.attrs.defense+heightDefBonus()) : ovrAttr(nearestDf);
+    chance -= (1 - nearest/78) * 0.30 * (defSkill/5);
+  }
+
+  if(shooter.buffed) chance += 0.05;
+  chance = Math.max(0.02, Math.min(0.97, chance));
+  return { chance, isThree, hx };
+}
+
+function releaseShot(shooter, meterT){
+  const { chance, isThree, hx } = computeShotChance(shooter, meterT);
+  const b = Game.ball;
+  const dRim = Math.hypot(shooter.x-hx, shooter.y-COURT.hoopY);
+  const isLayup = dRim < 150;
+  b.inAir=true; b.loose=false; b.holder=null; b.blockedThisShot=false;
+  shooter.hasBall=false;
+  b.shooter=shooter;
+  b.made = Math.random()<chance;
+  b.isThree = isThree;
+  b.layup = isLayup;
+  b.sx=shooter.x; b.sy=shooter.y;
+  b.tx=hx; b.ty=COURT.hoopY;
+  if(isLayup){
+    // LAYUP/DUNK: the shooter drives up off the floor and finishes quick & low
+    shooter.jumping = true; shooter.jumpVel = 240; shooter.jumpH = Math.max(shooter.jumpH,1);
+    shooter.shootPose = 0.45;
+    b.arcT=0; b.arcDur=0.42;
+    Audio8.squeak();
+  } else {
+    shooter.shootPose = 0.55;
+    b.arcT=0; b.arcDur=0.85;
+  }
+  if(shooter.isUser) showPopup(`${Math.round(chance*100)}% Chance!`, chance>0.6?'#34d399':chance>0.35?'#ffd166':'#f87171');
+  Audio8.shotRelease();
+}
+
+function showPopup(text,color){ Game.shotPopup={text,color,t:0,dur:1.3}; }
+function updateShotPopup(dt){
+  if(Game.shotPopup){ Game.shotPopup.t+=dt; if(Game.shotPopup.t>=Game.shotPopup.dur) Game.shotPopup=null; }
+}
+
+/* ---------------- ball ---------------- */
+function updateBall(dt){
+  const b = Game.ball;
+  if(b.passing){
+    // ball is in flight between two players — a visible travel, not a teleport
+    b.ptx = b.passTo.x; b.pty = b.passTo.y;
+    b.passT += dt/b.passDur;
+    const t = Math.min(1, b.passT);
+    b.x = b.psx + (b.ptx-b.psx)*t;
+    b.y = b.psy + (b.pty-b.psy)*t;
+    b.h = 42 + Math.sin(Math.PI*t)*30;
+    if(!b.passDeflected && t>0.2 && t<0.9){
+      const defenders = b.passTeam==='home' ? Game.away : Game.home;
+      for(const df of defenders){
+        const dd = Math.hypot(df.x-b.x, df.y-b.y);
+        if(dd < 44){
+          const defAttr = df.isUser ? (S.player.attrs.defense+heightDefBonus()) : (ovrAttr(df)+Game.diff);
+          const stealChance = (0.10 + defAttr*0.02) * (Game.diffCfg?Game.diffCfg.aiSteal:1) * dt*4;
+          if(Math.random() < stealChance){
+            b.passDeflected = true; b.passing = false;
+            b.loose = true; b.rest = false;
+            b.vh = 60+Math.random()*40;
+            b.vx = (Math.random()*2-1)*140; b.vy = (Math.random()*2-1)*140;
+            Audio8.steal();
+            addFloat(df.x, df.y-90, "DEFLECTED!", '#4ade80', 16);
+            return;
+          }
+        }
+      }
+    }
+    if(t>=1){ b.passing=false; attachBall(b.passTo, true); }
+    return;
+  }
+  if(b.holder){
+    const h = b.holder;
+    h.dribbleT += dt*(h.moving?10:7);
+    const bounce = Math.abs(Math.sin(h.dribbleT)) * 38;
+    // ease the hand side so a crossover/direction-change slides the ball across
+    // the body instead of teleporting it to the other hand
+    if(b.side===undefined) b.side = h.facing;
+    b.side += (h.facing - b.side) * Math.min(1, dt*9);
+    const tx = h.x + b.side*34;
+    const ty = h.y + 4;
+    if(b.snap){ b.x=tx; b.y=ty; b.side=h.facing; b.snap=false; }
+    else {
+      const l = Math.min(1, dt*16);   // smooth trail, no per-frame teleport
+      b.x += (tx-b.x)*l;
+      b.y += (ty-b.y)*l;
+    }
+    b.h = 8 + bounce + (h.jumpH||0);
+    return;
+  }
+  if(b.inAir){
+    b.arcT += dt/b.arcDur;
+    const t = Math.min(1,b.arcT);
+    b.x = b.sx + (b.tx-b.sx)*t;
+    b.y = b.sy + (b.ty-b.sy)*t;
+    // layups rise straight up to the rim (low, quick); jumpers get a tall arc
+    b.h = b.layup ? (40 + t*90) : (30 + Math.sin(Math.PI*t)*150);
+    if(t>=1){ b.inAir=false; resolveShot(); }
+    return;
+  }
+  if(b.loose){
+    if(b.rest){
+      // ball is sitting on the floor — whoever reaches it picks it up (no teleport)
+      let grabber=null, gd=Infinity;
+      Game.all.forEach(p=>{ const d=dist2(p,b); if(d<gd){ gd=d; grabber=p; } });
+      if(grabber && gd < 34*34){
+        b.rest=false;
+        const wasHome = grabber.team==='home';
+        attachBall(grabber, true);   // ease into the hand — no teleport
+        if(grabber.isUser){ Game.stats.rebounds++; gainXP(5); }
+        addFloat(grabber.x, grabber.y-80, "REBOUND!", wasHome?'#34d399':'#ff8c00', 14);
+      }
+      return;
+    }
+    b.vh -= 500*dt;
+    b.h += b.vh*dt;
+    b.x += (b.vx||0)*dt;
+    b.y += (b.vy||0)*dt;
+    // keep the ball in bounds while loose
+    b.x = Math.max(COURT.inLeft, Math.min(COURT.inRight, b.x));
+    b.y = Math.max(COURT.inTop, Math.min(COURT.inBottom, b.y));
+    if(b.h<=6){
+      b.h=6; b.vh*=-0.45; b.vx=(b.vx||0)*0.7; b.vy=(b.vy||0)*0.7;
+      Audio8.dribble();
+      if(Math.abs(b.vh)<40 && Math.abs(b.vx)<25 && Math.abs(b.vy)<25){
+        // ball comes to rest on the floor — players must go grab it (a real rebound)
+        b.rest=true; b.vx=0; b.vy=0; b.vh=0; b.h=6;
+      }
+    }
+  }
+}
+
+function resolveShot(){
+  const b = Game.ball;
+  const shooter = b.shooter;
+  if(b.made){
+    Audio8.swish();
+    // crowd reacts — bigger for threes; a buzzer-beater gets the full treatment
+    const buzzerBeater = Game.quarterTime < 1.2;
+    // a CLUTCH shot: final quarter, under 15s, a one-possession game before this basket
+    const marginBefore = Math.abs(Game.scoreHome-Game.scoreAway);
+    const clutch = !buzzerBeater && Game.quarter>=4 && Game.quarterTime<15 && marginBefore<=3;
+    if(buzzerBeater) Audio8.buzzerBeater();
+    else Audio8.cheer(b.isThree);
+    const pts = b.isThree?3:2;
+    if(shooter.team==='home') Game.scoreHome+=pts; else Game.scoreAway+=pts;
+    if(clutch){ addFloat(shooter.x, shooter.y-100, "CLUTCH!", '#2ee6ff', 20); screenShake(6, 0.25); }
+    if(shooter.isUser){
+      Game.stats.points+=pts;
+      gainXP(clutch ? pts*14 : pts*8);
+      if(clutch) buzz([50,30,50]);
+      checkSponsor();
+      buzz(30);
+      Game.userStreak = (Game.userStreak||0) + 1;
+      if(Game.userStreak===3){
+        addFloat(shooter.x, shooter.y-120, "ON FIRE!", '#ff8c00', 22);
+        shooter.buffed = true; shooter.buffTimer = 999;   // stays hot until a miss
+        Audio8.badge();
+        buzz([40,40,40]);
+      } else if(Game.userStreak>3){
+        addFloat(shooter.x, shooter.y-110, `${Game.userStreak} STRAIGHT!`, '#ff8c00', 16);
+      }
+    }
+    if(b.layup){ addFloat(b.tx, b.ty-84, "AND-1 LAYUP!", '#34d399', 13); screenShake(7, 0.3); }
+    if(buzzerBeater){ screenShake(10, 0.4); buzz([60,30,60,30,80]); }
+    // build the special meter for the scoring side
+    chargeSpecial(shooter.team, b.isThree?26:20);
+    // control follows the ball, so the receiver of your pass becomes "you" the instant
+    // they catch it — credit the assist off who actually threw the pass, not isUser,
+    // or this stat would go permanently unreachable under the new control mechanic
+    if(Game.pendingAssist && shooter.team==='home' && shooter!==Game.pendingAssist.passer){
+      Game.stats.assists++; gainXP(6); Game.pendingAssist=null;
+    }
+    addFloat(b.tx, b.ty-60, `+${pts}`, '#ffd166', 20);
+    startInbound(shooter.team);
+  } else {
+    Audio8.rimMiss();
+    if(b.shooter && b.shooter.isUser && Game.userStreak){
+      Game.userStreak = 0;
+      b.shooter.buffed = false; b.shooter.buffTimer = 0;
+    }
+    b.loose=true;
+    b.x = b.tx + (b.tx<COURT.W/2 ? 40+Math.random()*70 : -(40+Math.random()*70));
+    b.y = b.ty + (Math.random()*120-60);
+    b.h = 90; b.vh = -30;
+    b.vx = Math.random()*60-30;
+    b.vy = Math.random()*60-30;
+  }
+}
+
+/* Real inbound after a made basket: the inbounder steps out of bounds behind
+   the baseline the OTHER team just scored on, a teammate steps to receive, and
+   after a short beat the inbounder passes it in. Then play goes live — the ball
+   travels as a visible pass instead of teleporting up the floor. */
+function startInbound(scoringTeam){
+  // the team that was scored ON inbounds the ball
+  const inbTeam = scoringTeam==='home' ? Game.away : Game.home;
+  const inb = inbTeam[0];
+  // they inbound from under the basket the scoring team attacked
+  const baselineX = attackingHoopX(scoringTeam);
+  const outSign = baselineX < COURT.W/2 ? -1 : 1; // which way is out of bounds
+  inb.x = baselineX + outSign*45;                 // just past the baseline (OOB)
+  inb.y = COURT.hoopY + 80;
+  inb.moving = false; inb.facing = -outSign;
+  attachBall(inb);
+
+  // pick a receiver (their PG/next player) and send them to a catch spot inbounds
+  const receiver = inbTeam[1] || inbTeam[0];
+  receiver.inboundSpot = { x: baselineX - outSign*140, y: COURT.hoopY + 40 };
+
+  Game.phase='inbound';
+  Game.inbounder=inb;
+  Game.inboundReceiver=receiver;
+  Game.inboundTimer=1.1;      // beat before the pass
+}
+function updateInbound(dt){
+  if(Game.phase!=='inbound' || !Game.inbounder) return;
+  const rec = Game.inboundReceiver;
+  // receiver jogs to the catch spot
+  if(rec && rec.inboundSpot && rec!==Game.inbounder){
+    const dx=rec.inboundSpot.x-rec.x, dy=rec.inboundSpot.y-rec.y;
+    const len=Math.hypot(dx,dy)||1;
+    if(len>6){
+      rec.x += (dx/len)*Math.min(200*dt,len);
+      rec.y += (dy/len)*Math.min(200*dt,len);
+      if(Math.abs(dx)>2) rec.facing = dx>0?1:-1;
+      rec.moving=true; rec.animT += dt*10;
+    } else rec.moving=false;
+  }
+  Game.inboundTimer -= dt;
+  if(Game.inboundTimer<=0){
+    // throw the inbound pass as a visible travel, then resume live play
+    const from=Game.inbounder, to=rec||Game.inbounder;
+    startPass(from, to, {dur:0.35});
+    from.x += (from.x<COURT.W/2? 40 : -40); // step back inbounds
+    Game.phase='live';
+    Game.inbounder=null; Game.inboundReceiver=null;
+    Audio8.dribble();
+  }
+}
+
+function giveLooseBall(){
+  let best=null,bd=Infinity;
+  Game.all.forEach(p=>{ const d=dist2(p,Game.ball); if(d<bd){bd=d;best=p;} });
+  if(best){
+    attachBall(best);
+    if(best.isUser){ Game.stats.rebounds++; gainXP(5); }
+  }
+}
+
+/* ---------------- pass / steal ---------------- */
+function doPass(passer, prefer){
+  const mates = (passer.team==='home'?Game.home:Game.away).filter(p=>p!==passer);
+  if(!mates.length) return;
+  const defenders = passer.team==='home'?Game.away:Game.home;
+  let best=null,bestScore=-Infinity;
+  // pick the most OPEN teammate: reward distance from the nearest defender,
+  // lightly penalize very long cross-court passes. A "prefer" target (a human
+  // calling for the ball) gets a big bonus.
+  mates.forEach(t=>{
+    let nd=Infinity; defenders.forEach(df=>{ const dd=dist2(df,t); if(dd<nd) nd=dd; });
+    const openness = Math.sqrt(nd);
+    const passLen = Math.sqrt(dist2(t,passer));
+    let score = openness - passLen*0.25;
+    if(prefer && t===prefer) score += 400;
+    if(score>bestScore){ bestScore=score; best=t; }
+  });
+  if(!best) return;
+  const passAttr = passer.isUser ? S.player.attrs.passing : (ovrAttr(passer)+Game.diff);
+  let chance = 0.55 + passAttr*0.045;
+  if(passer.isUser && S.player.badges.includes('passing')) chance += 0.15;
+  Audio8.dribble();
+  if(Math.random()<chance){
+    startPass(passer, best);
+    if(passer.isUser){
+      gainXP(2);
+      Game.pendingAssist = { t:3, passer };
+      if(S.player.badges.includes('passing')){ best.buffed=true; best.buffTimer=5; }
+    }
+  } else {
+    const b=Game.ball;
+    b.holder=null; passer.hasBall=false;
+    b.loose=true;
+    b.x=(passer.x+best.x)/2; b.y=(passer.y+best.y)/2;
+    b.h=40; b.vh=-20;
+    b.vx=(best.x-passer.x)*0.4; b.vy=(best.y-passer.y)*0.4;
+    addFloat(passer.x, passer.y-90, "Bad Pass!", '#ff5577', 15);
+  }
+}
+
+function attemptSteal(user){
+  if(Game.phase!=='live') return;
+  const bh = Game.ball.holder;
+  if(!bh || bh.team===user.team) return;
+  const d = Math.sqrt(dist2(user,bh));
+  let radius = 60;
+  if(S.player.badges.includes('defense')) radius = 95;
+  if(d>radius) return;
+  const defAttr = S.player.attrs.defense + heightDefBonus();
+  let chance = (0.15 + defAttr*0.05) * (Game.diffCfg?Game.diffCfg.playerSteal:1);
+  if(S.player.badges.includes('defense')) chance += 0.2;
+  Audio8.squeak();
+  if(Math.random()<chance){
+    Audio8.steal();
+    Game.stats.steals++; gainXP(10);
+    chargeSpecial(user.team, 22);
+    attachBall(user, true);
+    addFloat(user.x, user.y-90, "STEAL!", '#4ade80', 18);
+    buzz(25);
+  } else if(Math.random()<0.22){
+    commitFoul(bh.team, bh, false);   // reach-in foul on a missed swipe
+  }
+}
+
+/* ---------------- XP / sponsor ---------------- */
+function gainXP(n){
+  S.player.xp += n;
+  while(S.player.xp >= S.player.xpToNext){
+    S.player.xp -= S.player.xpToNext;
+    S.player.level++;
+    S.player.xpToNext = Math.round(S.player.xpToNext*1.18);
+    const sp = Math.round(3*S.spMultiplierNextGame);
+    S.player.sp += sp;
+    Audio8.levelup();
+    addFloat(Game.user.x, Game.user.y-130, `LEVEL UP! +${sp} SP`, '#ffd166', 20);
+  }
+}
+function checkSponsor(){
+  if(S.sponsor && !S.sponsor.done && S.sponsor.check(Game.stats)){
+    S.sponsor.done=true;
+    addFloat(Game.user.x, Game.user.y-160, "SPONSOR GOAL MET!", '#4ade80', 18);
+  }
+}
+
+/* ---------------- AI ---------------- */
+function updateAI(dt){
+  Game.all.forEach(p=>{
+    if(p.isUser || p.isUser2) return;
+    if(Game.phase==='inbound' && p===Game.inbounder) return;
+    if(p.stunTimer>0){ p.stunTimer-=dt; p.moving=false; return; }
+    if(p.buffTimer>0){ p.buffTimer-=dt; if(p.buffTimer<=0) p.buffed=false; }
+    p.aiTimer -= dt;
+
+    const b = Game.ball;
+    const offense = b.holder ? b.holder.team : null;
+    const hx = attackingHoopX(p.team);
+
+    let tx=p.x, ty=p.y;
+    let speed = (p.baseSpeed||200) + Game.diff*22;
+
+    const ballLoose = !b.holder && !b.inAir && (b.loose||b.rest);
+
+    if(ballLoose){
+      // only the single closest teammate chases the loose ball; the rest space out
+      const mine = p.team==='home'?Game.home:Game.away;
+      let closest=null, cd=Infinity;
+      mine.forEach(m=>{ if(m.isUser||m.isUser2) return; const d=dist2(m,b); if(d<cd){cd=d;closest=m;} });
+      if(p===closest){ tx=b.x; ty=b.y; speed=(p.baseSpeed||200)*1.4+Game.diff*22; }
+      else { const slot=SLOTS[p.role]||SLOTS.SF; tx=hx+(hx===COURT.hoopRightX?-slot.dist:slot.dist); ty=COURT.hoopY+slot.yOff; }
+    } else if(p.hasBall){
+      const dHoop = Math.hypot(p.x-hx, p.y-COURT.hoopY);
+      const dirX = Math.sign(hx - p.x)||1;
+      // drive smoothly toward the rim (no oscillating target = no jitter)
+      tx = hx - dirX*50;
+      ty = COURT.hoopY + (p.y-COURT.hoopY)*0.55;
+      speed = (p.baseSpeed||200)*1.15 + Game.diff*22;
+      // how tightly is the handler guarded?
+      const defs = p.team==='home'?Game.away:Game.home;
+      let nd=Infinity; defs.forEach(df=>{ const d=dist2(df,p); if(d<nd) nd=d; });
+      const guarded = nd < 62*62;
+      if(p.aiTimer<=0){
+        if(dHoop<175){                       // open layup range → take it
+          p.aiTimer=1.0+Math.random()*0.5; releaseShot(p, 0.42+Math.random()*0.28);
+        } else if(Game.shotClock<5){          // beat the shot clock
+          p.aiTimer=1.0; releaseShot(p, 0.30+Math.random()*0.4);
+        } else if(guarded && Math.random()<0.55){  // kick it out when pressured
+          p.aiTimer=0.9; doPass(p);
+        } else if(dHoop<300 && !guarded && Math.random()<0.22){ // open pull-up
+          p.aiTimer=1.1; releaseShot(p, 0.4+Math.random()*0.32);
+        }
+      }
+    } else if(p.team===offense){
+      const slot = SLOTS[p.role] || SLOTS.SF;
+      tx = hx + (hx===COURT.hoopRightX ? -slot.dist : slot.dist);
+      ty = COURT.hoopY + slot.yOff;
+      // a called play repositions teammates
+      if(Game.playbook && Game.playbook.team===p.team){
+        const toHoop = hx===COURT.hoopRightX ? -1 : 1;
+        if(Game.playbook.kind==='iso'){
+          // clear out: everyone but the handler spaces to the far side
+          tx = hx + toHoop*Math.max(slot.dist,300);
+          ty = COURT.hoopY + (p.role==='SG'?-160:p.role==='SF'?160:p.role==='PF'?-120:120);
+        } else if(Game.playbook.kind==='pnr'){
+          // the big sets a screen near the handler then rolls to the rim
+          if(p.role==='C'||p.role==='PF'){
+            const bh=Game.ball.holder;
+            if(bh){ tx = bh.x + toHoop*30; ty = bh.y - 20 + (p.role==='C'?40:-40); }
+            if(Math.hypot(p.x-hx,p.y-COURT.hoopY)<200){ tx=hx+toHoop*60; ty=COURT.hoopY; }
+          }
+        } else if(Game.playbook.kind==='fastbreak'){
+          // everyone sprints toward the rim
+          tx = hx + toHoop*(80+slot.dist*0.3);
+          ty = COURT.hoopY + slot.yOff*0.5;
+          speed *= 1.35;
+        }
+      }
+    } else {
+      const mine = p.team==='home'?Game.home:Game.away;
+      const opp  = p.team==='home'?Game.away:Game.home;
+      const mark = opp[mine.indexOf(p)] || opp[0];
+      const defHx = attackingHoopX(p.team==='home'?'away':'home');
+      const dirToHoop = Math.sign(defHx - mark.x)||1;
+      // pressure the ball-handler tightly; sag off your man otherwise (help D).
+      const guardingHandler = b.holder===mark;
+      const cushion = guardingHandler ? 40 : 90;
+      tx = mark.x + dirToHoop*cushion;
+      ty = mark.y + (guardingHandler ? 8 : 24);
+      if(guardingHandler) speed *= 1.12;   // close out with urgency
+      const d2m = dist2(p,mark);
+      if(Game.phase==='live' && mark.hasBall && d2m<65*65 && p.aiTimer<=0){
+        p.aiTimer = 1.4;
+        // a better defender (higher OVR) strips the ball more often; a better ball-handler protects it better
+        const stealSkill = (ovrAttr(p)/5) / (ovrAttr(mark)/5);
+        if(Math.random() < (0.05 + Game.diff*0.025)*(Game.diffCfg?Game.diffCfg.aiSteal:1)*stealSkill){
+          Audio8.steal();
+          attachBall(p, true);
+          addFloat(p.x, p.y-90, "STEAL!", '#ff8c00', 15);
+        }
+      }
+      if(b.inAir && b.shooter && b.shooter.team!==p.team && !b.blockedThisShot){
+        const dSh = dist2(p,{x:b.shooter.x,y:b.shooter.y});
+        if(dSh<70*70 && Math.random()<0.008*(Game.diffCfg?Game.diffCfg.aiSteal:1)*(ovrAttr(p)/5)){
+          b.made=false; b.blockedThisShot=true;
+          p.jumping=true; p.jumpVel=200; p.jumpH=Math.max(p.jumpH,1);
+          Audio8.block();
+          addFloat(p.x, p.y-90, "BLOCKED!", '#ff5577', 16);
+          if(b.shooter && b.shooter.isUser){ screenShake(8, 0.3); Game.userStreak=0; b.shooter.buffed=false; b.shooter.buffTimer=0; }
+        }
+      }
+    }
+
+    let dx=tx-p.x, dy=ty-p.y;
+    const baseDist = Math.hypot(dx,dy);   // true distance to the intended spot
+
+    // SPRINT in transition: the farther from where they need to be, the faster.
+    let sprinting = false;
+    if(baseDist>150){ speed *= 1.5; sprinting = true; p.sprintT = 0.2; }
+    else if(p.sprintT>0){ p.sprintT-=dt; speed *= 1.2; }
+
+    // SEPARATION: gently push off nearby players so they don't clump.
+    let sepx=0, sepy=0;
+    Game.all.forEach(o=>{
+      if(o===p) return;
+      const ox=p.x-o.x, oy=p.y-o.y;
+      const dd=ox*ox+oy*oy;
+      if(dd>1 && dd<50*50){ const inv=1/Math.sqrt(dd); sepx+=ox*inv; sepy+=oy*inv; }
+    });
+    const sepMag = Math.hypot(sepx,sepy);
+    dx += sepx*18; dy += sepy*18;   // gentler push so crowded players don't tug-of-war
+    const len = Math.hypot(dx,dy)||1;
+
+    // DEADZONE: if essentially in position and not being crowded, hold still.
+    // This is what kills the twitchy back-and-forth vibration.
+    if(baseDist < 16 && sepMag < 0.9){
+      p.moving = false;
+    } else {
+      // smooth the intended direction across frames — in a crowd the raw
+      // separation vector can flip sign frame-to-frame, which otherwise
+      // shows up as visible jitter/vibration when several players cluster
+      const dirX = dx/len, dirY = dy/len;
+      if(p.moveDirX==null){ p.moveDirX=dirX; p.moveDirY=dirY; }
+      const smoothT = Math.min(1, dt*8);
+      p.moveDirX += (dirX-p.moveDirX)*smoothT;
+      p.moveDirY += (dirY-p.moveDirY)*smoothT;
+      const step = Math.min(speed*(Game.diffCfg?Game.diffCfg.aiSpeed:1)*dt, len);
+      p.x += p.moveDirX*step;
+      p.y += p.moveDirY*step;
+      if(Math.abs(p.moveDirX) > 0.35) p.facing = p.moveDirX>0?1:-1;   // only flip on clear horizontal intent
+      p.moving = true;
+      p.animT += dt*(sprinting?14:10);
+    }
+    if(p.jumping){
+      p.jumpVel -= 720*dt;
+      p.jumpH += p.jumpVel*dt;
+      if(p.jumpH<=0){ p.jumpH=0; p.jumping=false; }
+    }
+    clampP(p);
+  });
+
+  if(Game.pendingAssist){
+    Game.pendingAssist.t -= dt;
+    if(Game.pendingAssist.t<=0) Game.pendingAssist=null;
+  }
+}
+
+/* ---------------- float text / camera ---------------- */
+function addFloat(x,y,text,color,size){
+  Game.floatTexts.push({x,y,text,color,size:size||16,t:0});
+}
+function updateFloatTexts(dt){
+  Game.floatTexts.forEach(f=>f.t+=dt);
+  Game.floatTexts = Game.floatTexts.filter(f=>f.t<1.4);
+}
+function updateCamera(dt){
+  const viewW = canvas.width/ZOOM;   // how much court width is visible after zoom-out
+  const target = Math.max(0, Math.min(COURT.W - viewW, Game.ball.x - viewW/2));
+  Game.camX += (target-Game.camX)*Math.min(1, dt*6);
+  if(Game.shakeT>0) Game.shakeT = Math.max(0, Game.shakeT-dt);
+}
+function screenShake(mag, dur){
+  Game.shakeT = dur||0.28;
+  Game.shakeMag = mag||6;
+  Game.shakeDur = Game.shakeT;
+}
+function buzz(pattern){ try{ if(navigator.vibrate) navigator.vibrate(pattern); }catch(e){} }
+
+/* =========================================================================
+   RENDERING
+========================================================================= */
+function render(){
+  ctx.fillStyle='#0e1524';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.save();
+  ctx.scale(ZOOM, ZOOM);                    // zoom out so sidelines, benches & stands are visible
+  let shX=0, shY=0;
+  if(Game.shakeT>0){
+    const falloff = Game.shakeT/(Game.shakeDur||0.28);
+    shX = (Math.random()*2-1)*Game.shakeMag*falloff;
+    shY = (Math.random()*2-1)*Game.shakeMag*falloff*0.5;
+  }
+  ctx.translate(-Math.round(Game.camX)+shX, shY);
+
+  if(courtCache) ctx.drawImage(courtCache, -40, 0);
+  drawHoop(COURT.hoopLeftX, true);
+  drawHoop(COURT.hoopRightX, false);
+
+  const list = Game.all.slice().sort((a,b)=>a.y-b.y);
+  if(Game.ball.holder){
+    list.forEach(p=>{
+      drawPlayerSpr(p);
+      if(p===Game.ball.holder) drawBallSpr();
+    });
+  } else {
+    const ballHigh = Game.ball.h>60;
+    if(!ballHigh) drawBallSpr();
+    list.forEach(drawPlayerSpr);
+    if(ballHigh) drawBallSpr();
+  }
+
+  drawFloats();
+  ctx.restore();
+
+  drawScoreboard();
+  drawStamina();
+  drawSpecialMeters();
+  if(Game.shotMeter.active) drawMeter(Game.shotMeter, Game.user, false);
+  if(Game.versus && Game.shotMeter2.active) drawMeter(Game.shotMeter2, Game.user2, true);
+  if(Game.shotPopup) drawPopup();
+  if(Game.freeThrow) drawFreeThrow();
+  if(Game.banner) drawBanner();
+
+  ctx.fillStyle='rgba(255,255,255,0.5)';
+  ctx.font='10px monospace';
+  ctx.textAlign='left';
+  if(Game.versus){
+    ctx.fillStyle=Game.teamHome.secondary;
+    ctx.fillText('P1: WASD move · Shift sprint · Space shoot · X pass/steal · C special · 1/2/3 plays', 10, canvas.height-20);
+    ctx.fillStyle=Game.teamAway.secondary;
+    ctx.fillText('P2: Arrows move · RShift sprint · / shoot · . pass/steal · RCtrl special', 10, canvas.height-8);
+  } else {
+    ctx.fillText('WASD Move · SHIFT Sprint · SPACE Shoot/Jump · X Pass/Steal · C Special · 1/2/3 Plays · M '+(Audio8._muted?'Unmute':'Mute'), 10, canvas.height-8);
+  }
+}
+
+function drawBanner(){
+  const b=Game.banner;
+  const a = Math.min(1, b.t*2);
+  ctx.save();
+  ctx.globalAlpha=a;
+  ctx.fillStyle='rgba(10,15,25,0.85)';
+  ctx.fillRect(0, canvas.height/2-30, canvas.width, 60);
+  ctx.fillStyle='#ffd166';
+  ctx.font='bold 30px monospace';
+  ctx.textAlign='center';
+  ctx.fillText(b.text, canvas.width/2, canvas.height/2+10);
+  ctx.restore();
+  ctx.textAlign='left';
+}
+
+function drawSpecialMeters(){
+  // P1 special (bottom-left, above stamina)
+  drawSpecialBar(12, canvas.height-58, Game.special, Game.teamHome.secondary, 'SPECIAL [C]');
+  if(Game.versus){
+    drawSpecialBar(canvas.width-132, canvas.height-58, Game.special2, Game.teamAway.secondary, 'P2 [RCtrl]');
+    // P2 stamina bottom-right
+    const w=120,h=10,x=canvas.width-132,y=canvas.height-34;
+    ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(x-3,y-3,w+6,h+6);
+    ctx.fillStyle='#1a2438'; ctx.fillRect(x,y,w,h);
+    const f=Game.stamina2/100;
+    ctx.fillStyle=f>0.5?'#34d399':f>0.25?'#ffd166':'#f87171'; ctx.fillRect(x,y,w*f,h);
+    ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.font='bold 9px monospace';
+    ctx.fillText('P2 STAMINA', x, y-6);
+  }
+}
+function drawSpecialBar(x,y,val,col,label){
+  const w=120,h=8;
+  ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(x-3,y-3,w+6,h+6);
+  ctx.fillStyle='#1a2438'; ctx.fillRect(x,y,w,h);
+  ctx.fillStyle= val>=100 ? '#ffd166' : col;
+  ctx.fillRect(x,y,w*(val/100),h);
+  ctx.fillStyle= val>=100 ? '#ffd166' : 'rgba(255,255,255,0.7)';
+  ctx.font='bold 9px monospace';
+  ctx.fillText(val>=100?'★ '+label+' READY':label, x, y-5);
+}
+
+function drawFreeThrow(){
+  const ft=Game.freeThrow;
+  ctx.fillStyle='rgba(10,15,25,0.6)';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='#ffd166'; ctx.font='bold 22px monospace'; ctx.textAlign='center';
+  ctx.fillText(`FREE THROW  (${ft.remaining} left)`, canvas.width/2, 120);
+  if(ft.state==='aim'){
+    const isHuman = ft.shooter.isUser||ft.shooter.isUser2;
+    ctx.fillStyle='#eaf0f8'; ctx.font='13px monospace';
+    ctx.fillText(isHuman? `Tap ${ft.shooter.isUser?'SPACE':'/'} in the green to sink it` : 'Shooting…', canvas.width/2, 150);
+    const bw=200,bh=18,bx=canvas.width/2-bw/2,by=170;
+    ctx.fillStyle='#1a2438'; ctx.fillRect(bx,by,bw,bh);
+    ctx.fillStyle='rgba(52,211,153,0.5)'; ctx.fillRect(bx+bw*0.42,by,bw*0.16,bh);
+    ctx.fillStyle='#ffd166'; ctx.fillRect(bx+ft.meter*bw-2,by-3,4,bh+6);
+    ctx.strokeStyle='#ff7a29'; ctx.lineWidth=2; ctx.strokeRect(bx,by,bw,bh);
+  } else {
+    ctx.fillStyle=ft.made?'#34d399':'#f87171'; ctx.font='bold 26px monospace';
+    ctx.fillText(ft.made?'SWISH!':'MISS', canvas.width/2, 175);
+  }
+  ctx.textAlign='left';
+}
+
+// The court background (floor, planks, crowd texture, benches, hoops-end markings) is
+// fully static for the whole game — drawCrowd()'s comment even calls out that it's
+// deterministic specifically so panning doesn't shimmer it. Redrawing ~600+ individual
+// fillRect/stroke calls for it every single frame at 60fps was pure waste; render it once
+// per game into an offscreen canvas and blit that one image every frame instead.
+let courtCache = null, courtCacheCtx = null;
+function prerenderCourt(){
+  if(!courtCache){
+    courtCache = document.createElement('canvas');
+    courtCache.width = COURT.W + 80;   // matches the -40..W+40 draw range used below
+    courtCache.height = WORLD_H;
+    courtCacheCtx = courtCache.getContext('2d');
+    courtCacheCtx.imageSmoothingEnabled = false;
+  }
+  const prevCtx = ctx;
+  ctx = courtCacheCtx;
+  ctx.clearRect(0, 0, courtCache.width, courtCache.height);
+  ctx.save();
+  ctx.translate(40, 0);   // world x=-40 → canvas x=0
+  drawCourt();
+  ctx.restore();
+  ctx = prevCtx;
+}
+function drawCourt(){
+  // ---- upper stands (far crowd) ----
+  ctx.fillStyle='#101b31';
+  ctx.fillRect(-40, 0, COURT.W+80, COURT.bandTop);
+  drawCrowd(0, COURT.bandTop-30, 3);
+  // ---- lower apron: sideline seats, scorer's table, benches ----
+  ctx.fillStyle='#101b31';
+  ctx.fillRect(-40, COURT.bandBottom, COURT.W+80, WORLD_H-COURT.bandBottom);
+  drawCrowd(COURT.bandBottom+34, WORLD_H-8, 3);
+  drawBenchesAndTable();
+  // floor
+  ctx.fillStyle='#e0b171';
+  ctx.fillRect(-40, COURT.bandTop, COURT.W+80, COURT.bandBottom-COURT.bandTop);
+  // plank columns (hard-edged alternating tones running along the court)
+  for(let x=-40; x<COURT.W+40; x+=16){
+    if((x/16|0)%2===0){ ctx.fillStyle='#dcab68'; ctx.fillRect(x,COURT.bandTop,16,COURT.bandBottom-COURT.bandTop); }
+  }
+  // plank seams
+  ctx.fillStyle='rgba(120,80,40,0.22)';
+  for(let x=-40; x<COURT.W+40; x+=16){
+    const off = ((x/16|0)%3)*90;
+    for(let y=COURT.bandTop-90+off; y<COURT.bandBottom+90; y+=270) ctx.fillRect(x,y,16,2);
+  }
+
+  const W='#f4f0e6';
+  ctx.fillStyle=W;
+  // boundary
+  ctx.fillRect(COURT.inLeft-4, COURT.inTop-4, COURT.inRight-COURT.inLeft+8, 4);
+  ctx.fillRect(COURT.inLeft-4, COURT.inBottom, COURT.inRight-COURT.inLeft+8, 4);
+  ctx.fillRect(COURT.inLeft-4, COURT.inTop-4, 4, COURT.inBottom-COURT.inTop+8);
+  ctx.fillRect(COURT.inRight, COURT.inTop-4, 4, COURT.inBottom-COURT.inTop+8);
+  // half-court line + circle
+  ctx.fillRect(COURT.W/2-2, COURT.inTop, 4, COURT.inBottom-COURT.inTop);
+  ctx.strokeStyle=W; ctx.lineWidth=4;
+  ctx.beginPath(); ctx.arc(COURT.W/2, COURT.hoopY, 60, 0, Math.PI*2); ctx.stroke();
+
+  drawEnd(COURT.inLeft, 1);
+  drawEnd(COURT.inRight, -1);
+
+  function drawEnd(baseX, dir){
+    const paintL=240, paintH=240;
+    const py = COURT.hoopY - paintH/2;
+    const px = dir>0 ? baseX : baseX - paintL;
+    ctx.fillStyle='#2762c9';
+    ctx.fillRect(px, py, paintL, paintH);
+    ctx.fillStyle='#1f55b2';
+    ctx.fillRect(dir>0?px:px+paintL-10, py, 10, paintH);
+    ctx.strokeStyle=W; ctx.lineWidth=4;
+    ctx.strokeRect(px, py, paintL, paintH);
+    const ftX = dir>0 ? px+paintL : px;
+    ctx.beginPath(); ctx.arc(ftX, COURT.hoopY, 55, 0, Math.PI*2); ctx.stroke();
+    const hxx = dir>0 ? COURT.hoopLeftX : COURT.hoopRightX;
+    ctx.beginPath(); ctx.arc(hxx, COURT.hoopY, 42, dir>0?-Math.PI/2:Math.PI/2, dir>0?Math.PI/2:Math.PI*1.5); ctx.stroke();
+    ctx.beginPath(); ctx.arc(hxx, COURT.hoopY, 320, dir>0?-Math.PI/2+0.18:Math.PI/2+0.18, dir>0?Math.PI/2-0.18:Math.PI*1.5-0.18); ctx.stroke();
+  }
+}
+
+// deterministic pseudo-random so the crowd doesn't shimmer while the camera pans
+function crowdRand(i){ const s=Math.sin(i*12.9898)*43758.5453; return s-Math.floor(s); }
+const CROWD_COLORS=['#2b3a55','#7a3b3b','#3b6b52','#6b5a2f','#4a3b66','#8a8f9c','#a05a3a'];
+function drawCrowd(y0, y1, rows){
+  const seatW=18;
+  for(let r=0;r<rows;r++){
+    const y = y0 + r*((y1-y0)/rows);
+    for(let x=-40; x<COURT.W+40; x+=seatW){
+      const idx = (x*7 + r*131);
+      // head
+      ctx.fillStyle = CROWD_COLORS[Math.floor(crowdRand(idx)*CROWD_COLORS.length)];
+      ctx.fillRect(x+4, y+3, 10, 8);
+      // body
+      ctx.fillStyle = CROWD_COLORS[Math.floor(crowdRand(idx+3)*CROWD_COLORS.length)];
+      ctx.fillRect(x+2, y+11, 14, 9);
+    }
+  }
+}
+function drawBenchesAndTable(){
+  const y = COURT.bandBottom + 4;
+  // team benches near each end
+  [[COURT.inLeft+30, Game.teamAway.primary],[COURT.inRight-250, Game.teamHome.primary]].forEach(([bx,col])=>{
+    ctx.fillStyle='#20140c'; ctx.fillRect(bx, y+18, 220, 8);   // bench plank
+    for(let i=0;i<5;i++){
+      const sx=bx+10+i*42;
+      ctx.fillStyle='#d7a56b'; ctx.fillRect(sx, y+2, 12, 8);   // seated head
+      ctx.fillStyle=col; ctx.fillRect(sx-2, y+10, 16, 9);       // jersey
+    }
+  });
+  // scorer's table at center
+  const tx=COURT.W/2-120;
+  ctx.fillStyle='#0c1424'; ctx.fillRect(tx, y+6, 240, 16);
+  ctx.fillStyle='#22314a'; ctx.fillRect(tx, y+6, 240, 4);
+  ctx.fillStyle='#ffd166'; ctx.font='bold 9px monospace'; ctx.textAlign='center';
+  ctx.fillText('★ ★ ★  COURTSIDE  ★ ★ ★', COURT.W/2, y+18);
+  ctx.textAlign='left';
+}
+
+function drawHoop(hx, isLeft){
+  const P=(px,py,w,h,c)=>{ ctx.fillStyle=c; ctx.fillRect(px,py,w,h); };
+  const y = COURT.hoopY;
+  const dir = isLeft ? 1 : -1;
+  const baseX = isLeft ? COURT.inLeft : COURT.inRight;
+  // mounting arm from beyond the baseline to the backboard
+  P(isLeft? baseX-40 : baseX+4, y-4, 36, 8, '#3d4757');
+  P(isLeft? baseX-40 : baseX+4, y-4, 36, 3, '#2b3442');
+  // backboard: tall panel between baseline and rim
+  const bbX = isLeft ? baseX-6 : baseX-8;
+  P(bbX, y-54, 14, 108, '#241c12');
+  P(bbX+3, y-50, 8, 100, '#eef1f6');
+  P(bbX+3, y-14, 8, 28, '#e8542a');
+  // rim: flat circle ring in front of the board, toward the court
+  const rimX = hx;
+  ctx.fillStyle='#241c12'; ctx.beginPath(); ctx.arc(rimX,y,17,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#e8542a'; ctx.beginPath(); ctx.arc(rimX,y,14,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#2762c9'; ctx.beginPath(); ctx.arc(rimX,y,9,0,Math.PI*2); ctx.fill();
+  // pixel net lattice hanging court-side of the rim
+  ctx.fillStyle='#eef1f6';
+  for(let r=0;r<3;r++){
+    for(let i=-2;i<=2;i++){
+      ctx.fillRect(rimX + dir*(14 + r*5) -1, y + i*7 - (r%2?3:0), 2,2);
+    }
+  }
+}
+
+function pickGrid(p){
+  if(p.shootPose>0) return p.sprites.shoot;
+  if(p.jumpH>0) return p.hasBall ? p.sprites.shoot : p.sprites.block;
+  if(p.moving) return (Math.floor(p.animT*2)%2===0) ? p.sprites.runA : p.sprites.runB;
+  return p.sprites.stand;
+}
+
+function drawPlayerSpr(p){
+  const sc = SC * (p.scale||1);
+  const grid = pickGrid(p);
+  // a player's team/skin/hair never change mid-game, but this used to recompute the
+  // palette object (with hex-string parsing) fresh for all 10 players every single
+  // frame — cache it on the player instead of reallocating 600+ times a second
+  if(!p._paletteCache) p._paletteCache = spritePalette(p.team==='home'?Game.teamHome:Game.teamAway, p.skinIdx, p.hairIdx);
+  const pal = p._paletteCache;
+  const w = SPRITE_W*sc, h = SPRITE_H*sc;
+  const footY = p.y - (p.jumpH||0);
+  const ox = Math.round(p.x - w/2), oy = Math.round(footY - h);
+
+  // shadow stays on the floor and shrinks with jump height
+  const shrink = 1/(1+(p.jumpH||0)/90);
+  ctx.fillStyle='rgba(30,20,10,'+(0.25*shrink)+')';
+  ctx.fillRect(Math.round(p.x-w*0.32*shrink), Math.round(p.y-3), Math.round(w*0.64*shrink), 6);
+
+  if(p.isUser){
+    ctx.strokeStyle='#34d399'; ctx.lineWidth=2;
+    ctx.strokeRect(Math.round(p.x-w*0.4), Math.round(p.y-6), Math.round(w*0.8), 10);
+  }
+  if(p.isUser2){
+    ctx.strokeStyle='#22d3ee'; ctx.lineWidth=2;
+    ctx.strokeRect(Math.round(p.x-w*0.4), Math.round(p.y-6), Math.round(w*0.8), 10);
+  }
+  if(p.buffed){
+    ctx.strokeStyle='#ffd166'; ctx.lineWidth=2;
+    ctx.strokeRect(ox-2, oy-2, w+4, h+4);
+  }
+
+  for(let r=0;r<grid.length;r++){
+    const row = grid[r];
+    for(let c=0;c<row.length;c++){
+      const ch=row[c];
+      if(ch==='.') continue;
+      ctx.fillStyle = pal[ch]||'#f0f';
+      const cc = p.facing<0 ? (SPRITE_W-1-c) : c;
+      ctx.fillRect(ox+cc*sc, oy+r*sc, Math.ceil(sc), Math.ceil(sc));
+    }
+  }
+
+  // jersey number
+  const numStr = String(p.jerseyNum).padStart(2,'0');
+  const cell = Math.max(1, Math.round(sc*0.7));
+  const numY = oy + Math.round(12.2*sc);
+  const totalW = 7*cell;
+  let nx = Math.round(p.x - totalW/2);
+  for(let d=0; d<2; d++){
+    const glyph = DIGITS[numStr[d]];
+    for(let r=0;r<5;r++)for(let c=0;c<3;c++){
+      if(glyph[r][c]==='1'){
+        ctx.fillStyle='#f2f4f8';
+        ctx.fillRect(nx + d*4*cell + c*cell, numY + r*cell, cell, cell);
+      }
+    }
+  }
+
+  if(p.stunTimer>0){
+    ctx.fillStyle='#ffd166';
+    ctx.font='14px monospace';
+    ctx.textAlign='center';
+    ctx.fillText('★ ★', p.x, oy-6);
+    ctx.textAlign='left';
+  }
+  // position + OVR tag above every head, in every mode — lets you read team strength at a glance mid-game
+  if(p.ovr!=null && p.role){
+    const tagY = (p.isUser||p.isUser2) ? oy-20 : oy-8;
+    const tagColor = p.ovr>=80?'#34d399':p.ovr>=68?'#ffd166':'#8fa0b8';
+    ctx.font='bold 10px monospace';
+    ctx.textAlign='center';
+    const tag = `${p.role} ${p.ovr}`;
+    ctx.strokeStyle='rgba(0,0,0,0.7)'; ctx.lineWidth=3;
+    ctx.strokeText(tag, p.x, tagY);
+    ctx.fillStyle=tagColor;
+    ctx.fillText(tag, p.x, tagY);
+    ctx.textAlign='left';
+  }
+  if(p.isUser){
+    ctx.fillStyle='#34d399';
+    ctx.font='bold 11px monospace';
+    ctx.textAlign='center';
+    ctx.fillText(Game.versus?'P1':S.player.name, p.x, oy-8);
+    ctx.textAlign='left';
+  }
+  if(p.isUser2){
+    ctx.fillStyle='#22d3ee';
+    ctx.font='bold 11px monospace';
+    ctx.textAlign='center';
+    ctx.fillText('P2', p.x, oy-8);
+    ctx.textAlign='left';
+  }
+}
+
+function drawBallSpr(){
+  const b=Game.ball;
+  const sc = 3;
+  const sx = Math.round(b.x - 4.5*sc), sy = Math.round(b.y - b.h - 4.5*sc);
+  ctx.fillStyle='rgba(30,20,10,0.25)';
+  ctx.fillRect(Math.round(b.x-6), Math.round(b.y-2), 12, 4);
+  for(let r=0;r<9;r++)for(let c=0;c<9;c++){
+    const ch=BALL_SPR[r][c]; if(ch==='.')continue;
+    ctx.fillStyle=BALL_PAL[ch];
+    ctx.fillRect(sx+c*sc, sy+r*sc, sc, sc);
+  }
+}
+
+function drawFloats(){
+  Game.floatTexts.forEach(f=>{
+    const alpha = 1-f.t/1.4;
+    ctx.save();
+    ctx.globalAlpha=Math.max(0,alpha);
+    ctx.fillStyle=f.color;
+    ctx.font=`bold ${f.size}px monospace`;
+    ctx.textAlign='center';
+    ctx.strokeStyle='rgba(0,0,0,0.6)'; ctx.lineWidth=3;
+    ctx.strokeText(f.text, f.x, f.y - f.t*40);
+    ctx.fillText(f.text, f.x, f.y - f.t*40);
+    ctx.restore();
+  });
+  ctx.textAlign='left';
+}
+
+/* segmented scoreboard */
+function drawScoreboard(){
+  const bw=380, bx=(canvas.width-bw)/2, bh=44;
+  ctx.fillStyle='#0b0f16'; ctx.fillRect(bx,0,bw,bh);
+  ctx.fillStyle=Game.teamHome.primary; ctx.fillRect(bx,0,86,bh);
+  ctx.fillStyle='#fff'; ctx.textAlign='center';
+  ctx.font='bold 14px monospace'; ctx.fillText(Game.teamHome.abbr, bx+43, 18);
+  ctx.font='bold 19px monospace'; ctx.fillText(String(Game.scoreHome), bx+43, 38);
+  ctx.fillStyle=Game.teamAway.primary; ctx.fillRect(bx+bw-86,0,86,bh);
+  ctx.fillStyle='#fff';
+  ctx.font='bold 14px monospace'; ctx.fillText(Game.teamAway.abbr, bx+bw-43, 18);
+  ctx.font='bold 19px monospace'; ctx.fillText(String(Game.scoreAway), bx+bw-43, 38);
+  ctx.fillStyle='#ffd166';
+  ctx.font='bold 13px monospace'; ctx.fillText(`Q${Game.quarter} ${Math.max(0,Game.quarterTime).toFixed(0)}s`, bx+bw/2, 17);
+  // shot clock — turns red under 5s
+  ctx.fillStyle = Game.shotClock<5 ? '#f87171' : '#22d3ee';
+  ctx.font='bold 17px monospace'; ctx.fillText(`:${Math.ceil(Math.max(0,Game.shotClock)).toString().padStart(2,'0')}`, bx+bw/2, 38);
+  // team fouls
+  ctx.fillStyle='#8fa0b8'; ctx.font='9px monospace'; ctx.textAlign='left';
+  ctx.fillText(`FLS ${Game.foulsHome}`, bx+90, 40);
+  ctx.textAlign='right';
+  ctx.fillText(`FLS ${Game.foulsAway}`, bx+bw-90, 40);
+  ctx.textAlign='left';
+}
+
+function drawStamina(){
+  const w=120, h=10, x=12, y=canvas.height-34;
+  ctx.fillStyle='rgba(0,0,0,0.6)';
+  ctx.fillRect(x-3,y-3,w+6,h+6);
+  ctx.fillStyle='#1a2438'; ctx.fillRect(x,y,w,h);
+  const f = Game.stamina/100;
+  ctx.fillStyle = f>0.5 ? '#34d399' : f>0.25 ? '#ffd166' : '#f87171';
+  ctx.fillRect(x,y,w*f,h);
+  ctx.fillStyle='rgba(255,255,255,0.7)';
+  ctx.font='bold 9px monospace';
+  ctx.fillText('STAMINA', x, y-6);
+}
+
+function drawMeter(meter, shooter, isP2){
+  const barW=130, barH=14;
+  const cx = isP2 ? canvas.width*0.75 : (Game.versus? canvas.width*0.25 : canvas.width/2);
+  const bx=cx-barW/2, by=canvas.height-78;
+  ctx.fillStyle='rgba(0,0,0,0.7)';
+  ctx.fillRect(bx-4,by-4,barW+8,barH+8);
+  ctx.fillStyle='#1a2438'; ctx.fillRect(bx,by,barW,barH);
+  ctx.fillStyle='rgba(52,211,153,0.55)';
+  ctx.fillRect(bx+barW*0.42, by, barW*0.16, barH);
+  ctx.fillStyle='#ffd166';
+  ctx.fillRect(bx+meter.t*barW-2, by-3, 4, barH+6);
+  ctx.strokeStyle='#ff7a29'; ctx.lineWidth=2; ctx.strokeRect(bx,by,barW,barH);
+  const { chance } = computeShotChance(shooter, Math.max(0,Math.min(1,meter.t)));
+  ctx.fillStyle = chance>0.6?'#34d399':chance>0.35?'#ffd166':'#f87171';
+  ctx.font='bold 14px monospace';
+  ctx.textAlign='center';
+  ctx.fillText(`${Math.round(chance*100)}%`, cx, by-10);
+  ctx.textAlign='left';
+}
+
+function drawPopup(){
+  const sp=Game.shotPopup;
+  const tn=sp.t/sp.dur;
+  const scale = tn<0.15 ? tn/0.15 : 1;
+  const alpha = tn>0.75 ? 1-((tn-0.75)/0.25) : 1;
+  ctx.save();
+  ctx.globalAlpha=Math.max(0,alpha);
+  ctx.translate(canvas.width/2, 84);
+  ctx.scale(scale,scale);
+  ctx.font='bold 20px monospace';
+  const w = ctx.measureText(sp.text).width+32;
+  ctx.fillStyle='rgba(10,15,25,0.85)';
+  ctx.fillRect(-w/2,-20,w,36);
+  ctx.strokeStyle=sp.color; ctx.lineWidth=2;
+  ctx.strokeRect(-w/2,-20,w,36);
+  ctx.fillStyle=sp.color;
+  ctx.textAlign='center';
+  ctx.fillText(sp.text, 0, 6);
+  ctx.restore();
+  ctx.textAlign='left';
+}
+
+/* =========================================================================
+   END OF GAME
+========================================================================= */
+function endGame(){
+  Game.over=true;
+  Platform.gameplayStop();
+  Audio8.buzzer();
+  const won = Game.scoreHome > Game.scoreAway;
+
+  // LOCAL VERSUS: show a winner banner then back to the menu
+  if(S.mode==='versus'){
+    const p1win = Game.scoreHome>Game.scoreAway;
+    document.getElementById('mvpText').textContent =
+      `${p1win?'Player 1':'Player 2'} wins! Final: ${Game.teamHome.abbr} ${Game.scoreHome} — ${Game.scoreAway} ${Game.teamAway.abbr}.`;
+    document.querySelector('#screen-trophy h1').textContent = p1win?'🏆 PLAYER 1 WINS':'🏆 PLAYER 2 WINS';
+    document.getElementById('btnPostChamp').textContent='Back to Menu';
+    Audio8.badge();
+    drawTrophyArt();
+    showScreen('screen-trophy');
+    return;
+  }
+
+  // FRANCHISE MODE: report to the dashboard, no MVP career progression
+  if(S.mode==='franchise'){
+    frAdvanceAfterGame(won, Game.scoreHome, Game.scoreAway);
+    renderFranchise();
+    document.getElementById('frMsg').textContent =
+      `Final: ${S.team.abbr} ${Game.scoreHome} — ${Game.scoreAway} ${Game.teamAway.abbr} (${won?'WIN':'LOSS'})`;
+    showScreen('screen-franchise');
+    return;
+  }
+
+  if(won) S.season.wins++; else S.season.losses++;
+  gainXP(Game.stats.points*2 + Game.stats.assists*3 + Game.stats.rebounds*2 + Game.stats.steals*5 + Game.stats.blocks*5 + (won?30:5));
+  S.spMultiplierNextGame = (S.sponsor && S.sponsor.done) ? S.sponsor.mult : 1;
+  S.sponsor = null;
+
+  if(won){
+    if(S.season.round<2){
+      const fin = S.season.round;
+      S.season.round++;
+      renderHub();
+      document.getElementById('hubMsg').textContent = `Victory! ${STORY.win[fin]} Advancing to ${ROUND_NAMES[S.season.round]}.`;
+      showScreen('screen-hub');
+    } else {
+      S.season.round=3;
+      showTrophy();
+    }
+  } else {
+    S.season.round=0; S.season.wins=0; S.season.losses=0;
+    renderHub();
+    document.getElementById('hubMsg').textContent = STORY.lose;
+    showScreen('screen-hub');
+  }
+}
+
+function drawTrophyArt(){
+  const tc=document.getElementById('trophyCanvas');
+  const t=tc.getContext('2d');
+  t.imageSmoothingEnabled=false;
+  t.fillStyle='#0a1220'; t.fillRect(0,0,tc.width,tc.height);
+  const px=(x,y,w,h,c)=>{ t.fillStyle=c; t.fillRect(x,y,w,h); };
+  for(let i=0;i<12;i++){
+    const a=i*(Math.PI*2/12);
+    px(150+Math.cos(a)*90, 110+Math.sin(a)*90, 4,4,'#ffd166');
+  }
+  px(110,60,80,50,'#ffd700');
+  px(100,60,10,10,'#ffd700'); px(190,60,10,10,'#ffd700');
+  px(95,60,10,40,'#e0b400'); px(195,60,10,40,'#e0b400');
+  px(130,110,40,30,'#ffd700');
+  px(110,140,80,14,'#e0b400');
+  px(90,154,120,16,'#7a4a1e');
+  px(140,170,20,50,'#e0b400');
+  px(110,220,80,20,'#5a3a1a');
+  t.fillStyle='#fff'; t.font='bold 14px monospace'; t.textAlign='center';
+  t.fillText('MVP',150,90);
+  t.textAlign='left';
+}
+
+function showTrophy(){
+  showScreen('screen-trophy');
+  document.querySelector('#screen-trophy h1').textContent = '🏆 FINALS MVP 🏆';
+  document.getElementById('btnPostChamp').textContent = 'Continue My Journey';
+  document.getElementById('mvpText').textContent =
+    `${S.player.name} led the ${S.team.name} to the championship! Final: ${Game.scoreHome}-${Game.scoreAway}. The city will remember this run — but a new season awaits.`;
+  Audio8.badge();
+  drawTrophyArt();
+}
+
+})();
+</script>
+</body>
+</html>
