@@ -22,7 +22,7 @@ def state_store(tmp_path):
 
 def test_approve_entry_happy_path(state_store):
     risk = RiskManager(RISK_CONFIG, state_store)
-    approved, _ = risk.approve_entry("AAPL", equity=10_000, open_position_count=0,
+    approved, _ = risk.approve_entry("BTCUSDT", equity=10_000, open_position_count=0,
                                       proposed_dollar_amount=500)
     assert approved
 
@@ -30,7 +30,7 @@ def test_approve_entry_happy_path(state_store):
 def test_reject_when_kill_switch_tripped(state_store):
     state_store.trip_kill_switch()
     risk = RiskManager(RISK_CONFIG, state_store)
-    approved, reason = risk.approve_entry("AAPL", equity=10_000, open_position_count=0,
+    approved, reason = risk.approve_entry("BTCUSDT", equity=10_000, open_position_count=0,
                                            proposed_dollar_amount=500)
     assert not approved
     assert "kill switch" in reason
@@ -39,7 +39,7 @@ def test_reject_when_kill_switch_tripped(state_store):
 def test_reject_when_daily_loss_limit_hit(state_store):
     state_store.state.realized_pnl_usd = -200
     risk = RiskManager(RISK_CONFIG, state_store)
-    approved, reason = risk.approve_entry("AAPL", equity=10_000, open_position_count=0,
+    approved, reason = risk.approve_entry("BTCUSDT", equity=10_000, open_position_count=0,
                                            proposed_dollar_amount=500)
     assert not approved
     assert "daily loss" in reason
@@ -48,7 +48,7 @@ def test_reject_when_daily_loss_limit_hit(state_store):
 def test_reject_when_max_trades_hit(state_store):
     state_store.state.trades_placed = 20
     risk = RiskManager(RISK_CONFIG, state_store)
-    approved, reason = risk.approve_entry("AAPL", equity=10_000, open_position_count=0,
+    approved, reason = risk.approve_entry("BTCUSDT", equity=10_000, open_position_count=0,
                                            proposed_dollar_amount=500)
     assert not approved
     assert "trades per day" in reason
@@ -56,7 +56,7 @@ def test_reject_when_max_trades_hit(state_store):
 
 def test_reject_when_max_positions_hit(state_store):
     risk = RiskManager(RISK_CONFIG, state_store)
-    approved, reason = risk.approve_entry("AAPL", equity=10_000, open_position_count=5,
+    approved, reason = risk.approve_entry("BTCUSDT", equity=10_000, open_position_count=5,
                                            proposed_dollar_amount=500)
     assert not approved
     assert "concurrent positions" in reason
@@ -64,7 +64,7 @@ def test_reject_when_max_positions_hit(state_store):
 
 def test_reject_when_position_too_large(state_store):
     risk = RiskManager(RISK_CONFIG, state_store)
-    approved, reason = risk.approve_entry("AAPL", equity=10_000, open_position_count=0,
+    approved, reason = risk.approve_entry("BTCUSDT", equity=10_000, open_position_count=0,
                                            proposed_dollar_amount=5000)
     assert not approved
     assert "exceeds max" in reason
@@ -95,41 +95,3 @@ def test_daily_loss_limit_scales_with_equity(state_store):
 def test_position_size_dollars(state_store):
     risk = RiskManager(RISK_CONFIG, state_store)
     assert risk.position_size_dollars(10_000) == 1_000
-
-
-def test_reject_pdt_when_flagged_under_25k(state_store):
-    risk = RiskManager(RISK_CONFIG, state_store)
-    approved, reason = risk.approve_entry(
-        "AAPL", equity=10_000, open_position_count=0, proposed_dollar_amount=500,
-        pattern_day_trader=True, day_trade_count=1,
-    )
-    assert not approved
-    assert "PDT" in reason
-
-
-def test_reject_pdt_when_day_trade_count_at_limit_under_25k(state_store):
-    risk = RiskManager(RISK_CONFIG, state_store)
-    approved, reason = risk.approve_entry(
-        "AAPL", equity=10_000, open_position_count=0, proposed_dollar_amount=500,
-        pattern_day_trader=False, day_trade_count=3,
-    )
-    assert not approved
-    assert "PDT" in reason
-
-
-def test_allow_under_pdt_limit_under_25k(state_store):
-    risk = RiskManager(RISK_CONFIG, state_store)
-    approved, _ = risk.approve_entry(
-        "AAPL", equity=10_000, open_position_count=0, proposed_dollar_amount=500,
-        pattern_day_trader=False, day_trade_count=2,
-    )
-    assert approved
-
-
-def test_pdt_rule_does_not_apply_at_or_above_25k_equity(state_store):
-    risk = RiskManager(RISK_CONFIG, state_store)
-    approved, _ = risk.approve_entry(
-        "AAPL", equity=25_000, open_position_count=0, proposed_dollar_amount=500,
-        pattern_day_trader=True, day_trade_count=10,
-    )
-    assert approved

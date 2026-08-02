@@ -31,7 +31,6 @@ class RiskConfig:
 
 @dataclass(frozen=True)
 class ScheduleConfig:
-    flatten_before_close_minutes: int
     poll_interval_seconds: int
 
 
@@ -43,7 +42,7 @@ class Config:
     schedule: ScheduleConfig
     api_key: str
     secret_key: str
-    paper: bool
+    testnet: bool
     alert_webhook_url: str | None
 
 
@@ -54,11 +53,11 @@ def load_config(config_path: Path | None = None) -> Config:
     with open(path) as f:
         raw = yaml.safe_load(f)
 
-    api_key = os.environ.get("ALPACA_API_KEY", "")
-    secret_key = os.environ.get("ALPACA_SECRET_KEY", "")
+    api_key = os.environ.get("BINANCE_API_KEY", "")
+    secret_key = os.environ.get("BINANCE_API_SECRET", "")
     if not api_key or not secret_key:
         raise RuntimeError(
-            "ALPACA_API_KEY / ALPACA_SECRET_KEY are not set. Copy .env.example to "
+            "BINANCE_API_KEY / BINANCE_API_SECRET are not set. Copy .env.example to "
             ".env and fill them in before starting the bot."
         )
 
@@ -69,6 +68,6 @@ def load_config(config_path: Path | None = None) -> Config:
         schedule=ScheduleConfig(**raw["schedule"]),
         api_key=api_key,
         secret_key=secret_key,
-        paper=os.environ.get("ALPACA_PAPER", "true").strip().lower() != "false",
+        testnet=os.environ.get("BINANCE_TESTNET", "true").strip().lower() != "false",
         alert_webhook_url=os.environ.get("ALERT_WEBHOOK_URL") or None,
     )

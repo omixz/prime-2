@@ -1,17 +1,20 @@
 # Trading bot configuration. All limits are enforced by src/risk_manager.py
 # BEFORE any order is sent — the strategy cannot bypass them.
 
+# Binance spot pairs, all quoted in USDT (far better liquidity than AUD pairs;
+# convert AUD -> USDT once after depositing, the bot only trades USDT pairs).
 watchlist:
-  - AAPL
-  - MSFT
-  - AMZN
-  - GOOGL
-  - SPY
+  - BTCUSDT
+  - ETHUSDT
+  - SOLUSDT
+  - BNBUSDT
 
 strategy:
   # EMA crossover: buy when fast EMA crosses above slow EMA, sell on the reverse
   # cross or when a stop/target is hit. Deliberately simple and back-testable —
   # simple strategies are easier to reason about and debug than complex ones.
+  # Crypto is noisier than large-cap stocks; these are a reasonable starting
+  # point but watch the logs and retune if you see excessive whipsawing.
   fast_ema: 9
   slow_ema: 21
   bar_timeframe_minutes: 5
@@ -23,20 +26,21 @@ risk:
   # Hard budget, as a fraction of current account equity rather than a fixed
   # dollar figure — this way the limit auto-scales whether the account holds
   # $500 or $50,000, and never needs updating after a deposit/withdrawal.
-  max_daily_loss_pct_equity: 0.02
+  # Crypto is more volatile than stocks; these defaults are intentionally
+  # tighter than a stock-only bot would use.
+  max_daily_loss_pct_equity: 0.015
   # Never put more than this fraction of account equity into one position.
   max_position_pct_equity: 0.10
   # Never hold more than this many concurrent positions.
-  max_concurrent_positions: 5
+  max_concurrent_positions: 4
   # Hard cap on number of orders placed in a single day (guards against a
   # runaway loop or bad signal spamming orders).
   max_trades_per_day: 20
   # If tripped, the bot liquidates all open positions, cancels open orders,
-  # and refuses to place new orders for the rest of the trading day.
-  kill_switch_daily_loss_pct_equity: 0.03
+  # and refuses to place new orders for the rest of the day.
+  kill_switch_daily_loss_pct_equity: 0.025
 
 schedule:
-  # Only ever trade during regular US market hours (bot checks Alpaca's
-  # market clock, this is a redundant local sanity check).
-  flatten_before_close_minutes: 15
+  # Crypto markets never close, so the bot just polls continuously — no
+  # market-hours check, no end-of-day flatten.
   poll_interval_seconds: 60

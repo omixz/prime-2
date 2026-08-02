@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import time
 import traceback
-from datetime import date
 
 from .alerts import Alerter
 from .broker import Broker
@@ -23,11 +22,10 @@ class TradingBot:
         self.state = StateStore()
         self.risk = RiskManager(config.risk, self.state)
         self.alerter = Alerter(config.alert_webhook_url)
-        self._last_day_summarized: str | None = None
 
     def run_forever(self) -> None:
         self.alerter.send(
-            f"Trading bot started ({'PAPER' if self.config.paper else 'LIVE'} mode)."
+            f"Trading bot started ({'TESTNET' if self.config.testnet else 'LIVE'} mode)."
         )
         while True:
             try:
@@ -43,41 +41,36 @@ class TradingBot:
             time.sleep(self.config.schedule.poll_interval_seconds)
 
     def _roll_day_if_needed(self) -> None:
+        # Crypto trades 24/7, so "day" is just a UTC calendar boundary for
+        # resetting risk counters — not tied to any market open/close.
+        previous = self.state.state
         current_state = self.state._load()
-        if current_state.trading_day != self.state.state.trading_day:
+        if current_state.trading_day != previous.trading_day:
+            self.alerter.send(
+                f"Daily summary {previous.trading_day}: realized P&L "
+                f"${previous.realized_pnl_usd:.2f}, {previous.trades_placed} trades, "
+                f"kill switch tripped: {previous.kill_switch_tripped}"
+            )
             self.state.state = current_state
             self.state.save()
 
     def _tick(self) -> None:
-        if not self.broker.is_market_open():
-            self._maybe_send_daily_summary()
-            return
-
-        account = self.broker.get_account()
-        equity = float(account.equity)
+        equity = self.broker.get_quote_balance()
 
         if self.risk.check_daily_loss(equity):
             self.broker.close_all_positions()
             self.alerter.send("Kill switch tripped — all positions liquidated.")
             return
 
-        minutes_left = self.broker.minutes_to_close()
-        if minutes_left <= self.config.schedule.flatten_before_close_minutes:
-            positions = self.broker.get_positions()
-            if positions:
-                logger.info("Flattening positions before market close")
-                self.broker.close_all_positions()
-            return
-
-        positions = {p.symbol: p for p in self.broker.get_positions()}
+        positions = self.broker.get_positions()
 
         for symbol in self.config.watchlist:
             try:
-                self._evaluate_symbol(symbol, equity, positions, account)
+                self._evaluate_symbol(symbol, equity, positions)
             except Exception:
                 logger.exception("Error evaluating %s", symbol)
 
-    def _evaluate_symbol(self, symbol: str, equity: float, positions: dict, account) -> None:
+    def _evaluate_symbol(self, symbol: str, equity: float, positions: dict) -> None:
         strat_cfg = self.config.strategy
         bars = self.broker.get_bars(
             symbol,
@@ -97,12 +90,7 @@ class TradingBot:
                 return
 
             approved, reason = self.risk.approve_entry(
-                symbol,
-                equity,
-                len(positions),
-                dollar_amount,
-                pattern_day_trader=bool(getattr(account, "pattern_day_trader", False)),
-                day_trade_count=int(getattr(account, "daytrade_count", 0) or 0),
+                symbol, equity, len(positions), dollar_amount
             )
             if not approved:
                 logger.info("Entry for %s rejected by risk manager: %s", symbol, reason)
@@ -121,25 +109,10 @@ class TradingBot:
             )
 
         elif signal == Signal.SELL and held:
-            qty = float(positions[symbol].qty)
+            qty = positions[symbol]
             self.broker.submit_market_sell(symbol, qty)
             self.state.record_trade()
-            logger.info("Sold %s x%.4f on crossover-down signal", symbol, qty)
-
-    def _maybe_send_daily_summary(self) -> None:
-        today = date.today().isoformat()
-        if self._last_day_summarized == today:
-            return
-        # Only summarize once we've actually seen at least one trade-day tick
-        # after market close, avoiding a spam message on every off-hours poll.
-        if self.state.state.trading_day != today:
-            return
-        self._last_day_summarized = today
-        self.alerter.send(
-            f"Daily summary {today}: realized P&L ${self.state.state.realized_pnl_usd:.2f}, "
-            f"{self.state.state.trades_placed} trades, "
-            f"kill switch tripped: {self.state.state.kill_switch_tripped}"
-        )
+            logger.info("Sold %s x%.6f on crossover-down signal", symbol, qty)
 
 
 def main() -> None:

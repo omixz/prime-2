@@ -53,8 +53,6 @@ class RiskManager:
         equity: float,
         open_position_count: int,
         proposed_dollar_amount: float,
-        pattern_day_trader: bool = False,
-        day_trade_count: int = 0,
     ) -> tuple[bool, str]:
         if self.kill_switch_tripped:
             return False, "kill switch is tripped, no new entries today"
@@ -68,19 +66,6 @@ class RiskManager:
 
         if open_position_count >= self.config.max_concurrent_positions:
             return False, "max concurrent positions reached"
-
-        # FINRA's Pattern Day Trader rule: accounts under $25k equity that
-        # are flagged (or would become flagged) as PDT are limited to 3 day
-        # trades per rolling 5 business days. Opening a new position here
-        # will become a day trade if the strategy closes it same-day, so we
-        # must not open one that would push the account over the limit —
-        # Alpaca rejects/restricts the account if we do.
-        if equity < 25_000 and (pattern_day_trader or day_trade_count >= 3):
-            return False, (
-                f"PDT rule: equity ${equity:,.2f} < $25,000 and day_trade_count="
-                f"{day_trade_count} (pattern_day_trader={pattern_day_trader}) — "
-                "opening a new position risks a PDT violation"
-            )
 
         max_dollar_amount = equity * self.config.max_position_pct_equity
         if proposed_dollar_amount > max_dollar_amount:
