@@ -22,7 +22,7 @@ with an amount you are fully prepared to lose.
   Enforces max position size (% of equity), max concurrent positions, max
   trades/day, and max daily loss. Every check is config-driven in
   `config.yaml`.
-- **Kill switch**: if realized P&L for the day drops to `kill_switch_daily_loss_usd`,
+- **Kill switch**: if realized P&L for the day drops to `kill_switch_daily_loss_pct_equity`,
   the bot cancels all open orders, liquidates all positions, and refuses new
   entries for the rest of the day. It resets automatically the next trading day.
 - **State** (`src/state.py`): today's P&L/trade count is persisted to
@@ -45,9 +45,11 @@ with an amount you are fully prepared to lose.
 4. (Optional) Set `ALERT_WEBHOOK_URL` to a Slack or Discord incoming webhook
    so the bot can message you about the kill switch, crashes, and daily
    summaries without you having to check on it.
-5. Review `config.yaml` — especially `risk.max_daily_loss_usd` and
-   `risk.kill_switch_daily_loss_usd`. These are your real budget. Defaults
-   are conservative ($200/$250); lower them if you want less exposure.
+5. Review `config.yaml` — especially `risk.max_daily_loss_pct_equity` and
+   `risk.kill_switch_daily_loss_pct_equity`. These are fractions of your
+   *current* account equity, so they auto-scale with deposits/withdrawals
+   instead of needing to be updated by hand. Defaults are conservative
+   (2% / 2.5%); lower them if you want less exposure.
 
 ## Running locally
 
@@ -89,7 +91,7 @@ not need to touch it day to day.
 3. Update `.env`: new `ALPACA_API_KEY`/`ALPACA_SECRET_KEY`, set
    `ALPACA_PAPER=false`.
 4. Fund the live account with only the amount you're comfortable risking —
-   the bot's `max_daily_loss_usd` limit only bounds losses if the account
+   the bot's `max_daily_loss_pct_equity` limit only bounds losses if the account
    itself doesn't hold more than you can afford to lose.
 5. Restart the service/container.
 

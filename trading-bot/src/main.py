@@ -53,7 +53,10 @@ class TradingBot:
             self._maybe_send_daily_summary()
             return
 
-        if self.risk.check_daily_loss():
+        account = self.broker.get_account()
+        equity = float(account.equity)
+
+        if self.risk.check_daily_loss(equity):
             self.broker.close_all_positions()
             self.alerter.send("Kill switch tripped — all positions liquidated.")
             return
@@ -66,8 +69,6 @@ class TradingBot:
                 self.broker.close_all_positions()
             return
 
-        account = self.broker.get_account()
-        equity = float(account.equity)
         positions = {p.symbol: p for p in self.broker.get_positions()}
 
         for symbol in self.config.watchlist:

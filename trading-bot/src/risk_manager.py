@@ -28,15 +28,20 @@ class RiskManager:
     def kill_switch_tripped(self) -> bool:
         return self.state.state.kill_switch_tripped
 
-    def check_daily_loss(self) -> bool:
+    def check_daily_loss(self, equity: float) -> bool:
         """Returns True and trips the kill switch if the daily loss limit has
-        been breached."""
+        been breached. Limit is a fraction of current equity so it scales
+        automatically with account size."""
         pnl = self.state.state.realized_pnl_usd
-        if pnl <= -abs(self.config.kill_switch_daily_loss_usd):
+        kill_switch_threshold = equity * self.config.kill_switch_daily_loss_pct_equity
+        if pnl <= -abs(kill_switch_threshold):
             logger.error(
-                "Kill-switch daily loss limit breached: realized P&L %.2f <= -%.2f",
+                "Kill-switch daily loss limit breached: realized P&L %.2f <= -%.2f "
+                "(%.1f%% of equity %.2f)",
                 pnl,
-                self.config.kill_switch_daily_loss_usd,
+                kill_switch_threshold,
+                self.config.kill_switch_daily_loss_pct_equity * 100,
+                equity,
             )
             self.state.trip_kill_switch()
             return True
@@ -54,7 +59,8 @@ class RiskManager:
         if self.kill_switch_tripped:
             return False, "kill switch is tripped, no new entries today"
 
-        if self.state.state.realized_pnl_usd <= -abs(self.config.max_daily_loss_usd):
+        max_daily_loss = equity * self.config.max_daily_loss_pct_equity
+        if self.state.state.realized_pnl_usd <= -abs(max_daily_loss):
             return False, "max daily loss limit reached, no new entries today"
 
         if self.state.state.trades_placed >= self.config.max_trades_per_day:

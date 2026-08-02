@@ -22,11 +22,11 @@ class StrategyConfig:
 
 @dataclass(frozen=True)
 class RiskConfig:
-    max_daily_loss_usd: float
+    max_daily_loss_pct_equity: float
     max_position_pct_equity: float
     max_concurrent_positions: int
     max_trades_per_day: int
-    kill_switch_daily_loss_usd: float
+    kill_switch_daily_loss_pct_equity: float
 
 
 @dataclass(frozen=True)

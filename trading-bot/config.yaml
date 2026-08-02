@@ -20,9 +20,10 @@ strategy:
   take_profit_atr_multiple: 3.0
 
 risk:
-  # Hard budget: the bot will never risk more than this many dollars in a
-  # single day, no matter what the strategy wants to do.
-  max_daily_loss_usd: 200
+  # Hard budget, as a fraction of current account equity rather than a fixed
+  # dollar figure — this way the limit auto-scales whether the account holds
+  # $500 or $50,000, and never needs updating after a deposit/withdrawal.
+  max_daily_loss_pct_equity: 0.02
   # Never put more than this fraction of account equity into one position.
   max_position_pct_equity: 0.10
   # Never hold more than this many concurrent positions.
@@ -32,7 +33,7 @@ risk:
   max_trades_per_day: 20
   # If tripped, the bot liquidates all open positions, cancels open orders,
   # and refuses to place new orders for the rest of the trading day.
-  kill_switch_daily_loss_usd: 250
+  kill_switch_daily_loss_pct_equity: 0.03
 
 schedule:
   # Only ever trade during regular US market hours (bot checks Alpaca's
